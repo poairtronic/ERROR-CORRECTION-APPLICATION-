@@ -1,0 +1,45 @@
+export declare enum ReportStatus {
+    DRAFT = "DRAFT",
+    PENDING_INSPECTION = "PENDING_INSPECTION",
+    PENDING_SM_REVIEW = "PENDING_SM_REVIEW",
+    PENDING_GM_APPROVAL = "PENDING_GM_APPROVAL",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
+    COMPONENTS_ISSUED = "COMPONENTS_ISSUED",
+    REWORK_IN_PROGRESS = "REWORK_IN_PROGRESS",
+    NEW_PRODUCTION = "NEW_PRODUCTION",
+    CLOSED = "CLOSED"
+}
+export declare enum RaisedByRole {
+    OPERATOR = "OPERATOR",
+    INSPECTOR = "INSPECTOR",
+    SENIOR_MANAGER = "SENIOR_MANAGER"
+}
+export declare enum Decision {
+    REWORK = "REWORK",
+    SCRAP = "SCRAP",
+    ALTERNATIVE = "ALTERNATIVE"
+}
+export declare enum ResponsibleParty {
+    OPERATOR = "OPERATOR",
+    VENDOR = "VENDOR",
+    PROCESS = "PROCESS",
+    MACHINE = "MACHINE"
+}
+export declare enum RecoveryStatus {
+    PENDING = "PENDING",
+    RAISED = "RAISED",
+    RECOVERED = "RECOVERED",
+    PARTIALLY_RECOVERED = "PARTIALLY_RECOVERED",
+    WAIVED = "WAIVED",
+    CANCELLED = "CANCELLED"
+}
+export declare enum NotificationChannel {
+    EMAIL = "EMAIL",
+    APP = "APP"
+}
+export declare enum NotificationStatus {
+    PENDING = "PENDING",
+    SENT = "SENT",
+    FAILED = "FAILED"
+}

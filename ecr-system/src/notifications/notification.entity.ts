@@ -1,0 +1,62 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
+import { User } from '../users/user.entity';
+import { DefectReport } from '../defect-reports/defect-report.entity';
+import {
+  NotificationChannel,
+  NotificationStatus,
+} from '../common/enums/report-status.enum';
+
+@Entity('notifications')
+export class Notification {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
+  @Column({ name: 'user_id' })
+  userId: string;
+
+  @ManyToOne(() => DefectReport, { nullable: true })
+  @JoinColumn({ name: 'report_id' })
+  report: DefectReport;
+
+  @Column({ name: 'report_id', nullable: true })
+  reportId: string;
+
+  @Column({ type: 'enum', enum: NotificationChannel })
+  channel: NotificationChannel;
+
+  @Column()
+  type: string; // e.g. NEW_DEFECT, PENDING_SM_REVIEW, GM_APPROVED, SALARY_DEDUCTED
+
+  @Column({ type: 'text' })
+  message: string;
+
+  @Column({ default: false })
+  read: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: NotificationStatus,
+    default: NotificationStatus.PENDING,
+  })
+  status: NotificationStatus;
+
+  @Column({ default: 0 })
+  attemptCount: number;
+
+  @Column({ nullable: true })
+  sentAt: Date;
+
+  @CreateDateColumn()
+  createdAt: Date;
+}
