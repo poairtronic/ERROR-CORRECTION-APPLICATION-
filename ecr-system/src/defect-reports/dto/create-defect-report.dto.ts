@@ -42,14 +42,14 @@ export class CreateDefectReportDto {
     responsibleId?: string;
     decision: string;
     alternativeNote?: string;
+    costEstimate: number;
+    timeEstimateHours: number;
+    lossAmount?: number;
   };
 
   @IsOptional()
   inlineSmReview?: {
     loopholeNote: string;
-    costEstimate: number;
-    timeEstimateHours: number;
-    lossAmount?: number;
     decisionNote: string;
     biasedFlag?: boolean;
   };

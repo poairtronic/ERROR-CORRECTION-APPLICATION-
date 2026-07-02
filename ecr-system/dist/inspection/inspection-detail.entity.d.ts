@@ -13,5 +13,8 @@ export declare class InspectionDetail {
     responsibleId: string;
     decision: Decision;
     alternativeNote: string;
+    costEstimate: number;
+    timeEstimateHours: number;
+    lossAmount: number;
     reviewedAt: Date;
 }

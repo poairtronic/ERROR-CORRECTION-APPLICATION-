@@ -43,9 +43,9 @@ export class AnalyticsService {
 
     // Financial aggregations
     // We can use QueryBuilder to sum costEstimate, lossAmount, etc.
-    const costs = await this.smRepo.createQueryBuilder('sm')
-      .select('SUM(sm.costEstimate)', 'totalCost')
-      .addSelect('SUM(sm.lossAmount)', 'totalLoss')
+    const costs = await this.inspectRepo.createQueryBuilder('i')
+      .select('SUM(i.costEstimate)', 'totalCost')
+      .addSelect('SUM(i.lossAmount)', 'totalLoss')
       .getRawOne();
 
     const vendorCases = await this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } });
@@ -171,8 +171,8 @@ export class AnalyticsService {
     score -= (openCount * 2); // -2 points per open report
 
     // Penalize for high financial loss
-    const costs = await this.smRepo.createQueryBuilder('sm')
-      .select('SUM(sm.costEstimate)', 'totalCost')
+    const costs = await this.inspectRepo.createQueryBuilder('i')
+      .select('SUM(i.costEstimate)', 'totalCost')
       .getRawOne();
     const totalCost = costs?.totalCost || 0;
     if (totalCost > 5000) score -= 10;

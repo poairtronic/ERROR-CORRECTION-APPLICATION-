@@ -18,7 +18,7 @@ export default function NewReportPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
-    rootCause: '', responsibleParty: '', responsibleId: '', decision: '', alternativeNote: ''
+    rootCause: '', responsibleParty: '', responsibleId: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
   });
 
   useEffect(() => {
@@ -51,7 +51,10 @@ export default function NewReportPage() {
           responsibleParty: body.responsibleParty,
           responsibleId: body.responsibleId,
           decision: body.decision,
-          alternativeNote: body.alternativeNote
+          alternativeNote: body.alternativeNote,
+          costEstimate: Number(body.costEstimate) || 0,
+          timeEstimateHours: Number(body.timeEstimateHours) || 0,
+          lossAmount: body.lossAmount ? Number(body.lossAmount) : undefined
         };
       }
 
@@ -202,6 +205,18 @@ export default function NewReportPage() {
                       <option value="SCRAP">Scrap</option>
                       <option value="ALTERNATIVE">Alternative Use</option>
                     </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Cost Estimate ($) *</label>
+                    <input type="number" min="0" step="0.01" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value)} required={isSimplifiedInspector} />
+                  </div>
+                  <div className="form-group">
+                    <label>Estimated Time (Hours) *</label>
+                    <input type="number" min="0" step="0.5" value={form.timeEstimateHours} onChange={e => set('timeEstimateHours', e.target.value)} required={isSimplifiedInspector} />
+                  </div>
+                  <div className="form-group">
+                    <label>Loss Amount ($) (Optional)</label>
+                    <input type="number" min="0" step="0.01" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value)} />
                   </div>
                   <div className="form-group full">
                     <label>Alternative Note / Remarks</label>

@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min } from 'class-validator';
 import { Decision, ResponsibleParty } from '../../common/enums/report-status.enum';
 
 export class InspectReportDto {
@@ -19,4 +19,19 @@ export class InspectReportDto {
 
   @IsOptional()
   alternativeNote?: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  costEstimate: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @IsPositive()
+  timeEstimateHours: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lossAmount?: number;
 }

@@ -124,6 +124,9 @@ export class DefectReportsService {
           responsibleId: dto.inlineInspection.responsibleId,
           decision: dto.inlineInspection.decision as any,
           alternativeNote: dto.inlineInspection.alternativeNote,
+          costEstimate: dto.inlineInspection.costEstimate,
+          timeEstimateHours: dto.inlineInspection.timeEstimateHours,
+          lossAmount: dto.inlineInspection.lossAmount,
         }),
       );
     } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
@@ -144,6 +147,9 @@ export class DefectReportsService {
           responsibleId: dto.inlineInspection.responsibleId,
           decision: dto.inlineInspection.decision as any,
           alternativeNote: dto.inlineInspection.alternativeNote,
+          costEstimate: dto.inlineInspection.costEstimate,
+          timeEstimateHours: dto.inlineInspection.timeEstimateHours,
+          lossAmount: dto.inlineInspection.lossAmount,
         }),
       );
       await this.smReviewRepo.save(
@@ -151,9 +157,6 @@ export class DefectReportsService {
           reportId: report.id,
           smId: actor.id,
           loopholeNote: dto.inlineSmReview.loopholeNote,
-          costEstimate: dto.inlineSmReview.costEstimate,
-          timeEstimateHours: dto.inlineSmReview.timeEstimateHours,
-          lossAmount: dto.inlineSmReview.lossAmount,
           decisionNote: dto.inlineSmReview.decisionNote,
           biasedFlag: dto.inlineSmReview.biasedFlag ?? false,
           forwardedToGm: true,
@@ -215,6 +218,9 @@ export class DefectReportsService {
       responsibleId: dto.responsibleId,
       decision: dto.decision,
       alternativeNote: dto.alternativeNote,
+      costEstimate: dto.costEstimate,
+      timeEstimateHours: dto.timeEstimateHours,
+      lossAmount: dto.lossAmount,
     });
     await this.inspectionRepo.save(inspection);
 
@@ -243,14 +249,37 @@ export class DefectReportsService {
     Object.assign(smReview, {
       smId: actor.id,
       loopholeNote: dto.loopholeNote,
-      costEstimate: dto.costEstimate,
-      timeEstimateHours: dto.timeEstimateHours,
-      lossAmount: dto.lossAmount,
       decisionNote: dto.decisionNote,
       biasedFlag: dto.biasedFlag ?? false,
       forwardedToGm: dto.forwardToGm,
     });
     await this.smReviewRepo.save(smReview);
+
+    if (report.inspectionDetail) {
+      const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
+      let changed = false;
+      for (const field of inspectFields) {
+        if (dto[field] !== (report.inspectionDetail as any)[field] && dto[field] !== undefined) {
+          await this.auditRepo.save(
+            this.auditRepo.create({
+              reportId: report.id,
+              actorId: actor.id,
+              actorRole: actor.role,
+              actionType: AuditActionType.FIELD_EDIT,
+              fieldName: field,
+              oldValue: String((report.inspectionDetail as any)[field]),
+              newValue: String(dto[field]),
+              note: `Senior Manager edited ${field} during review`,
+            })
+          );
+          (report.inspectionDetail as any)[field] = dto[field];
+          changed = true;
+        }
+      }
+      if (changed) {
+        await this.inspectionRepo.save(report.inspectionDetail);
+      }
+    }
 
     const from = report.status;
     report.status = dto.forwardToGm ? ReportStatus.PENDING_GM_APPROVAL : ReportStatus.REJECTED;
@@ -332,10 +361,21 @@ export class DefectReportsService {
       throw new BadRequestException('Status cannot be manually edited through editField. Use transitionStatus instead.');
     }
 
-    const oldValue = (report as any)[field];
-    if (field in report) {
-      (report as any)[field] = newValue;
-      await this.reportsRepo.save(report);
+    const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
+    let oldValue: any;
+    
+    if (inspectFields.includes(field)) {
+      if (report.inspectionDetail) {
+        oldValue = (report.inspectionDetail as any)[field];
+        (report.inspectionDetail as any)[field] = Number(newValue);
+        await this.inspectionRepo.save(report.inspectionDetail);
+      }
+    } else {
+      oldValue = (report as any)[field];
+      if (field in report) {
+        (report as any)[field] = newValue;
+        await this.reportsRepo.save(report);
+      }
     }
 
     await this.auditRepo.save(

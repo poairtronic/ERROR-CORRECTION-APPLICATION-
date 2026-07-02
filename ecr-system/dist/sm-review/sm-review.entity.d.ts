@@ -7,9 +7,6 @@ export declare class SmReview {
     seniorManager: User;
     smId: string;
     loopholeNote: string;
-    costEstimate: number;
-    timeEstimateHours: number;
-    lossAmount: number;
     decisionNote: string;
     biasedFlag: boolean;
     forwardedToGm: boolean;

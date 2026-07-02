@@ -49,13 +49,26 @@ export default function ReportDetailPage() {
 
   const [inspectData, setInspectData] = useState({
     errorType: '', rootCause: '', responsibleParty: '', decision: '',
-    responsibleId: '', alternativeNote: ''
+    responsibleId: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
   });
   
   const [smData, setSmData] = useState({
     loopholeNote: '', costEstimate: '', timeEstimateHours: '',
     lossAmount: '', decisionNote: '', biasedFlag: false, forwardToGm: 'true'
   });
+
+  const openSmReviewModal = () => {
+    setSmData({
+      loopholeNote: report.smReview?.loopholeNote || '', 
+      costEstimate: report.inspectionDetail?.costEstimate ?? '', 
+      timeEstimateHours: report.inspectionDetail?.timeEstimateHours ?? '',
+      lossAmount: report.inspectionDetail?.lossAmount ?? '', 
+      decisionNote: report.smReview?.decisionNote || '', 
+      biasedFlag: report.smReview?.biasedFlag || false, 
+      forwardToGm: 'true'
+    });
+    setModal('sm-review');
+  };
 
   const doAction = (endpoint, body) => {
     actionMutation.mutate({ endpoint, body });
@@ -108,7 +121,7 @@ export default function ReportDetailPage() {
             <button className="btn btn-success" onClick={() => setModal('inspect')}><FiCheckCircle /> Mark Inspected</button>
           )}
           {role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW' && (
-            <button className="btn btn-success" onClick={() => setModal('sm-review')}><FiCheckCircle /> SM Review</button>
+            <button className="btn btn-success" onClick={openSmReviewModal}><FiCheckCircle /> SM Review</button>
           )}
           {role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL' && (
             <>
@@ -131,6 +144,9 @@ export default function ReportDetailPage() {
                 ['Error Type', report.errorTypeName || report.inspectionDetail?.errorType || '—', 'errorType'],
                 ['Root Cause', report.inspectionDetail?.rootCause || '—', 'rootCause'],
                 ['Decision', report.inspectionDetail?.decision || '—', 'decision'],
+                ['Cost Estimate', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Time Estimate', report.inspectionDetail?.timeEstimateHours !== undefined ? `${report.inspectionDetail.timeEstimateHours} Hours` : '—', 'timeEstimateHours'],
+                ['Loss Amount', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Part Number', report.partNumber || '—', 'partNumber'],
                 ['Batch Number', report.batchNumber || '—', 'batchNumber'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
@@ -241,6 +257,18 @@ export default function ReportDetailPage() {
                 <input value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Explain alternative use..." />
               </div>
             )}
+            <div className="form-group">
+              <label>Cost Estimate ($) *</label>
+              <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
+            </div>
+            <div className="form-group">
+              <label>Estimated Time (Hours) *</label>
+              <input type="number" min="0" step="0.5" value={inspectData.timeEstimateHours} onChange={e => setInspectData({...inspectData, timeEstimateHours: Number(e.target.value)})} required />
+            </div>
+            <div className="form-group">
+              <label>Loss Amount ($) (Optional)</label>
+              <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
+            </div>
           </div>
         </ActionModal>
       )}

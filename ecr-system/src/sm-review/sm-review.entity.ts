@@ -32,21 +32,12 @@ export class SmReview {
   @Column({ type: 'text' })
   loopholeNote: string;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
-  costEstimate: number;
-
-  @Column({ type: 'decimal', precision: 8, scale: 2, default: 0 })
-  timeEstimateHours: number;
-
-  // populated if decision trends toward SCRAP
-  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
-  lossAmount: number;
-
   @Column({ type: 'text' })
   decisionNote: string;
 
   @Column({ default: false })
   biasedFlag: boolean;
+
 
   @Column({ default: false })
   forwardedToGm: boolean;

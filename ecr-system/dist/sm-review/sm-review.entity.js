@@ -43,18 +43,6 @@ __decorate([
     __metadata("design:type", String)
 ], SmReview.prototype, "loopholeNote", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 12, scale: 2, default: 0 }),
-    __metadata("design:type", Number)
-], SmReview.prototype, "costEstimate", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 8, scale: 2, default: 0 }),
-    __metadata("design:type", Number)
-], SmReview.prototype, "timeEstimateHours", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 12, scale: 2, nullable: true }),
-    __metadata("design:type", Number)
-], SmReview.prototype, "lossAmount", void 0);
-__decorate([
     (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], SmReview.prototype, "decisionNote", void 0);

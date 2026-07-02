@@ -49,6 +49,15 @@ export class InspectionDetail {
   @Column({ type: 'text', nullable: true })
   alternativeNote: string;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  costEstimate: number;
+
+  @Column({ type: 'decimal', precision: 8, scale: 2, default: 0 })
+  timeEstimateHours: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  lossAmount: number;
+
   @CreateDateColumn()
   reviewedAt: Date;
 }

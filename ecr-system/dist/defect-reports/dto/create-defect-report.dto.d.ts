@@ -16,12 +16,12 @@ export declare class CreateDefectReportDto {
         responsibleId?: string;
         decision: string;
         alternativeNote?: string;
-    };
-    inlineSmReview?: {
-        loopholeNote: string;
         costEstimate: number;
         timeEstimateHours: number;
         lossAmount?: number;
+    };
+    inlineSmReview?: {
+        loopholeNote: string;
         decisionNote: string;
         biasedFlag?: boolean;
     };

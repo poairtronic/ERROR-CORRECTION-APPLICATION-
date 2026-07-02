@@ -64,6 +64,18 @@ __decorate([
     __metadata("design:type", String)
 ], InspectionDetail.prototype, "alternativeNote", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 12, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], InspectionDetail.prototype, "costEstimate", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 8, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], InspectionDetail.prototype, "timeEstimateHours", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 12, scale: 2, nullable: true }),
+    __metadata("design:type", Number)
+], InspectionDetail.prototype, "lossAmount", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], InspectionDetail.prototype, "reviewedAt", void 0);
