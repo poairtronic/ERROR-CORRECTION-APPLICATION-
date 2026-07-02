@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiBell, FiCheck } from 'react-icons/fi';

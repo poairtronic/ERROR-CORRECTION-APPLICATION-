@@ -1,7 +1,7 @@
-
+import { memo } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
-export default function TrendChartWidget({ title, data, dataKey = 'count', nameKey = 'month', color = '#60a5fa' }) {
+const TrendChartWidget = memo(({ title, data, dataKey = 'count', nameKey = 'month', color = '#60a5fa' }) => {
   return (
     <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="card-title" style={{ marginBottom: 16 }}>{title}</div>
@@ -31,4 +31,6 @@ export default function TrendChartWidget({ title, data, dataKey = 'count', nameK
       </div>
     </div>
   );
-}
+});
+
+export default TrendChartWidget;

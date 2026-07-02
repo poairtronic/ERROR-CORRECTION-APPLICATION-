@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import { FiInfo } from 'react-icons/fi';
 
-export default function InsightsListWidget({ insights = [] }) {
+const InsightsListWidget = memo(({ insights = [] }) => {
   return (
     <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="card-title" style={{ marginBottom: 16 }}>Rule-Based Insights</div>
@@ -30,4 +31,6 @@ export default function InsightsListWidget({ insights = [] }) {
       </div>
     </div>
   );
-}
+});
+
+export default InsightsListWidget;

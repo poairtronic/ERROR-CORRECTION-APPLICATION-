@@ -8,6 +8,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { ReportStatus, RaisedByRole } from '../common/enums/report-status.enum';
@@ -29,13 +30,14 @@ export class DefectReport {
   @JoinColumn({ name: 'raised_by_id' })
   raisedBy: User;
 
+  @Index()
   @Column({ name: 'raised_by_id' })
   raisedById: string;
 
   @Column({ type: 'simple-enum', enum: RaisedByRole })
   raisedByRole: RaisedByRole;
 
-  // free-text reference to SC/PO number - one order can have multiple defect reports
+  @Index()
   @Column()
   scOrPoNo: string;
 
@@ -67,6 +69,7 @@ export class DefectReport {
   @Column({ type: 'simple-json', default: '[]' })
   images: string[];
 
+  @Index()
   @Column({ type: 'simple-enum', enum: ReportStatus, default: ReportStatus.DRAFT })
   status: ReportStatus;
 
@@ -82,9 +85,11 @@ export class DefectReport {
   @OneToMany(() => ComponentIssue, (c) => c.report)
   componentIssues: ComponentIssue[];
 
+  @Index()
   @CreateDateColumn()
   createdAt: Date;
 
+  @Index()
   @UpdateDateColumn()
   updatedAt: Date;
 }

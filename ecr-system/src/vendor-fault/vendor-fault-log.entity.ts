@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { Vendor } from '../master-data/vendors/vendor.entity';
@@ -19,6 +20,7 @@ export class VendorFaultLog {
   @JoinColumn({ name: 'report_id' })
   report: DefectReport;
 
+  @Index()
   @Column({ name: 'report_id' })
   reportId: string;
 
@@ -26,6 +28,7 @@ export class VendorFaultLog {
   @JoinColumn({ name: 'vendor_id' })
   vendor: Vendor;
 
+  @Index()
   @Column({ name: 'vendor_id' })
   vendorId: string;
 
@@ -35,6 +38,7 @@ export class VendorFaultLog {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   recoveryAmount: number;
 
+  @Index()
   @Column({
     type: 'simple-enum',
     enum: RecoveryStatus,

@@ -1,6 +1,6 @@
+import { memo } from 'react';
 
-
-export default function KpiCard({ title, value, desc, icon: Icon, color = 'var(--primary-light)' }) {
+const KpiCard = memo(({ title, value, desc, icon: Icon, color = 'var(--primary-light)' }) => {
   return (
     <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -18,4 +18,6 @@ export default function KpiCard({ title, value, desc, icon: Icon, color = 'var(-
       )}
     </div>
   );
-}
+});
+
+export default KpiCard;

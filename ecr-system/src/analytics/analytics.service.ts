@@ -107,10 +107,11 @@ export class AnalyticsService {
 
   async getVendorIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .select('i.vendorName', 'vendor')
+      .leftJoin('vendors', 'v', 'v.id = i.responsibleId')
+      .select('v.name', 'vendor')
       .addSelect('COUNT(i.id)', 'defects')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.VENDOR })
-      .groupBy('i.vendorName')
+      .groupBy('v.name')
       .orderBy('defects', 'DESC')
       .getRawMany();
   }
@@ -128,10 +129,11 @@ export class AnalyticsService {
 
   async getMachineIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .select('i.machineId', 'machine')
+      .leftJoin('components', 'c', 'c.id = i.responsibleId')
+      .select('c.name', 'machine')
       .addSelect('COUNT(i.id)', 'failures')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.MACHINE })
-      .groupBy('i.machineId')
+      .groupBy('c.name')
       .orderBy('failures', 'DESC')
       .getRawMany();
   }

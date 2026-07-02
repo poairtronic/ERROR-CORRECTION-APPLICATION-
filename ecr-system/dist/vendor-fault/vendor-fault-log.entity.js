@@ -27,6 +27,7 @@ __decorate([
     __metadata("design:type", defect_report_entity_1.DefectReport)
 ], VendorFaultLog.prototype, "report", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)({ name: 'report_id' }),
     __metadata("design:type", String)
 ], VendorFaultLog.prototype, "reportId", void 0);
@@ -36,6 +37,7 @@ __decorate([
     __metadata("design:type", vendor_entity_1.Vendor)
 ], VendorFaultLog.prototype, "vendor", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)({ name: 'vendor_id' }),
     __metadata("design:type", String)
 ], VendorFaultLog.prototype, "vendorId", void 0);
@@ -48,6 +50,7 @@ __decorate([
     __metadata("design:type", Number)
 ], VendorFaultLog.prototype, "recoveryAmount", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)({
         type: 'simple-enum',
         enum: report_status_enum_1.RecoveryStatus,

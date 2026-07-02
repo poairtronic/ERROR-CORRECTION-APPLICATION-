@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import { FiClock } from 'react-icons/fi';
 
-export default function SlaMonitorWidget({ slaData }) {
+const SlaMonitorWidget = memo(({ slaData }) => {
   const avgDays = slaData?.averageResolutionDays || 0;
   
   return (
@@ -35,4 +36,6 @@ export default function SlaMonitorWidget({ slaData }) {
       </div>
     </div>
   );
-}
+});
+
+export default SlaMonitorWidget;

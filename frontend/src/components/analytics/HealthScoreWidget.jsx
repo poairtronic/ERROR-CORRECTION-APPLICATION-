@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
-export default function HealthScoreWidget({ scoreData }) {
+const HealthScoreWidget = memo(({ scoreData }) => {
   const score = scoreData?.score || 0;
   const trend = scoreData?.trend || 'N/A';
   
@@ -28,4 +29,6 @@ export default function HealthScoreWidget({ scoreData }) {
       </div>
     </div>
   );
-}
+});
+
+export default HealthScoreWidget;

@@ -34,6 +34,7 @@ __decorate([
     __metadata("design:type", user_entity_1.User)
 ], DefectReport.prototype, "raisedBy", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)({ name: 'raised_by_id' }),
     __metadata("design:type", String)
 ], DefectReport.prototype, "raisedById", void 0);
@@ -42,6 +43,7 @@ __decorate([
     __metadata("design:type", String)
 ], DefectReport.prototype, "raisedByRole", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], DefectReport.prototype, "scOrPoNo", void 0);
@@ -82,6 +84,7 @@ __decorate([
     __metadata("design:type", Array)
 ], DefectReport.prototype, "images", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.Column)({ type: 'simple-enum', enum: report_status_enum_1.ReportStatus, default: report_status_enum_1.ReportStatus.DRAFT }),
     __metadata("design:type", String)
 ], DefectReport.prototype, "status", void 0);
@@ -102,10 +105,12 @@ __decorate([
     __metadata("design:type", Array)
 ], DefectReport.prototype, "componentIssues", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], DefectReport.prototype, "createdAt", void 0);
 __decorate([
+    (0, typeorm_1.Index)(),
     (0, typeorm_1.UpdateDateColumn)(),
     __metadata("design:type", Date)
 ], DefectReport.prototype, "updatedAt", void 0);
