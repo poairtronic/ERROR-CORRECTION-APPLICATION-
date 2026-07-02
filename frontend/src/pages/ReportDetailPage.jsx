@@ -137,8 +137,8 @@ export default function ReportDetailPage() {
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
               ].map(([label, value, fieldKey]) => (
-                <div key={label} className="detail-field" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ flex: 1 }}>
+                <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div className="detail-label">{label}</div>
                     {editingField === fieldKey ? (
                       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
