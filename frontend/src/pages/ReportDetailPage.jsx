@@ -51,6 +51,11 @@ export default function ReportDetailPage() {
     errorType: '', rootCause: '', responsibleParty: '', decision: '',
     responsibleId: '', alternativeNote: ''
   });
+  
+  const [smData, setSmData] = useState({
+    loopholeNote: '', costEstimate: '', timeEstimateHours: '',
+    lossAmount: '', decisionNote: '', biasedFlag: false, forwardToGm: 'true'
+  });
 
   const doAction = (endpoint, body) => {
     actionMutation.mutate({ endpoint, body });
@@ -198,8 +203,46 @@ export default function ReportDetailPage() {
         </ActionModal>
       )}
       {modal === 'sm-review' && (
-        <ActionModal title="Senior Manager Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('sm-review', { notes })}>
-          <div className="form-group"><label>Review Notes</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add review notes…" /></div>
+        <ActionModal title="Senior Manager Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('sm-review', { 
+            ...smData, 
+            costEstimate: Number(smData.costEstimate), 
+            timeEstimateHours: Number(smData.timeEstimateHours),
+            lossAmount: smData.lossAmount ? Number(smData.lossAmount) : undefined,
+            forwardToGm: smData.forwardToGm === 'true'
+        })}>
+          <div className="form-grid">
+            <div className="form-group full">
+              <label>Loophole Note *</label>
+              <textarea value={smData.loopholeNote} onChange={e => setSmData({...smData, loopholeNote: e.target.value})} placeholder="Describe systemic loopholes..." required rows={2} />
+            </div>
+            <div className="form-group">
+              <label>Cost Estimate *</label>
+              <input type="number" min="0" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value})} required />
+            </div>
+            <div className="form-group">
+              <label>Time Estimate (Hours) *</label>
+              <input type="number" min="0" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value})} required />
+            </div>
+            <div className="form-group">
+              <label>Loss Amount (Optional)</label>
+              <input type="number" min="0" value={smData.lossAmount} onChange={e => setSmData({...smData, lossAmount: e.target.value})} />
+            </div>
+            <div className="form-group">
+              <label>Forward to GM?</label>
+              <select value={smData.forwardToGm} onChange={e => setSmData({...smData, forwardToGm: e.target.value})}>
+                <option value="true">Yes, Forward to GM</option>
+                <option value="false">No, Reject Report</option>
+              </select>
+            </div>
+            <div className="form-group full" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <input type="checkbox" checked={smData.biasedFlag} onChange={e => setSmData({...smData, biasedFlag: e.target.checked})} id="biasedFlag" />
+              <label htmlFor="biasedFlag" style={{ margin: 0 }}>Mark as Biased / Conflict of Interest</label>
+            </div>
+            <div className="form-group full">
+              <label>Decision Note *</label>
+              <textarea value={smData.decisionNote} onChange={e => setSmData({...smData, decisionNote: e.target.value})} placeholder="Provide final decision notes..." required rows={2} />
+            </div>
+          </div>
         </ActionModal>
       )}
       {modal === 'gm-approve' && (
