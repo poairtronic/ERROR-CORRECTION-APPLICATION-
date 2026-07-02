@@ -14,6 +14,7 @@ export default function NewReportPage() {
   const [components, setComponents] = useState([]);
   const [errorTypes, setErrorTypes] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [operators, setOperators] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
@@ -25,8 +26,14 @@ export default function NewReportPage() {
       api.get('/master-data/components').catch(() => ({ data: [] })),
       api.get('/master-data/error-types').catch(() => ({ data: [] })),
       api.get('/master-data/vendors').catch(() => ({ data: [] })),
-    ]).then(([c, e, v]) => { setComponents(c.data || []); setErrorTypes(e.data || []); setVendors(v.data || []); });
-  }, []);
+      isSimplifiedInspector ? api.get('/admin/users?role=OPERATOR').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+    ]).then(([c, e, v, o]) => { 
+      setComponents(c.data || []); 
+      setErrorTypes(e.data || []); 
+      setVendors(v.data || []); 
+      setOperators(o.data || []);
+    });
+  }, [isSimplifiedInspector]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -163,10 +170,28 @@ export default function NewReportPage() {
                       <option value="OTHER">Other</option>
                     </select>
                   </div>
-                  {(form.responsibleParty === 'OPERATOR' || form.responsibleParty === 'VENDOR') && (
+                  {['OPERATOR', 'VENDOR', 'MACHINE'].includes(form.responsibleParty) && (
                     <div className="form-group">
-                      <label>{form.responsibleParty === 'OPERATOR' ? 'Operator ID / Name' : 'Vendor ID / Name'} *</label>
-                      <input value={form.responsibleId} onChange={e => set('responsibleId', e.target.value)} required />
+                      <label>
+                        {form.responsibleParty === 'OPERATOR' ? 'Operator ID / Name' : 
+                         form.responsibleParty === 'VENDOR' ? 'Vendor ID / Name' : 'Machine ID / Name'} *
+                      </label>
+                      <input 
+                        list={`${form.responsibleParty.toLowerCase()}-list`}
+                        value={form.responsibleId} 
+                        onChange={e => set('responsibleId', e.target.value)} 
+                        placeholder={`Select or type ${form.responsibleParty.toLowerCase()}...`}
+                        required 
+                      />
+                      <datalist id="operator-list">
+                        {operators.map(o => <option key={o.id} value={`${o.id} - ${o.name}`} />)}
+                      </datalist>
+                      <datalist id="vendor-list">
+                        {vendors.map(v => <option key={v.id} value={`${v.id} - ${v.name}`} />)}
+                      </datalist>
+                      <datalist id="machine-list">
+                        {components.map(c => <option key={c.id} value={`${c.id} - ${c.name}`} />)}
+                      </datalist>
                     </div>
                   )}
                   <div className="form-group">
