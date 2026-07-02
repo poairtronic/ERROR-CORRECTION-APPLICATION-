@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import api from '../../services/apiClient';
+import api from '../services/apiClient';
 import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle } from 'react-icons/fi';
-import KpiCard from '../../components/analytics/KpiCard';
-import TrendChartWidget from '../../components/analytics/TrendChartWidget';
-import InsightsListWidget from '../../components/analytics/InsightsListWidget';
-import ExportDataWidget from '../../components/analytics/ExportDataWidget';
+import KpiCard from '../components/analytics/KpiCard';
+import TrendChartWidget from '../components/analytics/TrendChartWidget';
+import InsightsListWidget from '../components/analytics/InsightsListWidget';
+import ExportDataWidget from '../components/analytics/ExportDataWidget';
 
 export default function EnterpriseAnalytics() {
 
