@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { toast } from 'react-hot-toast';
@@ -58,17 +58,29 @@ export default function NewReportPage() {
             <div className="form-grid">
               <div className="form-group">
                 <label>Component *</label>
-                <select value={form.componentId} onChange={e => set('componentId', e.target.value)} required>
-                  <option value="">Select component…</option>
-                  {components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <input 
+                  list="component-list" 
+                  value={form.componentId} 
+                  onChange={e => set('componentId', e.target.value)} 
+                  placeholder="Select or type component..." 
+                  required 
+                />
+                <datalist id="component-list">
+                  {components.map(c => <option key={c.id} value={c.name} />)}
+                </datalist>
               </div>
               <div className="form-group">
                 <label>Error Type *</label>
-                <select value={form.errorTypeId} onChange={e => set('errorTypeId', e.target.value)} required>
-                  <option value="">Select error type…</option>
-                  {errorTypes.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
+                <input 
+                  list="error-type-list" 
+                  value={form.errorTypeId} 
+                  onChange={e => set('errorTypeId', e.target.value)} 
+                  placeholder="Select or type error type..." 
+                  required 
+                />
+                <datalist id="error-type-list">
+                  {errorTypes.map(e => <option key={e.id} value={e.name} />)}
+                </datalist>
               </div>
               <div className="form-group">
                 <label>Vendor (if vendor fault)</label>

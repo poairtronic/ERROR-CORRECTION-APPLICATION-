@@ -13,8 +13,9 @@ function UserModal({ user, onClose, onSave }) {
   const handleSubmit = async (e) => {
     e.preventDefault(); setLoading(true);
     try {
-      const body = { ...form };
-      if (user && !body.password) delete body.password;
+      const body = { ...form, tempPassword: form.password };
+      delete body.password;
+      if (user && !body.tempPassword) delete body.tempPassword;
       if (user) await api.patch(`/admin/users/${user.id}`, body);
       else await api.post('/admin/users', body);
       toast.success(user ? 'User updated!' : 'User created!');

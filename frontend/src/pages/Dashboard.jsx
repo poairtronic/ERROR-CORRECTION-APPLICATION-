@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
-import { FiFileText, FiClock, FiCheckCircle, FiXCircle, FiPlus } from 'react-icons/fi';
+import { FiFileText, FiPlus } from 'react-icons/fi';
 
 const STATUS_COLORS = {
   DRAFT: 'draft', PENDING_INSPECTION: 'pending', PENDING_SM_REVIEW: 'review',
