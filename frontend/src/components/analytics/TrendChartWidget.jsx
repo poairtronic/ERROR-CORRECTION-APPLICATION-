@@ -33,4 +33,6 @@ const TrendChartWidget = memo(({ title, data, dataKey = 'count', nameKey = 'mont
   );
 });
 
+TrendChartWidget.displayName = 'TrendChartWidget';
+
 export default TrendChartWidget;

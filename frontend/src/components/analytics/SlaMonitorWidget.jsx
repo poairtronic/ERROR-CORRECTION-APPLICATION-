@@ -38,4 +38,6 @@ const SlaMonitorWidget = memo(({ slaData }) => {
   );
 });
 
+SlaMonitorWidget.displayName = 'SlaMonitorWidget';
+
 export default SlaMonitorWidget;

@@ -20,4 +20,6 @@ const KpiCard = memo(({ title, value, desc, icon: Icon, color = 'var(--primary-l
   );
 });
 
+KpiCard.displayName = 'KpiCard';
+
 export default KpiCard;

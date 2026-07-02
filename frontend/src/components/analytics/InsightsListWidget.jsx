@@ -33,4 +33,6 @@ const InsightsListWidget = memo(({ insights = [] }) => {
   );
 });
 
+InsightsListWidget.displayName = 'InsightsListWidget';
+
 export default InsightsListWidget;

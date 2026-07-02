@@ -31,4 +31,6 @@ const HealthScoreWidget = memo(({ scoreData }) => {
   );
 });
 
+HealthScoreWidget.displayName = 'HealthScoreWidget';
+
 export default HealthScoreWidget;
