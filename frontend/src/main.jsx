@@ -1,62 +1,39 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from './lib/queryClient';
-import { initSentry } from './utils/sentry';
-import { initLogRocket } from './utils/logrocket';
-import App from './App';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './contexts/AuthContext';
+import './index.css';
 
-// Initialize Enterprise Observability
-initSentry();
-initLogRocket();
+import Layout from './components/Layout';
+import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
+import ReportsPage from './pages/ReportsPage';
+import NewReportPage from './pages/NewReportPage';
+import ReportDetailPage from './pages/ReportDetailPage';
+import NotificationsPage from './pages/NotificationsPage';
+import UsersPage from './pages/UsersPage';
+import MasterDataPage from './pages/MasterDataPage';
 
-window.addEventListener('error', (event) => {
-  const logPayload = {
-    action: 'FRONTEND_ERROR',
-    entityType: 'frontend_global_error',
-    metadata: {
-      message: event.message,
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno,
-      stack: event.error ? event.error.stack : ''
-    }
-  };
-  const apiBase = import.meta.env.VITE_API_BASE || '';
-  fetch(`${apiBase}/api/audit/log`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(logPayload)
-  }).catch(err => console.error('Failed to log global window error:', err));
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  const reason = event.reason;
-  const logPayload = {
-    action: 'FRONTEND_ERROR',
-    entityType: 'frontend_unhandled_rejection',
-    metadata: {
-      message: reason ? (reason.message || String(reason)) : 'Unhandled rejection',
-      stack: reason && reason.stack ? reason.stack : ''
-    }
-  };
-  const apiBase = import.meta.env.VITE_API_BASE || '';
-  fetch(`${apiBase}/api/audit/log`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(logPayload)
-  }).catch(err => console.error('Failed to log unhandled rejection:', err));
-});
-
-const rootEl = document.getElementById('root');
-if (rootEl) {
-  const root = ReactDOM.createRoot(rootEl);
-  root.render(
-    <QueryClientProvider client={queryClient}>
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <AuthProvider>
       <BrowserRouter>
-        <App />
+        <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' } }} />
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/reports/new" element={<NewReportPage />} />
+            <Route path="/reports/:id" element={<ReportDetailPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/master-data" element={<MasterDataPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
-  );
-}
+    </AuthProvider>
+  </React.StrictMode>
+);

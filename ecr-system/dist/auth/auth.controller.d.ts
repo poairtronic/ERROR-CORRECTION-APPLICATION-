@@ -1,18 +1,25 @@
 import { AuthService } from './auth.service';
+import { Response, Request } from 'express';
 export declare class AuthController {
     private authService;
     constructor(authService: AuthService);
     login(body: {
-        email: string;
+        username: string;
         password: string;
-    }): Promise<{
+    }, res: Response): Promise<{
+        id: string;
+        username: string;
+        role: string;
         accessToken: string;
-        user: {
-            id: string;
-            name: string;
-            email: string;
-            role: import("../common/enums/role.enum").Role;
-            department: string;
-        };
     }>;
+    getMe(req: Request & {
+        user: any;
+    }): Promise<{
+        id: string;
+        username: string;
+        role: string;
+    }>;
+    logout(res: Response): {
+        message: string;
+    };
 }

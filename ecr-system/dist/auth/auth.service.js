@@ -24,12 +24,12 @@ let AuthService = class AuthService {
         this.usersRepo = usersRepo;
         this.jwtService = jwtService;
     }
-    async login(email, password) {
+    async login(username, password, res) {
         const user = await this.usersRepo
             .createQueryBuilder('user')
             .addSelect('user.passwordHash')
-            .where('user.email = :email', { email })
-            .andWhere('user.isActive = true')
+            .where('user.email = :username OR user.name = :username', { username })
+            .andWhere('user.isActive = :active', { active: true })
             .getOne();
         if (!user)
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -37,16 +37,32 @@ let AuthService = class AuthService {
         if (!valid)
             throw new common_1.UnauthorizedException('Invalid credentials');
         const payload = { sub: user.id, email: user.email, role: user.role };
+        const token = this.jwtService.sign(payload);
+        res.cookie('token', token, {
+            httpOnly: true,
+            sameSite: 'lax',
+            maxAge: 8 * 60 * 60 * 1000,
+        });
         return {
-            accessToken: this.jwtService.sign(payload),
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                department: user.department,
-            },
+            id: user.id,
+            username: user.name,
+            role: user.role.toLowerCase(),
+            accessToken: token,
         };
+    }
+    async getMe(userId) {
+        const user = await this.usersRepo.findOne({ where: { id: userId } });
+        if (!user)
+            throw new common_1.UnauthorizedException('User not found');
+        return {
+            id: user.id,
+            username: user.name,
+            role: user.role.toLowerCase(),
+        };
+    }
+    logout(res) {
+        res.clearCookie('token');
+        return { message: 'Logged out' };
     }
 };
 exports.AuthService = AuthService;
