@@ -3,6 +3,11 @@ export declare class CreateDefectReportDto {
     productId?: string;
     stageOfFailure: string;
     defectDescription: string;
+    componentId?: string;
+    errorTypeId?: string;
+    partNumber?: string;
+    batchNumber?: string;
+    quantity?: number;
     images?: string[];
     inlineInspection?: {
         errorType: string;

@@ -42,6 +42,21 @@ export class DefectReport {
   @Column({ nullable: true })
   productId: string;
 
+  @Column({ nullable: true })
+  componentName: string;
+
+  @Column({ nullable: true })
+  errorTypeName: string;
+
+  @Column({ nullable: true })
+  partNumber: string;
+
+  @Column({ nullable: true })
+  batchNumber: string;
+
+  @Column({ type: 'int', default: 1 })
+  quantity: number;
+
   @Column()
   stageOfFailure: string;
 

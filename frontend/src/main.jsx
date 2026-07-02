@@ -5,17 +5,21 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
+import { Suspense, lazy } from 'react';
 import Layout from './components/layout/Layout';
-import LoginPage from './pages/LoginPage';
-import Dashboard from './pages/Dashboard';
-import ReportsPage from './pages/ReportsPage';
-import NewReportPage from './pages/NewReportPage';
-import ReportDetailPage from './pages/ReportDetailPage';
-import NotificationsPage from './pages/NotificationsPage';
-import UsersPage from './pages/UsersPage';
-import MasterDataPage from './pages/MasterDataPage';
-import UnauthorizedPage from './pages/UnauthorizedPage';
 import { RoleGuard } from './components/layout/RoleGuard';
+
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const NewReportPage = lazy(() => import('./pages/NewReportPage'));
+const ReportDetailPage = lazy(() => import('./pages/ReportDetailPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
+const MasterDataPage = lazy(() => import('./pages/MasterDataPage'));
+const AuditViewerPage = lazy(() => import('./pages/AuditViewerPage'));
+const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
+
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -35,28 +39,35 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <BrowserRouter>
           <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' } }} />
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/unauthorized" element={<UnauthorizedPage />} />
-            <Route element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/reports/new" element={<NewReportPage />} />
-              <Route path="/reports/:id" element={<ReportDetailPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/users" element={
-                <RoleGuard allowedRoles={['ADMIN']}>
-                  <UsersPage />
-                </RoleGuard>
-              } />
-              <Route path="/master-data" element={
-                <RoleGuard allowedRoles={['ADMIN']}>
-                  <MasterDataPage />
-                </RoleGuard>
-              } />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense fallback={<div className="page-content"><div className="spinner" /></div>}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
+              <Route element={<Layout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/reports/new" element={<NewReportPage />} />
+                <Route path="/reports/:id" element={<ReportDetailPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/users" element={
+                  <RoleGuard allowedRoles={['ADMIN']}>
+                    <UsersPage />
+                  </RoleGuard>
+                } />
+                <Route path="/master-data" element={
+                  <RoleGuard allowedRoles={['ADMIN']}>
+                    <MasterDataPage />
+                  </RoleGuard>
+                } />
+                <Route path="/audit" element={
+                  <RoleGuard allowedRoles={['ADMIN', 'GM', 'SM']}>
+                    <AuditViewerPage />
+                  </RoleGuard>
+                } />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

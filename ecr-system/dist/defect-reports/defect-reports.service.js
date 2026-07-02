@@ -67,6 +67,11 @@ let DefectReportsService = class DefectReportsService {
             raisedByRole,
             scOrPoNo: dto.scOrPoNo,
             productId: dto.productId,
+            componentName: dto.componentId,
+            errorTypeName: dto.errorTypeId,
+            partNumber: dto.partNumber,
+            batchNumber: dto.batchNumber,
+            quantity: dto.quantity,
             stageOfFailure: dto.stageOfFailure,
             defectDescription: dto.defectDescription,
             images: dto.images ?? [],
@@ -163,8 +168,11 @@ let DefectReportsService = class DefectReportsService {
         if (report.raisedById === actor.id) {
             throw new common_1.BadRequestException('Cannot inspect a report you raised yourself');
         }
-        await this.inspectionRepo.save(this.inspectionRepo.create({
-            reportId: report.id,
+        let inspection = await this.inspectionRepo.findOne({ where: { reportId: report.id } });
+        if (!inspection) {
+            inspection = this.inspectionRepo.create({ reportId: report.id });
+        }
+        Object.assign(inspection, {
             inspectorId: actor.id,
             errorType: dto.errorType,
             rootCause: dto.rootCause,
@@ -172,7 +180,8 @@ let DefectReportsService = class DefectReportsService {
             responsibleId: dto.responsibleId,
             decision: dto.decision,
             alternativeNote: dto.alternativeNote,
-        }));
+        });
+        await this.inspectionRepo.save(inspection);
         const from = report.status;
         report.status = report_status_enum_1.ReportStatus.PENDING_SM_REVIEW;
         await this.reportsRepo.save(report);
@@ -188,8 +197,11 @@ let DefectReportsService = class DefectReportsService {
         if (report.raisedById === actor.id) {
             throw new common_1.BadRequestException('Cannot review a report you raised yourself');
         }
-        await this.smReviewRepo.save(this.smReviewRepo.create({
-            reportId: report.id,
+        let smReview = await this.smReviewRepo.findOne({ where: { reportId: report.id } });
+        if (!smReview) {
+            smReview = this.smReviewRepo.create({ reportId: report.id });
+        }
+        Object.assign(smReview, {
             smId: actor.id,
             loopholeNote: dto.loopholeNote,
             costEstimate: dto.costEstimate,
@@ -198,7 +210,8 @@ let DefectReportsService = class DefectReportsService {
             decisionNote: dto.decisionNote,
             biasedFlag: dto.biasedFlag ?? false,
             forwardedToGm: dto.forwardToGm,
-        }));
+        });
+        await this.smReviewRepo.save(smReview);
         const from = report.status;
         report.status = dto.forwardToGm ? report_status_enum_1.ReportStatus.PENDING_GM_APPROVAL : report_status_enum_1.ReportStatus.REJECTED;
         await this.reportsRepo.save(report);
@@ -211,13 +224,17 @@ let DefectReportsService = class DefectReportsService {
         if (report.status !== report_status_enum_1.ReportStatus.PENDING_GM_APPROVAL) {
             throw new common_1.BadRequestException('Report is not pending GM approval');
         }
-        await this.gmApprovalRepo.save(this.gmApprovalRepo.create({
-            reportId: report.id,
+        let gmApproval = await this.gmApprovalRepo.findOne({ where: { reportId: report.id } });
+        if (!gmApproval) {
+            gmApproval = this.gmApprovalRepo.create({ reportId: report.id });
+        }
+        Object.assign(gmApproval, {
             gmId: actor.id,
             approved: dto.approved,
             remarks: dto.remarks,
             budgetApproved: dto.budgetApproved,
-        }));
+        });
+        await this.gmApprovalRepo.save(gmApproval);
         const from = report.status;
         report.status = dto.approved ? report_status_enum_1.ReportStatus.APPROVED : report_status_enum_1.ReportStatus.REJECTED;
         await this.reportsRepo.save(report);

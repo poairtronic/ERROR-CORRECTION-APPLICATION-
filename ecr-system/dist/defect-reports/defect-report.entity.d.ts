@@ -12,6 +12,11 @@ export declare class DefectReport {
     raisedByRole: RaisedByRole;
     scOrPoNo: string;
     productId: string;
+    componentName: string;
+    errorTypeName: string;
+    partNumber: string;
+    batchNumber: string;
+    quantity: number;
     stageOfFailure: string;
     defectDescription: string;
     images: string[];

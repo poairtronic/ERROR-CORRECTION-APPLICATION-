@@ -2,7 +2,7 @@ export function Table({ columns, data = [], emptyMessage = 'No data available', 
   if (loading) {
     return (
       <div className="table-wrap">
-        <table className="w-full">
+        <table>
           <thead>
             <tr>
               {columns.map((col, i) => <th key={i}>{col.header}</th>)}
@@ -12,7 +12,7 @@ export function Table({ columns, data = [], emptyMessage = 'No data available', 
             {[1, 2, 3].map(row => (
               <tr key={row}>
                 {columns.map((_, i) => (
-                  <td key={i}><div className="skeleton h-6 w-full rounded" /></td>
+                  <td key={i}><div className="skeleton-line" /></td>
                 ))}
               </tr>
             ))}
@@ -24,11 +24,11 @@ export function Table({ columns, data = [], emptyMessage = 'No data available', 
 
   return (
     <div className="table-wrap">
-      <table className="w-full text-left border-collapse">
+      <table>
         <thead>
           <tr>
             {columns.map((col, i) => (
-              <th key={i} className="p-3 border-b text-sm font-semibold text-slate-600">
+              <th key={i}>
                 {col.header}
               </th>
             ))}
@@ -37,15 +37,15 @@ export function Table({ columns, data = [], emptyMessage = 'No data available', 
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="p-8 text-center text-slate-500">
-                {emptyMessage}
+              <td colSpan={columns.length} style={{ textAlign: 'center', padding: '32px' }}>
+                <div className="empty-state"><p>{emptyMessage}</p></div>
               </td>
             </tr>
           ) : (
             data.map((row, i) => (
-              <tr key={row.id || i} className="border-b hover:bg-slate-50 transition-colors">
+              <tr key={row.id || i}>
                 {columns.map((col, j) => (
-                  <td key={j} className="p-3 text-sm">
+                  <td key={j}>
                     {col.render ? col.render(row) : row[col.accessor]}
                   </td>
                 ))}

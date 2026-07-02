@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Table } from '../components/ui/Table';
+import Dialog from '../components/ui/Dialog';
 
 function SimpleModal({ title, fields, values, onChange, onClose, onSave, loading }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
+    <Dialog open={true} onClose={onClose} title={title}>
+      <div style={{ minWidth: 400 }}>
         {fields.map(f => (
           <div key={f.key} className="form-group" style={{ marginBottom: 14 }}>
             <label>{f.label}</label>
@@ -19,38 +21,62 @@ function SimpleModal({ title, fields, values, onChange, onClose, onSave, loading
           <button className="btn btn-primary" onClick={onSave} disabled={loading}>{loading ? 'Saving…' : 'Save'}</button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
 function Section({ title, endpoint, fields }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
-  const [saving, setSaving] = useState(false);
 
-  const fetch = () => api.get(`/master-data/${endpoint}`).then(r => setItems(r.data || [])).catch(() => {}).finally(() => setLoading(false));
-  useEffect(() => { fetch(); }, [endpoint]);
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['master-data', endpoint],
+    queryFn: async () => (await api.get(`/master-data/${endpoint}`)).data
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload) => {
+      if (modal === 'edit') return api.patch(`/master-data/${endpoint}/${payload.id}`, payload);
+      return api.post(`/master-data/${endpoint}`, payload);
+    },
+    onSuccess: () => {
+      toast.success('Saved successfully!');
+      setModal(null);
+      queryClient.invalidateQueries({ queryKey: ['master-data', endpoint] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save')
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/master-data/${endpoint}/${id}`),
+    onSuccess: () => {
+      toast.success('Deleted successfully!');
+      queryClient.invalidateQueries({ queryKey: ['master-data', endpoint] });
+    }
+  });
 
   const openNew = () => { setForm({}); setModal('new'); };
   const openEdit = (item) => { setForm(item); setModal('edit'); };
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      if (modal === 'edit') await api.patch(`/master-data/${endpoint}/${form.id}`, form);
-      else await api.post(`/master-data/${endpoint}`, form);
-      toast.success('Saved!'); setModal(null); fetch();
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
-    finally { setSaving(false); }
+  const del = (id) => {
+    if (confirm('Delete this item?')) {
+      deleteMutation.mutate(id);
+    }
   };
 
-  const del = async (id) => {
-    if (!confirm('Delete this item?')) return;
-    await api.delete(`/master-data/${endpoint}/${id}`).catch(() => {});
-    toast.success('Deleted'); fetch();
-  };
+  const columns = [
+    ...fields.map(f => ({ header: f.label, accessor: f.key })),
+    { 
+      header: 'Actions', 
+      render: (row) => (
+        <div className="flex gap-8">
+          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(row)}><FiEdit2 /></button>
+          <button className="btn btn-danger btn-sm" onClick={() => del(row.id)}><FiTrash2 /></button>
+        </div>
+      )
+    }
+  ];
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>
@@ -58,29 +84,19 @@ function Section({ title, endpoint, fields }) {
         <span>{title}</span>
         <button className="btn btn-ghost btn-sm" onClick={openNew}><FiPlus /> Add</button>
       </div>
-      {loading ? <div className="spinner" style={{ margin: '20px auto' }} /> : (
-        <div className="table-wrap">
-          <table>
-            <thead><tr>{fields.map(f => <th key={f.key}>{f.label}</th>)}<th>Actions</th></tr></thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr><td colSpan={fields.length + 1}><div className="empty-state" style={{ padding: 20 }}><p>No items. Click Add to create one.</p></div></td></tr>
-              ) : items.map(item => (
-                <tr key={item.id}>
-                  {fields.map(f => <td key={f.key}>{item[f.key] || '—'}</td>)}
-                  <td>
-                    <div className="flex gap-8">
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)}><FiEdit2 /></button>
-                      <button className="btn btn-danger btn-sm" onClick={() => del(item.id)}><FiTrash2 /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <Table columns={columns} data={items} loading={isLoading} emptyMessage="No items found. Click Add to create one." />
+      
+      {modal && (
+        <SimpleModal 
+          title={modal === 'edit' ? `Edit ${title.slice(0,-1)}` : `New ${title.slice(0,-1)}`} 
+          fields={fields} 
+          values={form} 
+          onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))} 
+          onClose={() => setModal(null)} 
+          onSave={() => saveMutation.mutate(form)} 
+          loading={saveMutation.isPending} 
+        />
       )}
-      {modal && <SimpleModal title={modal === 'edit' ? `Edit ${title.slice(0,-1)}` : `New ${title.slice(0,-1)}`} fields={fields} values={form} onChange={(k, v) => setForm(f => ({ ...f, [k]: v }))} onClose={() => setModal(null)} onSave={save} loading={saving} />}
     </div>
   );
 }

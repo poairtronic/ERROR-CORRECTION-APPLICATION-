@@ -1,35 +1,48 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { useAuth } from '../contexts/AuthContext';
-import { FiPlus, FiSearch, FiFilter } from 'react-icons/fi';
+import { FiPlus, FiSearch } from 'react-icons/fi';
+import { Table } from '../components/ui/Table';
+import { useDebounce } from '../hooks/useDebounce';
 
-const STATUS_COLORS = {
-  DRAFT: 'draft', PENDING_INSPECTION: 'pending', PENDING_SM_REVIEW: 'review',
-  PENDING_GM_APPROVAL: 'approval', APPROVED: 'approved', REJECTED: 'rejected', CLOSED: 'closed'
-};
-const STATUS_LABELS = {
-  DRAFT: 'Draft', PENDING_INSPECTION: 'Pending Inspection', PENDING_SM_REVIEW: 'SM Review',
-  PENDING_GM_APPROVAL: 'GM Approval', APPROVED: 'Approved', REJECTED: 'Rejected', CLOSED: 'Closed'
-};
+import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
 export default function ReportsPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [filterStatus, setFilterStatus] = useState('');
 
   useEffect(() => {
-    api.get('/defect-reports').then(r => setReports(r.data || [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    if (searchParams.get('search')) {
+      setSearch(searchParams.get('search'));
+    }
+  }, [searchParams]);
+
+  const { data: reports = [], isLoading } = useQuery({
+    queryKey: ['defect-reports'],
+    queryFn: async () => (await api.get('/defect-reports')).data
+  });
+
+  const debouncedSearch = useDebounce(search, 300);
 
   const filtered = reports.filter(r => {
-    const matchSearch = !search || (r.id + r.componentName + r.errorTypeName).toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !debouncedSearch || (r.id + r.componentName + r.errorTypeName + r.defectDescription).toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchStatus = !filterStatus || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
+
+  const columns = [
+    { header: 'Report ID', render: (row) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.id.slice(0, 8).toUpperCase()}</span> },
+    { header: 'Description', render: (row) => <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.defectDescription}</div> },
+    { header: 'Component', accessor: 'componentName' },
+    { header: 'Error Type', accessor: 'errorTypeName' },
+    { header: 'Status', render: (row) => <span className={`badge badge-${STATUS_COLORS[row.status] || 'draft'}`}>{STATUS_LABELS[row.status] || row.status}</span> },
+    { header: 'Raised By', render: (row) => row.raisedBy?.name || '—' },
+    { header: 'Date', render: (row) => <span style={{ color: 'var(--text-muted)' }}>{new Date(row.createdAt).toLocaleDateString('en-IN')}</span> },
+    { header: 'Action', render: (row) => <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/reports/${row.id}`)}>View</button> }
+  ];
 
   return (
     <>
@@ -56,38 +69,7 @@ export default function ReportsPage() {
             </select>
           </div>
 
-          {loading ? <div className="spinner" /> : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Report ID</th>
-                    <th>Description</th>
-                    <th>Component</th>
-                    <th>Error Type</th>
-                    <th>Status</th>
-                    <th>Raised By</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr><td colSpan={7}><div className="empty-state"><div className="icon">📋</div><p>No reports found.</p></div></td></tr>
-                  ) : filtered.map(r => (
-                    <tr key={r.id} className="tr-link" onClick={() => navigate(`/reports/${r.id}`)}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id.slice(0, 8).toUpperCase()}</td>
-                      <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.defectDescription}</td>
-                      <td>{r.componentName || '—'}</td>
-                      <td>{r.errorTypeName || '—'}</td>
-                      <td><span className={`badge badge-${STATUS_COLORS[r.status] || 'draft'}`}>{STATUS_LABELS[r.status] || r.status}</span></td>
-                      <td>{r.raisedBy?.name || '—'}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-IN')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Table columns={columns} data={filtered} loading={isLoading} emptyMessage="No reports found." />
         </div>
       </div>
     </>

@@ -1,25 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { FiArrowLeft, FiCheckCircle, FiXCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiImage } from 'react-icons/fi';
+import Dialog from '../components/ui/Dialog';
 
-const STATUS_COLORS = { DRAFT:'draft',PENDING_INSPECTION:'pending',PENDING_SM_REVIEW:'review',PENDING_GM_APPROVAL:'approval',APPROVED:'approved',REJECTED:'rejected',CLOSED:'closed' };
-const STATUS_LABELS = { DRAFT:'Draft',PENDING_INSPECTION:'Pending Inspection',PENDING_SM_REVIEW:'SM Review',PENDING_GM_APPROVAL:'GM Approval',APPROVED:'Approved',REJECTED:'Rejected',CLOSED:'Closed' };
+import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
-function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children }) {
+function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false }) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
+    <Dialog open={true} onClose={onClose} title={title}>
+      <div style={{ minWidth: 400 }}>
         {children}
-        <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className={`btn btn-${variant}`} onClick={onConfirm}>{actionLabel}</button>
+        <div className="modal-footer" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+          <button className={`btn btn-${variant}`} onClick={onConfirm} disabled={loading}>{loading ? 'Submitting…' : actionLabel}</button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -27,46 +27,33 @@ export default function ReportDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const role = user?.role?.toUpperCase();
+  const queryClient = useQueryClient();
   const [modal, setModal] = useState(null); // 'inspect'|'sm-review'|'gm-approve'|'gm-reject'
   const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  const role = user?.role?.toUpperCase();
+  const { data: report, isLoading: loading } = useQuery({
+    queryKey: ['report', id],
+    queryFn: async () => (await api.get(`/defect-reports/${id}`)).data
+  });
 
-  useEffect(() => {
-    const fetchReport = () => {
-      api.get(`/defect-reports/${id}`)
-         .then(r => setReport(r.data))
-         .catch(() => toast.error('Report not found'))
-         .finally(() => setLoading(false));
-    };
-    fetchReport();
-  }, [id]);
-
-  const fetchReportLatest = () => {
-    api.get(`/defect-reports/${id}`)
-       .then(r => setReport(r.data));
-  };
+  const actionMutation = useMutation({
+    mutationFn: async ({ endpoint, body }) => api.patch(`/defect-reports/${id}/${endpoint}`, body),
+    onSuccess: () => {
+      toast.success('Action completed successfully!');
+      setModal(null);
+      queryClient.invalidateQueries({ queryKey: ['report', id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Action failed')
+  });
 
   const [inspectData, setInspectData] = useState({
     errorType: '', rootCause: '', responsibleParty: '', decision: '',
     responsibleId: '', alternativeNote: ''
   });
 
-  const doAction = async (endpoint, body) => {
-    setSubmitting(true);
-    try {
-      await api.patch(`/defect-reports/${id}/${endpoint}`, body);
-      toast.success('Action completed successfully!');
-      setModal(null);
-      fetchReportLatest();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Action failed');
-    } finally {
-      setSubmitting(false);
-    }
+  const doAction = (endpoint, body) => {
+    actionMutation.mutate({ endpoint, body });
   };
 
   if (loading) return <div className="page-content"><div className="spinner" /></div>;
@@ -76,7 +63,7 @@ export default function ReportDetailPage() {
 
   return (
     <>
-      <div className="topbar">
+      <div className="topbar no-print">
         <div>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)} style={{ marginBottom: 4 }}>
             <FiArrowLeft /> Back
@@ -87,13 +74,14 @@ export default function ReportDetailPage() {
           <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>ID: {id}</p>
         </div>
         <div className="flex gap-8">
+          <button className="btn btn-ghost" onClick={() => window.print()}><FiPrinter /> Print</button>
           {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && (
             <button className="btn btn-success" onClick={() => setModal('inspect')}><FiCheckCircle /> Mark Inspected</button>
           )}
-          {role === 'SM' && status === 'PENDING_SM_REVIEW' && (
+          {role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW' && (
             <button className="btn btn-success" onClick={() => setModal('sm-review')}><FiCheckCircle /> SM Review</button>
           )}
-          {role === 'GM' && status === 'PENDING_GM_APPROVAL' && (
+          {role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL' && (
             <>
               <button className="btn btn-success" onClick={() => setModal('gm-approve')}><FiCheckCircle /> Approve</button>
               <button className="btn btn-danger" onClick={() => setModal('gm-reject')}><FiXCircle /> Reject</button>
@@ -125,7 +113,20 @@ export default function ReportDetailPage() {
             </div>
           </div>
 
-          <div className="card">
+          {report.attachments?.length > 0 && (
+            <div className="card" style={{ marginTop: 20 }}>
+              <div className="card-title"><FiImage /> Attachments</div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                {report.attachments.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} alt={`Attachment ${i+1}`} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="card" style={{ marginTop: 20 }}>
             <div className="card-title">Audit Trail</div>
             {report.auditLogs?.length > 0 ? (
               <div className="timeline">
@@ -152,7 +153,7 @@ export default function ReportDetailPage() {
 
       {/* Inspect Modal */}
       {modal === 'inspect' && (
-        <ActionModal title="Inspector Review" onClose={() => setModal(null)} actionLabel={submitting ? 'Submitting…' : 'Submit Review'} variant="success" onConfirm={() => doAction('inspect', inspectData)}>
+        <ActionModal title="Inspector Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('inspect', inspectData)}>
           <div className="form-grid">
             <div className="form-group">
               <label>Error Type *</label>
@@ -197,18 +198,18 @@ export default function ReportDetailPage() {
         </ActionModal>
       )}
       {modal === 'sm-review' && (
-        <ActionModal title="Senior Manager Review" onClose={() => setModal(null)} actionLabel={submitting ? 'Submitting…' : 'Submit Review'} variant="success" onConfirm={() => doAction('sm-review', { notes })}>
+        <ActionModal title="Senior Manager Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('sm-review', { notes })}>
           <div className="form-group"><label>Review Notes</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add review notes…" /></div>
         </ActionModal>
       )}
       {modal === 'gm-approve' && (
-        <ActionModal title="Approve Report" onClose={() => setModal(null)} actionLabel={submitting ? 'Approving…' : 'Approve'} variant="success" onConfirm={() => doAction('gm-approve', { approved: true, notes })}>
+        <ActionModal title="Approve Report" onClose={() => setModal(null)} actionLabel="Approve" loading={actionMutation.isPending} onConfirm={() => doAction('gm-approve', { approved: true, notes })}>
           <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>Are you sure you want to approve this defect report?</p>
           <div className="form-group"><label>Notes (optional)</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add approval notes…" /></div>
         </ActionModal>
       )}
       {modal === 'gm-reject' && (
-        <ActionModal title="Reject Report" onClose={() => setModal(null)} actionLabel={submitting ? 'Rejecting…' : 'Reject'} variant="danger" onConfirm={() => doAction('gm-approve', { approved: false, notes })}>
+        <ActionModal title="Reject Report" onClose={() => setModal(null)} actionLabel="Reject" variant="danger" loading={actionMutation.isPending} onConfirm={() => doAction('gm-approve', { approved: false, notes })}>
           <div className="form-group"><label>Reason for Rejection *</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain why this report is being rejected…" required /></div>
         </ActionModal>
       )}

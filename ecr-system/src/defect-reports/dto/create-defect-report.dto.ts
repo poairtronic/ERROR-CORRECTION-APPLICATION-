@@ -14,6 +14,21 @@ export class CreateDefectReportDto {
   defectDescription: string;
 
   @IsOptional()
+  componentId?: string; // Contains name from frontend
+
+  @IsOptional()
+  errorTypeId?: string; // Contains name from frontend
+
+  @IsOptional()
+  partNumber?: string;
+
+  @IsOptional()
+  batchNumber?: string;
+
+  @IsOptional()
+  quantity?: number;
+
+  @IsOptional()
   @IsArray()
   images?: string[];
 

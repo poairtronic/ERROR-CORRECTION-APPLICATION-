@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut } from 'react-icons/fi';
 
-const roleLabels = { ADMIN: 'Administrator', OPERATOR: 'Operator', INSPECTOR: 'Inspector', SM: 'Senior Manager', GM: 'General Manager', STORE: 'Store Manager' };
+const roleLabels = { ADMIN: 'Administrator', OPERATOR: 'Operator', INSPECTOR: 'Inspector', SENIOR_MANAGER: 'Senior Manager', GENERAL_MANAGER: 'General Manager', STORE_MANAGER: 'Store Manager' };
 
 export default function Sidebar({ notifCount = 0 }) {
   const { user, logout } = useAuth();
@@ -42,6 +42,9 @@ export default function Sidebar({ notifCount = 0 }) {
             </NavLink>
             <NavLink to="/master-data" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
               <FiDatabase className="icon" /> Master Data
+            </NavLink>
+            <NavLink to="/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+              <FiFileText className="icon" /> System Audit
             </NavLink>
           </>
         )}

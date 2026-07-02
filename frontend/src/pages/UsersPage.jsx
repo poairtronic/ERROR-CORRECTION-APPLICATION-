@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiX, FiCheck } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Table } from '../components/ui/Table';
+import Dialog from '../components/ui/Dialog';
 
-const ROLES = ['OPERATOR','INSPECTOR','SM','GM','STORE','ADMIN'];
+import { ROLES } from '../utils/constants';
 
 function UserModal({ user, onClose, onSave }) {
   const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', role: user?.role || 'OPERATOR', department: user?.department || '', password: '' });
@@ -25,10 +28,8 @@ function UserModal({ user, onClose, onSave }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">{user ? 'Edit User' : 'Create User'}</div>
-        <form onSubmit={handleSubmit}>
+    <Dialog open={true} onClose={onClose} title={user ? 'Edit User' : 'Create User'}>
+      <form onSubmit={handleSubmit} style={{ minWidth: 400 }}>
           <div className="form-grid">
             <div className="form-group"><label>Full Name *</label><input value={form.name} onChange={e => set('name', e.target.value)} required /></div>
             <div className="form-group"><label>Email / Username *</label><input value={form.email} onChange={e => set('email', e.target.value)} required /></div>
@@ -42,29 +43,52 @@ function UserModal({ user, onClose, onSave }) {
               <input type="password" value={form.password} onChange={e => set('password', e.target.value)} required={!user} />
             </div>
           </div>
-          <div className="modal-footer">
+          <div className="modal-footer" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Saving…' : 'Save'}</button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </Dialog>
   );
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [modal, setModal] = useState(null); // null | {user} | 'new'
 
-  const fetchUsers = () => { api.get('/admin/users').then(r => setUsers(r.data || [])).catch(() => {}).finally(() => setLoading(false)); };
-  useEffect(() => { fetchUsers(); }, []);
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: async () => (await api.get('/admin/users')).data
+  });
 
-  const deactivate = async (id) => {
-    if (!confirm('Deactivate this user?')) return;
-    await api.delete(`/admin/users/${id}`).catch(() => {});
-    toast.success('User deactivated'); fetchUsers();
+  const deactivateMutation = useMutation({
+    mutationFn: (id) => api.delete(`/admin/users/${id}`),
+    onSuccess: () => {
+      toast.success('User deactivated');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    }
+  });
+
+  const deactivate = (id) => {
+    if (confirm('Deactivate this user?')) deactivateMutation.mutate(id);
   };
+
+  const columns = [
+    { header: 'Name', render: (row) => <span style={{ fontWeight: 600 }}>{row.name}</span> },
+    { header: 'Email', render: (row) => <span style={{ color: 'var(--text-muted)' }}>{row.email}</span> },
+    { header: 'Role', render: (row) => <span className={`badge badge-${row.role?.toLowerCase()}`}>{row.role}</span> },
+    { header: 'Department', render: (row) => row.department || '—' },
+    { header: 'Status', render: (row) => row.isActive ? <span className="badge badge-approved">Active</span> : <span className="badge badge-rejected">Inactive</span> },
+    { 
+      header: 'Actions', 
+      render: (row) => (
+        <div className="flex gap-8">
+          <button className="btn btn-ghost btn-sm" onClick={() => setModal(row)}><FiEdit2 /></button>
+          {row.isActive && <button className="btn btn-danger btn-sm" onClick={() => deactivate(row.id)}><FiTrash2 /></button>}
+        </div>
+      )
+    }
+  ];
 
   return (
     <>
@@ -74,33 +98,10 @@ export default function UsersPage() {
       </div>
       <div className="page-content">
         <div className="card">
-          {loading ? <div className="spinner" /> : (
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id}>
-                      <td style={{ fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{u.email}</td>
-                      <td><span className={`badge badge-${u.role?.toLowerCase()}`}>{u.role}</span></td>
-                      <td>{u.department || '—'}</td>
-                      <td>{u.isActive ? <span className="badge badge-approved">Active</span> : <span className="badge badge-rejected">Inactive</span>}</td>
-                      <td>
-                        <div className="flex gap-8">
-                          <button className="btn btn-ghost btn-sm" onClick={() => setModal(u)}><FiEdit2 /></button>
-                          {u.isActive && <button className="btn btn-danger btn-sm" onClick={() => deactivate(u.id)}><FiTrash2 /></button>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Table columns={columns} data={users} loading={isLoading} emptyMessage="No users found." />
         </div>
       </div>
-      {modal && <UserModal user={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSave={() => { setModal(null); fetchUsers(); }} />}
+      {modal && <UserModal user={modal === 'new' ? null : modal} onClose={() => setModal(null)} onSave={() => { setModal(null); queryClient.invalidateQueries({ queryKey: ['admin-users'] }); }} />}
     </>
   );
 }

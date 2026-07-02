@@ -32,6 +32,26 @@ __decorate([
 ], CreateDefectReportDto.prototype, "defectDescription", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateDefectReportDto.prototype, "componentId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateDefectReportDto.prototype, "errorTypeId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateDefectReportDto.prototype, "partNumber", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateDefectReportDto.prototype, "batchNumber", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateDefectReportDto.prototype, "quantity", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     __metadata("design:type", Array)
 ], CreateDefectReportDto.prototype, "images", void 0);

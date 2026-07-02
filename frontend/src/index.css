@@ -56,6 +56,7 @@ body {
   font-size: 16px;
   font-weight: 800;
   background: linear-gradient(135deg, var(--primary-light), var(--primary));
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 0.5px;
@@ -348,3 +349,13 @@ select option { background: var(--bg-card); }
 .mb-16 { margin-bottom: 16px; }
 .mb-24 { margin-bottom: 24px; }
 .text-right { text-align: right; }
+
+/* Print Styles */
+@media print {
+  .sidebar { display: none !important; }
+  .main { margin-left: 0 !important; }
+  .no-print { display: none !important; }
+  .card { box-shadow: none !important; border: 1px solid #000 !important; break-inside: avoid; }
+  body { background: #fff; color: #000; }
+  .modal-overlay, .modal { display: none !important; }
+}
