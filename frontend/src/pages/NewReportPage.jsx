@@ -167,7 +167,7 @@ export default function NewReportPage() {
                       <option value="OPERATOR">Operator</option>
                       <option value="VENDOR">Vendor</option>
                       <option value="MACHINE">Machine</option>
-                      <option value="OTHER">Other</option>
+                      <option value="PROCESS">Process</option>
                     </select>
                   </div>
                   {['OPERATOR', 'VENDOR', 'MACHINE'].includes(form.responsibleParty) && (
@@ -199,9 +199,8 @@ export default function NewReportPage() {
                     <select value={form.decision} onChange={e => set('decision', e.target.value)} required={isSimplifiedInspector}>
                       <option value="">Select...</option>
                       <option value="REWORK">Rework</option>
-                      <option value="REPLACE">Replace</option>
                       <option value="SCRAP">Scrap</option>
-                      <option value="OTHER">Other</option>
+                      <option value="ALTERNATIVE">Alternative Use</option>
                     </select>
                   </div>
                   <div className="form-group full">
