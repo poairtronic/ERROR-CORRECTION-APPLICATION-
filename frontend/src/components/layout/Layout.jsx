@@ -19,13 +19,13 @@ export default function Layout() {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return (
-    <div className="layout flex h-screen bg-slate-50 overflow-hidden">
+    <div className="layout">
       <Sidebar notifCount={notifCount} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="main">
         <TopNav />
-        <main className="main flex-1 overflow-y-auto p-6">
+        <div className="page-content">
           <Outlet />
-        </main>
+        </div>
       </div>
     </div>
   );

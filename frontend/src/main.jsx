@@ -18,7 +18,6 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 import { RoleGuard } from './components/layout/RoleGuard';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,7 +59,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </Routes>
         </BrowserRouter>
       </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
     </QueryClientProvider>
   </React.StrictMode>
 );
