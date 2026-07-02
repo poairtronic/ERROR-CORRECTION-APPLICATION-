@@ -40,6 +40,10 @@ let UsersService = class UsersService {
         return this.repo.findOne({ where: { email } });
     }
     async create(dto) {
+        const existing = await this.findByEmail(dto.email);
+        if (existing) {
+            throw new common_1.ConflictException('A user with this email already exists.');
+        }
         const passwordHash = await bcrypt.hash(dto.tempPassword, 10);
         const user = this.repo.create({
             name: dto.name,
