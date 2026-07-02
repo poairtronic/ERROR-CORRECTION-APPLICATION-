@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiCheckCircle } from 'react-icons/fi';
+import { FiCheckCircle, FiPlus } from 'react-icons/fi';
+import { SIMPLIFIED_WORKFLOW } from '../../utils/constants';
 
 export default function InspectorDashboard() {
   const { user } = useAuth();
@@ -24,9 +25,16 @@ export default function InspectorDashboard() {
   return (
     <>
       <div className="topbar">
-        <div>
-          <h1>Inspector Dashboard</h1>
-          <p>Welcome back, {user?.username}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h1>Inspector Dashboard</h1>
+            <p>Welcome back, {user?.username}</p>
+          </div>
+          {SIMPLIFIED_WORKFLOW && (
+            <button className="btn btn-primary" onClick={() => navigate('/reports/new')}>
+              <FiPlus /> Create New Report
+            </button>
+          )}
         </div>
       </div>
 

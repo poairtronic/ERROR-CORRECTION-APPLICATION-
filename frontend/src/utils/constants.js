@@ -1,3 +1,5 @@
+export const SIMPLIFIED_WORKFLOW = true;
+
 export const STATUS_COLORS = {
   DRAFT: 'draft',
   PENDING_INSPECTION: 'pending',

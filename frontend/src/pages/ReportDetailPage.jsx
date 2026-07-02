@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiImage } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiImage, FiEdit2, FiSave, FiX } from 'react-icons/fi';
 import Dialog from '../components/ui/Dialog';
 
 import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
@@ -61,6 +61,30 @@ export default function ReportDetailPage() {
     actionMutation.mutate({ endpoint, body });
   };
 
+  const [editingField, setEditingField] = useState(null);
+  const [editValue, setEditValue] = useState('');
+
+  const handleEditSave = async (field) => {
+    try {
+      await api.patch(`/defect-reports/${id}/field`, { field, newValue: editValue });
+      toast.success('Field updated successfully');
+      setEditingField(null);
+      queryClient.invalidateQueries({ queryKey: ['report', id] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update field');
+    }
+  };
+
+  const canEdit = (fieldKey) => {
+    if (!fieldKey) return false;
+    if (role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL') return true;
+    if (role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW') {
+      const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote'];
+      return smAllowed.includes(fieldKey);
+    }
+    return false;
+  };
+
   if (loading) return <div className="page-content"><div className="spinner" /></div>;
   if (!report) return <div className="page-content"><div className="empty-state"><div className="icon">❌</div><p>Report not found.</p></div></div>;
 
@@ -101,18 +125,36 @@ export default function ReportDetailPage() {
             <div className="card-title">Report Details</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {[
-                ['Description', report.defectDescription],
-                ['Component', report.componentName || '—'],
-                ['Error Type', report.errorTypeName || '—'],
-                ['Part Number', report.partNumber || '—'],
-                ['Batch Number', report.batchNumber || '—'],
-                ['Quantity Affected', report.quantity || '—'],
-                ['Raised By', report.raisedBy?.name || '—'],
-                ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN')],
-              ].map(([label, value]) => (
-                <div key={label} className="detail-field">
-                  <div className="detail-label">{label}</div>
-                  <div className="detail-value">{value}</div>
+                ['Description', report.defectDescription, 'defectDescription'],
+                ['Component', report.componentName || '—', 'componentName'],
+                ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
+                ['Error Type', report.errorTypeName || report.inspectionDetail?.errorType || '—', 'errorType'],
+                ['Root Cause', report.inspectionDetail?.rootCause || '—', 'rootCause'],
+                ['Decision', report.inspectionDetail?.decision || '—', 'decision'],
+                ['Part Number', report.partNumber || '—', 'partNumber'],
+                ['Batch Number', report.batchNumber || '—', 'batchNumber'],
+                ['Quantity Affected', report.quantity || '—', 'quantity'],
+                ['Raised By', report.raisedBy?.name || '—', null],
+                ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), null],
+              ].map(([label, value, fieldKey]) => (
+                <div key={label} className="detail-field" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="detail-label">{label}</div>
+                    {editingField === fieldKey ? (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                        <input className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1 }} />
+                        <button className="btn btn-success btn-sm" onClick={() => handleEditSave(fieldKey)}><FiSave /></button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /></button>
+                      </div>
+                    ) : (
+                      <div className="detail-value">{value}</div>
+                    )}
+                  </div>
+                  {canEdit(fieldKey) && editingField !== fieldKey && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditingField(fieldKey); setEditValue(value === '—' ? '' : value); }}>
+                      <FiEdit2 />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

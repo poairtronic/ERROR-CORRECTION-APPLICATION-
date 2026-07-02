@@ -3,15 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiArrowLeft } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
+import { SIMPLIFIED_WORKFLOW } from '../utils/constants';
 
 export default function NewReportPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const isSimplifiedInspector = SIMPLIFIED_WORKFLOW && user?.role === 'INSPECTOR';
+
   const [components, setComponents] = useState([]);
   const [errorTypes, setErrorTypes] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: ''
+    defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
+    rootCause: '', responsibleParty: '', responsibleId: '', decision: '', alternativeNote: ''
   });
 
   useEffect(() => {
@@ -30,6 +36,18 @@ export default function NewReportPage() {
     try {
       const body = { ...form, quantity: Number(form.quantity) };
       if (!body.vendorId) delete body.vendorId;
+      
+      if (isSimplifiedInspector) {
+        body.inlineInspection = {
+          errorType: body.errorTypeId,
+          rootCause: body.rootCause,
+          responsibleParty: body.responsibleParty,
+          responsibleId: body.responsibleId,
+          decision: body.decision,
+          alternativeNote: body.alternativeNote
+        };
+      }
+
       const { data } = await api.post('/defect-reports', body);
       toast.success('Report raised successfully!');
       navigate(`/reports/${data.id}`);
@@ -126,6 +144,48 @@ export default function NewReportPage() {
                 <textarea value={form.defectDescription} onChange={e => set('defectDescription', e.target.value)} placeholder="Describe the defect in detail…" required rows={4} />
               </div>
             </div>
+
+            {isSimplifiedInspector && (
+              <div style={{ marginTop: 24, padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <h3 style={{ marginBottom: 16 }}>Inspection Details</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Root Cause *</label>
+                    <input value={form.rootCause} onChange={e => set('rootCause', e.target.value)} required={isSimplifiedInspector} />
+                  </div>
+                  <div className="form-group">
+                    <label>Responsible Party *</label>
+                    <select value={form.responsibleParty} onChange={e => set('responsibleParty', e.target.value)} required={isSimplifiedInspector}>
+                      <option value="">Select...</option>
+                      <option value="OPERATOR">Operator</option>
+                      <option value="VENDOR">Vendor</option>
+                      <option value="MACHINE">Machine</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  {(form.responsibleParty === 'OPERATOR' || form.responsibleParty === 'VENDOR') && (
+                    <div className="form-group">
+                      <label>{form.responsibleParty === 'OPERATOR' ? 'Operator ID / Name' : 'Vendor ID / Name'} *</label>
+                      <input value={form.responsibleId} onChange={e => set('responsibleId', e.target.value)} required />
+                    </div>
+                  )}
+                  <div className="form-group">
+                    <label>Decision *</label>
+                    <select value={form.decision} onChange={e => set('decision', e.target.value)} required={isSimplifiedInspector}>
+                      <option value="">Select...</option>
+                      <option value="REWORK">Rework</option>
+                      <option value="REPLACE">Replace</option>
+                      <option value="SCRAP">Scrap</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group full">
+                    <label>Alternative Note / Remarks</label>
+                    <textarea value={form.alternativeNote} onChange={e => set('alternativeNote', e.target.value)} rows={2} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-8" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>Cancel</button>
