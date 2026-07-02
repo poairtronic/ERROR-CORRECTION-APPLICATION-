@@ -307,6 +307,35 @@ select option { background: var(--bg-card); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Skeleton Loaders */
+.skeleton-line {
+  height: 16px;
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--border) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+  width: 100%;
+}
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.empty-state p {
+  font-size: 14px;
+  font-weight: 500;
+}
+
 /* Report detail */
 .report-header { margin-bottom: 24px; }
 .report-meta { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 12px; }
