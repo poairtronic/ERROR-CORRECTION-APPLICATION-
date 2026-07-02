@@ -19,6 +19,7 @@ const UsersPage = lazy(() => import('./pages/UsersPage'));
 const MasterDataPage = lazy(() => import('./pages/MasterDataPage'));
 const AuditViewerPage = lazy(() => import('./pages/AuditViewerPage'));
 const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
+const EnterpriseAnalytics = lazy(() => import('./pages/EnterpriseAnalytics'));
 
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -48,6 +49,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/reports/new" element={<NewReportPage />} />
                 <Route path="/reports/:id" element={<ReportDetailPage />} />
+                <Route path="/analytics" element={<EnterpriseAnalytics />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/users" element={
                   <RoleGuard allowedRoles={['ADMIN']}>

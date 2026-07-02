@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut, FiPieChart } from 'react-icons/fi';
 
 const roleLabels = { ADMIN: 'Administrator', OPERATOR: 'Operator', INSPECTOR: 'Inspector', SENIOR_MANAGER: 'Senior Manager', GENERAL_MANAGER: 'General Manager', STORE_MANAGER: 'Store Manager' };
 
@@ -33,6 +33,12 @@ export default function Sidebar({ notifCount = 0 }) {
           Notifications
           {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
         </NavLink>
+
+        {['ADMIN', 'GENERAL_MANAGER', 'SENIOR_MANAGER'].includes(role) && (
+          <NavLink to="/analytics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <FiPieChart className="icon" /> Analytics
+          </NavLink>
+        )}
 
         {(role === 'ADMIN') && (
           <>

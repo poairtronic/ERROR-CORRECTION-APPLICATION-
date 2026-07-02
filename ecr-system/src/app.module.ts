@@ -14,6 +14,7 @@ import { ComponentIssueModule } from './component-issue/component-issue.module';
 import { VendorFaultModule } from './vendor-fault/vendor-fault.module';
 import { SalaryDeductionModule } from './salary-deduction/salary-deduction.module';
 import { ImageUploadModule } from './image-upload/image-upload.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ImageUploadModule } from './image-upload/image-upload.module';
     VendorFaultModule,
     SalaryDeductionModule,
     ImageUploadModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

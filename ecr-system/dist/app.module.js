@@ -21,6 +21,7 @@ const component_issue_module_1 = require("./component-issue/component-issue.modu
 const vendor_fault_module_1 = require("./vendor-fault/vendor-fault.module");
 const salary_deduction_module_1 = require("./salary-deduction/salary-deduction.module");
 const image_upload_module_1 = require("./image-upload/image-upload.module");
+const analytics_module_1 = require("./analytics/analytics.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -49,6 +50,7 @@ exports.AppModule = AppModule = __decorate([
             vendor_fault_module_1.VendorFaultModule,
             salary_deduction_module_1.SalaryDeductionModule,
             image_upload_module_1.ImageUploadModule,
+            analytics_module_1.AnalyticsModule,
         ],
     })
 ], AppModule);
