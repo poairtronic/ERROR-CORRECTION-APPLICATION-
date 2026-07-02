@@ -24,11 +24,10 @@ import { ImageUploadModule } from './image-upload/image-upload.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: config.get('DATABASE_URL'),
+        type: 'sqlite',
+        database: 'ecr_db.sqlite',
         autoLoadEntities: true,
         synchronize: config.get('NODE_ENV') !== 'production', // dev only; use migrations in prod
-        ssl: { rejectUnauthorized: false },
       }),
     }),
     AuthModule,

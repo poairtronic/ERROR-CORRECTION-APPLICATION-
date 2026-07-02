@@ -32,7 +32,7 @@ export class Notification {
   @Column({ name: 'report_id', nullable: true })
   reportId: string;
 
-  @Column({ type: 'enum', enum: NotificationChannel })
+  @Column({ type: 'simple-enum', enum: NotificationChannel })
   channel: NotificationChannel;
 
   @Column()
@@ -45,7 +45,7 @@ export class Notification {
   read: boolean;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: NotificationStatus,
     default: NotificationStatus.PENDING,
   })

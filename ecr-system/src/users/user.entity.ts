@@ -21,7 +21,7 @@ export class User {
   @Column({ select: false })
   passwordHash: string;
 
-  @Column({ type: 'enum', enum: Role })
+  @Column({ type: 'simple-enum', enum: Role })
   role: Role;
 
   @Column({ nullable: true })

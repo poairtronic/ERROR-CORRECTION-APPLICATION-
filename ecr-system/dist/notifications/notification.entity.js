@@ -40,7 +40,7 @@ __decorate([
     __metadata("design:type", String)
 ], Notification.prototype, "reportId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: report_status_enum_1.NotificationChannel }),
+    (0, typeorm_1.Column)({ type: 'simple-enum', enum: report_status_enum_1.NotificationChannel }),
     __metadata("design:type", String)
 ], Notification.prototype, "channel", void 0);
 __decorate([
@@ -57,7 +57,7 @@ __decorate([
 ], Notification.prototype, "read", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: 'enum',
+        type: 'simple-enum',
         enum: report_status_enum_1.NotificationStatus,
         default: report_status_enum_1.NotificationStatus.PENDING,
     }),

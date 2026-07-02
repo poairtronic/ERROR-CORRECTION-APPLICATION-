@@ -39,7 +39,7 @@ __decorate([
     __metadata("design:type", String)
 ], ComponentIssue.prototype, "storeManagerId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'jsonb' }),
+    (0, typeorm_1.Column)({ type: 'simple-json' }),
     __metadata("design:type", Array)
 ], ComponentIssue.prototype, "components", void 0);
 __decorate([

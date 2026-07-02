@@ -32,7 +32,7 @@ export class DefectReport {
   @Column({ name: 'raised_by_id' })
   raisedById: string;
 
-  @Column({ type: 'enum', enum: RaisedByRole })
+  @Column({ type: 'simple-enum', enum: RaisedByRole })
   raisedByRole: RaisedByRole;
 
   // free-text reference to SC/PO number - one order can have multiple defect reports
@@ -49,10 +49,10 @@ export class DefectReport {
   defectDescription: string;
 
   // array of image URLs (Cloudinary free tier or local disk path)
-  @Column({ type: 'jsonb', default: [] })
+  @Column({ type: 'simple-json', default: '[]' })
   images: string[];
 
-  @Column({ type: 'enum', enum: ReportStatus, default: ReportStatus.DRAFT })
+  @Column({ type: 'simple-enum', enum: ReportStatus, default: ReportStatus.DRAFT })
   status: ReportStatus;
 
   @OneToOne(() => InspectionDetail, (i) => i.report, { nullable: true })

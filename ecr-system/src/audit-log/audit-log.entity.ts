@@ -41,7 +41,7 @@ export class AuditLog {
   @Column()
   actorRole: string;
 
-  @Column({ type: 'enum', enum: AuditActionType })
+  @Column({ type: 'simple-enum', enum: AuditActionType })
   actionType: AuditActionType;
 
   @Column({ nullable: true })

@@ -38,7 +38,7 @@ __decorate([
     __metadata("design:type", String)
 ], DefectReport.prototype, "raisedById", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: report_status_enum_1.RaisedByRole }),
+    (0, typeorm_1.Column)({ type: 'simple-enum', enum: report_status_enum_1.RaisedByRole }),
     __metadata("design:type", String)
 ], DefectReport.prototype, "raisedByRole", void 0);
 __decorate([
@@ -58,11 +58,11 @@ __decorate([
     __metadata("design:type", String)
 ], DefectReport.prototype, "defectDescription", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'jsonb', default: [] }),
+    (0, typeorm_1.Column)({ type: 'simple-json', default: '[]' }),
     __metadata("design:type", Array)
 ], DefectReport.prototype, "images", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: report_status_enum_1.ReportStatus, default: report_status_enum_1.ReportStatus.DRAFT }),
+    (0, typeorm_1.Column)({ type: 'simple-enum', enum: report_status_enum_1.ReportStatus, default: report_status_enum_1.ReportStatus.DRAFT }),
     __metadata("design:type", String)
 ], DefectReport.prototype, "status", void 0);
 __decorate([

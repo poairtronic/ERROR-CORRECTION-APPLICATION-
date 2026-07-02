@@ -53,7 +53,7 @@ __decorate([
     __metadata("design:type", String)
 ], AuditLog.prototype, "actorRole", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: AuditActionType }),
+    (0, typeorm_1.Column)({ type: 'simple-enum', enum: AuditActionType }),
     __metadata("design:type", String)
 ], AuditLog.prototype, "actionType", void 0);
 __decorate([

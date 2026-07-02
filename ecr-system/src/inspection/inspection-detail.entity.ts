@@ -36,14 +36,14 @@ export class InspectionDetail {
   @Column({ type: 'text' })
   rootCause: string;
 
-  @Column({ type: 'enum', enum: ResponsibleParty })
+  @Column({ type: 'simple-enum', enum: ResponsibleParty })
   responsibleParty: ResponsibleParty;
 
   // operator user id OR vendor id, resolved based on responsibleParty
   @Column({ nullable: true })
   responsibleId: string;
 
-  @Column({ type: 'enum', enum: Decision })
+  @Column({ type: 'simple-enum', enum: Decision })
   decision: Decision;
 
   @Column({ type: 'text', nullable: true })

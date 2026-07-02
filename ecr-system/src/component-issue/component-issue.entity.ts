@@ -34,7 +34,7 @@ export class ComponentIssue {
   @Column({ name: 'store_manager_id' })
   storeManagerId: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'simple-json' })
   components: IssuedComponent[];
 
   @ManyToOne(() => User)

@@ -36,7 +36,7 @@ export class VendorFaultLog {
   recoveryAmount: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: RecoveryStatus,
     default: RecoveryStatus.PENDING,
   })

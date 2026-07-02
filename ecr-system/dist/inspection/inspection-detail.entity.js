@@ -48,7 +48,7 @@ __decorate([
     __metadata("design:type", String)
 ], InspectionDetail.prototype, "rootCause", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: report_status_enum_1.ResponsibleParty }),
+    (0, typeorm_1.Column)({ type: 'simple-enum', enum: report_status_enum_1.ResponsibleParty }),
     __metadata("design:type", String)
 ], InspectionDetail.prototype, "responsibleParty", void 0);
 __decorate([
@@ -56,7 +56,7 @@ __decorate([
     __metadata("design:type", String)
 ], InspectionDetail.prototype, "responsibleId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: report_status_enum_1.Decision }),
+    (0, typeorm_1.Column)({ type: 'simple-enum', enum: report_status_enum_1.Decision }),
     __metadata("design:type", String)
 ], InspectionDetail.prototype, "decision", void 0);
 __decorate([
