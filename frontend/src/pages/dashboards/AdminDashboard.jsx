@@ -3,13 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiUsers, FiDatabase, FiSettings } from 'react-icons/fi';
+import { ROLES } from '../../utils/constants';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const { data: users = [] } = useQuery({ queryKey: ['users-count'], queryFn: async () => (await api.get('/admin/users')).data });
-  const { data: roles = [] } = useQuery({ queryKey: ['roles-count'], queryFn: async () => (await api.get('/admin/roles')).data });
+  const roles = ROLES;
 
   return (
     <>

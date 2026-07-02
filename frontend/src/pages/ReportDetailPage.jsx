@@ -66,7 +66,7 @@ export default function ReportDetailPage() {
 
   const handleEditSave = async (field) => {
     try {
-      await api.patch(`/defect-reports/${id}/field`, { field, newValue: editValue });
+      await api.patch(`/defect-reports/${id}/field`, { field, value: editValue });
       toast.success('Field updated successfully');
       setEditingField(null);
       queryClient.invalidateQueries({ queryKey: ['report', id] });
