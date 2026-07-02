@@ -1,4 +1,4 @@
-import { FiClock, FiActivity } from 'react-icons/fi';
+import { FiClock } from 'react-icons/fi';
 
 export default function SlaMonitorWidget({ slaData }) {
   const avgDays = slaData?.averageResolutionDays || 0;

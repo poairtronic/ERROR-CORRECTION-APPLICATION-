@@ -48,7 +48,7 @@ export default function EnterpriseAnalytics() {
     queryFn: async () => (await api.get('/analytics/trends')).data
   });
 
-  const { data: insights, isLoading: insightsLoading } = useQuery({
+  const { data: insights } = useQuery({
     queryKey: ['analytics-insights'],
     queryFn: async () => (await api.get('/analytics/insights')).data
   });
