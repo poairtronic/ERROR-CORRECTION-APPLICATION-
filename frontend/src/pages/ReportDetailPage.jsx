@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { FiArrowLeft, FiCheckCircle, FiXCircle, FiEdit2 } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 
 const STATUS_COLORS = { DRAFT:'draft',PENDING_INSPECTION:'pending',PENDING_SM_REVIEW:'review',PENDING_GM_APPROVAL:'approval',APPROVED:'approved',REJECTED:'rejected',CLOSED:'closed' };
 const STATUS_LABELS = { DRAFT:'Draft',PENDING_INSPECTION:'Pending Inspection',PENDING_SM_REVIEW:'SM Review',PENDING_GM_APPROVAL:'GM Approval',APPROVED:'Approved',REJECTED:'Rejected',CLOSED:'Closed' };
@@ -35,11 +35,25 @@ export default function ReportDetailPage() {
 
   const role = user?.role?.toUpperCase();
 
-  const fetchReport = () => {
-    api.get(`/defect-reports/${id}`).then(r => setReport(r.data)).catch(() => toast.error('Report not found')).finally(() => setLoading(false));
+  useEffect(() => {
+    const fetchReport = () => {
+      api.get(`/defect-reports/${id}`)
+         .then(r => setReport(r.data))
+         .catch(() => toast.error('Report not found'))
+         .finally(() => setLoading(false));
+    };
+    fetchReport();
+  }, [id]);
+
+  const fetchReportLatest = () => {
+    api.get(`/defect-reports/${id}`)
+       .then(r => setReport(r.data));
   };
 
-  useEffect(() => { fetchReport(); }, [id]);
+  const [inspectData, setInspectData] = useState({
+    errorType: '', rootCause: '', responsibleParty: '', decision: '',
+    responsibleId: '', alternativeNote: ''
+  });
 
   const doAction = async (endpoint, body) => {
     setSubmitting(true);
@@ -47,7 +61,7 @@ export default function ReportDetailPage() {
       await api.patch(`/defect-reports/${id}/${endpoint}`, body);
       toast.success('Action completed successfully!');
       setModal(null);
-      fetchReport();
+      fetchReportLatest();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Action failed');
     } finally {
@@ -138,8 +152,48 @@ export default function ReportDetailPage() {
 
       {/* Inspect Modal */}
       {modal === 'inspect' && (
-        <ActionModal title="Inspector Review" onClose={() => setModal(null)} actionLabel={submitting ? 'Submitting…' : 'Submit Review'} variant="success" onConfirm={() => doAction('inspect', { notes })}>
-          <div className="form-group"><label>Inspection Notes</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add inspection findings…" /></div>
+        <ActionModal title="Inspector Review" onClose={() => setModal(null)} actionLabel={submitting ? 'Submitting…' : 'Submit Review'} variant="success" onConfirm={() => doAction('inspect', inspectData)}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Error Type *</label>
+              <input value={inspectData.errorType} onChange={e => setInspectData({...inspectData, errorType: e.target.value})} placeholder="e.g. Dimensional Error" required />
+            </div>
+            <div className="form-group">
+              <label>Root Cause *</label>
+              <input value={inspectData.rootCause} onChange={e => setInspectData({...inspectData, rootCause: e.target.value})} placeholder="e.g. Machine Calibration" required />
+            </div>
+            <div className="form-group">
+              <label>Responsible Party *</label>
+              <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value})} required>
+                <option value="">Select Party</option>
+                <option value="OPERATOR">Operator</option>
+                <option value="VENDOR">Vendor</option>
+                <option value="PROCESS">Process</option>
+                <option value="MACHINE">Machine</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Decision *</label>
+              <select value={inspectData.decision} onChange={e => setInspectData({...inspectData, decision: e.target.value})} required>
+                <option value="">Select Decision</option>
+                <option value="REWORK">Rework</option>
+                <option value="SCRAP">Scrap</option>
+                <option value="ALTERNATIVE">Alternative Use</option>
+              </select>
+            </div>
+            {(inspectData.responsibleParty === 'OPERATOR' || inspectData.responsibleParty === 'VENDOR') && (
+              <div className="form-group full">
+                <label>Responsible Entity ID/Name (Optional)</label>
+                <input value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} placeholder="e.g. Operator ID or Vendor Name" />
+              </div>
+            )}
+            {inspectData.decision === 'ALTERNATIVE' && (
+              <div className="form-group full">
+                <label>Alternative Note (Optional)</label>
+                <input value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Explain alternative use..." />
+              </div>
+            )}
+          </div>
         </ActionModal>
       )}
       {modal === 'sm-review' && (
