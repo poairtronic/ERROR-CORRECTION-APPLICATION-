@@ -134,8 +134,8 @@ export default function ReportDetailPage() {
                 ['Part Number', report.partNumber || '—', 'partNumber'],
                 ['Batch Number', report.batchNumber || '—', 'batchNumber'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
-                ['Raised By', report.raisedBy?.name || '—', null],
-                ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), null],
+                ['Raised By', report.raisedBy?.name || '—', undefined],
+                ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
               ].map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ flex: 1 }}>
