@@ -1,7 +1,6 @@
-import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut, FiSettings } from 'react-icons/fi';
+import { useAuth } from '../../contexts/AuthContext';
+import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut } from 'react-icons/fi';
 
 const roleLabels = { ADMIN: 'Administrator', OPERATOR: 'Operator', INSPECTOR: 'Inspector', SM: 'Senior Manager', GM: 'General Manager', STORE: 'Store Manager' };
 

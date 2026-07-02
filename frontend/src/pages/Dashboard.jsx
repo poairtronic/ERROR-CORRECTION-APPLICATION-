@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { FiFileText, FiPlus } from 'react-icons/fi';
 

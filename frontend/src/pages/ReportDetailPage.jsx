@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { FiArrowLeft, FiCheckCircle, FiXCircle, FiEdit2 } from 'react-icons/fi';

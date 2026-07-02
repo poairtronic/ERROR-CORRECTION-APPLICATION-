@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiArrowLeft } from 'react-icons/fi';
 
@@ -11,7 +11,7 @@ export default function NewReportPage() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: ''
+    defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: ''
   });
 
   useEffect(() => {
@@ -80,6 +80,26 @@ export default function NewReportPage() {
                 />
                 <datalist id="error-type-list">
                   {errorTypes.map(e => <option key={e.id} value={e.name} />)}
+                </datalist>
+              </div>
+              <div className="form-group">
+                <label>SC / PO Number *</label>
+                <input value={form.scOrPoNo} onChange={e => set('scOrPoNo', e.target.value)} placeholder="e.g. PO-10294" required />
+              </div>
+              <div className="form-group">
+                <label>Stage of Failure *</label>
+                <input 
+                  list="stage-list" 
+                  value={form.stageOfFailure} 
+                  onChange={e => set('stageOfFailure', e.target.value)} 
+                  placeholder="Select or type stage..." 
+                  required 
+                />
+                <datalist id="stage-list">
+                  <option value="Inward Inspection" />
+                  <option value="In-Process" />
+                  <option value="Final Inspection" />
+                  <option value="Customer Return" />
                 </datalist>
               </div>
               <div className="form-group">
