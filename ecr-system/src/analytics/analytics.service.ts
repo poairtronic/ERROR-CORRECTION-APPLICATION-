@@ -135,4 +135,60 @@ export class AnalyticsService {
       .orderBy('failures', 'DESC')
       .getRawMany();
   }
+
+  async getSlaMetrics() {
+    // Average resolution time in days (SQLite syntax)
+    const result = await this.reportsRepo.createQueryBuilder('r')
+      .select('AVG(julianday(r.updatedAt) - julianday(r.createdAt))', 'avgResolutionDays')
+      .where('r.status = :status', { status: ReportStatus.CLOSED })
+      .getRawOne();
+
+    const pendingInspect = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } });
+    const pendingSm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } });
+    const pendingGm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } });
+
+    return {
+      averageResolutionDays: result?.avgResolutionDays ? parseFloat(result.avgResolutionDays).toFixed(1) : 0,
+      inspectionQueue: pendingInspect,
+      smQueue: pendingSm,
+      gmQueue: pendingGm
+    };
+  }
+
+  async getQualityHealthScore() {
+    let score = 100;
+    
+    // Penalize for high open report volume
+    const openCount = await this.reportsRepo.count({
+      where: [
+        { status: ReportStatus.PENDING_INSPECTION },
+        { status: ReportStatus.PENDING_SM_REVIEW },
+        { status: ReportStatus.PENDING_GM_APPROVAL }
+      ]
+    });
+    score -= (openCount * 2); // -2 points per open report
+
+    // Penalize for high financial loss
+    const costs = await this.smRepo.createQueryBuilder('sm')
+      .select('SUM(sm.costEstimate)', 'totalCost')
+      .getRawOne();
+    const totalCost = costs?.totalCost || 0;
+    if (totalCost > 5000) score -= 10;
+    if (totalCost > 20000) score -= 20;
+
+    // Penalize for poor SLA
+    const sla = await this.getSlaMetrics();
+    const avgDays = parseFloat(sla.averageResolutionDays as string) || 0;
+    if (avgDays > 5) score -= 5;
+    if (avgDays > 10) score -= 15;
+
+    // Ensure score stays between 0 and 100
+    if (score < 0) score = 0;
+    if (score > 100) score = 100;
+
+    return {
+      score,
+      trend: score >= 80 ? 'EXCELLENT' : score >= 60 ? 'FAIR' : 'POOR'
+    };
+  }
 }
