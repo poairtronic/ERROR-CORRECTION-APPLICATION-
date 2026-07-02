@@ -19,31 +19,35 @@ import { Role } from '../common/enums/role.enum';
 
 @Controller('admin/users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
+  @Roles(Role.ADMIN, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.GENERAL_MANAGER)
   findAll(@Query('role') role?: string, @Query('department') dept?: string) {
     return this.usersService.findAll(role, dept);
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN)
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
   @Post()
+  @Roles(Role.ADMIN)
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 
   @Patch(':id')
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN)
   deactivate(@Param('id') id: string) {
     return this.usersService.deactivate(id);
   }
