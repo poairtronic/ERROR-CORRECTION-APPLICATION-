@@ -16,6 +16,7 @@ import { InspectionDetail } from '../inspection/inspection-detail.entity';
 import { SmReview } from '../sm-review/sm-review.entity';
 import { GmApproval } from '../gm-approval/gm-approval.entity';
 import { ComponentIssue } from '../component-issue/component-issue.entity';
+import { AuditLog } from '../audit-log/audit-log.entity';
 
 @Entity('defect_reports')
 export class DefectReport {
@@ -84,6 +85,9 @@ export class DefectReport {
 
   @OneToMany(() => ComponentIssue, (c) => c.report)
   componentIssues: ComponentIssue[];
+
+  @OneToMany(() => AuditLog, (log) => log.report)
+  auditLogs: AuditLog[];
 
   @Index()
   @CreateDateColumn()

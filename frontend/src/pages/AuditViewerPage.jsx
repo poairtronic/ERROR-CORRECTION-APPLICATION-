@@ -17,7 +17,7 @@ export default function AuditViewerPage() {
       const allLogs = data.flatMap(r => 
         (r.auditLogs || []).map(log => ({ ...log, reportId: r.id }))
       );
-      return allLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
   });
 
@@ -25,15 +25,15 @@ export default function AuditViewerPage() {
 
   const filtered = audits.filter(a => 
     !debouncedSearch || 
-    a.action.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-    (a.user?.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+    a.actionType.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+    (a.actor?.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
     a.reportId.toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   const columns = [
-    { header: 'Date', render: (row) => new Date(row.createdAt).toLocaleString('en-IN') },
-    { header: 'Action', accessor: 'action' },
-    { header: 'User', render: (row) => row.user?.name || 'System' },
+    { header: 'Date', render: (row) => new Date(row.timestamp).toLocaleString('en-IN') },
+    { header: 'Action', accessor: 'actionType' },
+    { header: 'User', render: (row) => row.actor?.name || row.actorRole || 'System' },
     { header: 'Entity / Report ID', render: (row) => <span style={{ fontFamily: 'monospace' }}>{row.reportId.slice(0,8).toUpperCase()}</span> },
     { header: 'Notes', accessor: 'notes' }
   ];

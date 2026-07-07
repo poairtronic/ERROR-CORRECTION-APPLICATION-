@@ -4,6 +4,7 @@ import { InspectionDetail } from '../inspection/inspection-detail.entity';
 import { SmReview } from '../sm-review/sm-review.entity';
 import { GmApproval } from '../gm-approval/gm-approval.entity';
 import { ComponentIssue } from '../component-issue/component-issue.entity';
+import { AuditLog } from '../audit-log/audit-log.entity';
 export declare class DefectReport {
     id: string;
     reportNo: string;
@@ -25,6 +26,7 @@ export declare class DefectReport {
     smReview: SmReview;
     gmApproval: GmApproval;
     componentIssues: ComponentIssue[];
+    auditLogs: AuditLog[];
     createdAt: Date;
     updatedAt: Date;
 }

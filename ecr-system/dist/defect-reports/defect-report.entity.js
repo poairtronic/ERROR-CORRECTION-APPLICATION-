@@ -17,6 +17,7 @@ const inspection_detail_entity_1 = require("../inspection/inspection-detail.enti
 const sm_review_entity_1 = require("../sm-review/sm-review.entity");
 const gm_approval_entity_1 = require("../gm-approval/gm-approval.entity");
 const component_issue_entity_1 = require("../component-issue/component-issue.entity");
+const audit_log_entity_1 = require("../audit-log/audit-log.entity");
 let DefectReport = class DefectReport {
 };
 exports.DefectReport = DefectReport;
@@ -104,6 +105,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => component_issue_entity_1.ComponentIssue, (c) => c.report),
     __metadata("design:type", Array)
 ], DefectReport.prototype, "componentIssues", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => audit_log_entity_1.AuditLog, (log) => log.report),
+    __metadata("design:type", Array)
+], DefectReport.prototype, "auditLogs", void 0);
 __decorate([
     (0, typeorm_1.Index)(),
     (0, typeorm_1.CreateDateColumn)(),

@@ -179,7 +179,7 @@ export class DefectReportsService {
   async findOne(id: string) {
     const report = await this.reportsRepo.findOne({
       where: { id },
-      relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+      relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
     });
     if (!report) throw new NotFoundException('Defect report not found');
     return report;
@@ -192,7 +192,7 @@ export class DefectReportsService {
     return this.reportsRepo.find({
       where,
       order: { createdAt: 'DESC' },
-      relations: ['raisedBy'],
+      relations: ['raisedBy', 'auditLogs', 'auditLogs.actor'],
     });
   }
 

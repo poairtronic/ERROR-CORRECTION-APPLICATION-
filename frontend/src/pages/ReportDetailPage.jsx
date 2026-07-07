@@ -205,8 +205,8 @@ export default function ReportDetailPage() {
                       <div className="timeline-line-bar" />
                     </div>
                     <div className="timeline-content">
-                      <div className="timeline-event">{log.action}</div>
-                      <div className="timeline-time">{new Date(log.createdAt).toLocaleString('en-IN')} · {log.user?.name}</div>
+                      <div className="timeline-event">{log.actionType}</div>
+                      <div className="timeline-time">{new Date(log.timestamp).toLocaleString('en-IN')} · {log.actor?.name || log.actorRole}</div>
                       {log.notes && <div className="timeline-note">{log.notes}</div>}
                     </div>
                   </div>

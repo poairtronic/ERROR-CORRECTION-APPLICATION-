@@ -10,6 +10,16 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   const { data: users = [] } = useQuery({ queryKey: ['users-count'], queryFn: async () => (await api.get('/admin/users')).data });
+  
+  const { data: auditLogsCount = 0 } = useQuery({ 
+    queryKey: ['audits-count'], 
+    queryFn: async () => {
+      const { data } = await api.get('/defect-reports');
+      const allLogs = data.flatMap(r => r.auditLogs || []);
+      return allLogs.length;
+    }
+  });
+
   const roles = ROLES;
 
   return (
@@ -35,7 +45,7 @@ export default function AdminDashboard() {
           </div>
           <div className="stat-card">
             <div className="stat-label">Audit Logs</div>
-            <div className="stat-value" style={{ color: '#fbbf24' }}>12K+</div>
+            <div className="stat-value" style={{ color: '#fbbf24' }}>{auditLogsCount}</div>
             <div className="stat-desc">System events</div>
           </div>
         </div>

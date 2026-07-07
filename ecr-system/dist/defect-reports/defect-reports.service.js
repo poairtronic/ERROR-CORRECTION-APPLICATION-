@@ -145,7 +145,7 @@ let DefectReportsService = class DefectReportsService {
     async findOne(id) {
         const report = await this.reportsRepo.findOne({
             where: { id },
-            relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+            relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
         });
         if (!report)
             throw new common_1.NotFoundException('Defect report not found');
@@ -160,7 +160,7 @@ let DefectReportsService = class DefectReportsService {
         return this.reportsRepo.find({
             where,
             order: { createdAt: 'DESC' },
-            relations: ['raisedBy'],
+            relations: ['raisedBy', 'auditLogs', 'auditLogs.actor'],
         });
     }
     async inspect(reportId, dto, actor) {
