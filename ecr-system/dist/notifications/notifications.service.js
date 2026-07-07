@@ -74,7 +74,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         const where = { userId };
         if (unreadOnly)
             where.read = false;
-        return this.repo.find({ where, order: { createdAt: 'DESC' } });
+        return this.repo.find({ where, order: { createdAt: 'DESC' }, relations: ['report'] });
     }
     findByReport(reportId) {
         return this.repo.find({ where: { reportId }, order: { createdAt: 'ASC' } });

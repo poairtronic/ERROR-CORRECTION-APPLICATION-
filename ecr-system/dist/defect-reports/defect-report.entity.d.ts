@@ -7,7 +7,7 @@ import { ComponentIssue } from '../component-issue/component-issue.entity';
 import { AuditLog } from '../audit-log/audit-log.entity';
 export declare class DefectReport {
     id: string;
-    reportNo: string;
+    reportNumber: string;
     raisedBy: User;
     raisedById: string;
     raisedByRole: RaisedByRole;
@@ -27,6 +27,10 @@ export declare class DefectReport {
     gmApproval: GmApproval;
     componentIssues: ComponentIssue[];
     auditLogs: AuditLog[];
+    componentsIssued: boolean;
+    componentsIssuedById: string;
+    componentsIssuedAt: Date;
+    issueRemarks: string;
     createdAt: Date;
     updatedAt: Date;
 }

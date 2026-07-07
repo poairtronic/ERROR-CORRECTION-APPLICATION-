@@ -107,7 +107,7 @@ export default function NotificationsPage() {
                       <td>
                         {n.reportId ? (
                           <Link to={`/reports/${n.reportId}`} style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
-                            {n.reportId.slice(0, 8).toUpperCase()}
+                            {n.report?.reportNumber || n.reportId}
                           </Link>
                         ) : '—'}
                       </td>

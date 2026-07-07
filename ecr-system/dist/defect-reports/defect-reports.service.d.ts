@@ -1,3 +1,4 @@
+import { OnModuleInit } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DefectReport } from './defect-report.entity';
@@ -16,7 +17,7 @@ interface ActingUser {
     id: string;
     role: Role;
 }
-export declare class DefectReportsService {
+export declare class DefectReportsService implements OnModuleInit {
     private reportsRepo;
     private inspectionRepo;
     private smReviewRepo;
@@ -25,7 +26,8 @@ export declare class DefectReportsService {
     private events;
     private imageUploadService;
     constructor(reportsRepo: Repository<DefectReport>, inspectionRepo: Repository<InspectionDetail>, smReviewRepo: Repository<SmReview>, gmApprovalRepo: Repository<GmApproval>, auditRepo: Repository<AuditLog>, events: EventEmitter2, imageUploadService: ImageUploadService);
-    private nextReportNo;
+    onModuleInit(): Promise<void>;
+    private generateReportNumber;
     private logStatusChange;
     private emitStatusChange;
     create(dto: CreateDefectReportDto, actor: ActingUser): Promise<DefectReport>;
@@ -42,5 +44,8 @@ export declare class DefectReportsService {
     uploadImages(reportId: string, files: Express.Multer.File[], actor: ActingUser): Promise<DefectReport>;
     deleteImage(reportId: string, imageUrl: string, actor: ActingUser): Promise<DefectReport>;
     transitionStatus(reportId: string, newStatus: ReportStatus, note: string, actor: ActingUser): Promise<DefectReport>;
+    issueComponents(reportId: string, dto: {
+        remarks: string;
+    }, actor: ActingUser): Promise<DefectReport>;
 }
 export {};

@@ -5,14 +5,14 @@ import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { Role } from '../common/enums/role.enum';
-import { ReportStatus, ResponsibleParty, NotificationChannel } from '../common/enums/report-status.enum';
+import { ReportStatus, ResponsibleParty, NotificationChannel, RaisedByRole } from '../common/enums/report-status.enum';
 import { NotificationsService } from './notifications.service';
 import { EmailService } from '../email/services/email.service';
 import { NotificationEvent } from '../email/enums/notification-event.enum';
 
 interface StatusChangedEvent {
   reportId: string;
-  reportNo: string;
+  reportNumber: string;
   status: ReportStatus;
 }
 
@@ -51,6 +51,9 @@ export class NotificationListener {
       case ReportStatus.APPROVED:
         await this.handleApproved(report);
         break;
+      case ReportStatus.COMPONENTS_ISSUED:
+        await this.handleComponentsIssued(report);
+        break;
       case ReportStatus.REJECTED:
         await this.handleRejected(report);
         break;
@@ -63,7 +66,7 @@ export class NotificationListener {
     const inspectors = await this.usersRepo.find({ where: { role: Role.INSPECTOR, isActive: true } });
 
     const summaryTable = {
-      'Report Number': report.reportNo,
+      'Report Number': report.reportNumber,
       'Product': report.productId,
       'Component': report.componentName,
       'Error Type': report.errorTypeName || 'N/A',
@@ -101,7 +104,7 @@ export class NotificationListener {
       : report.raisedBy;
 
     const summaryTable = {
-      'Report Number': report.reportNo,
+      'Report Number': report.reportNumber,
       'Product': report.productId,
       'Component': report.componentName,
       'Error Type': report.inspectionDetail?.errorType || report.errorTypeName,
@@ -139,7 +142,7 @@ export class NotificationListener {
     const gmUsers = await this.usersRepo.find({ where: { role: Role.GENERAL_MANAGER, isActive: true } });
     
     const summaryTable = {
-      'Report Number': report.reportNo,
+      'Report Number': report.reportNumber,
       'Inspector Summary': report.inspectionDetail?.errorType || 'N/A',
       'Estimated Cost': report.inspectionDetail?.costEstimate?.toString() || 'N/A',
       'Estimated Time': report.inspectionDetail?.timeEstimateHours?.toString() || 'N/A',
@@ -175,7 +178,7 @@ export class NotificationListener {
     const storeUsers = await this.usersRepo.find({ where: { role: Role.STORE_MANAGER, isActive: true } });
 
     const salesSummary = {
-      'Report Number': report.reportNo,
+      'Report Number': report.reportNumber,
       'Budget': report.gmApproval?.budgetApproved?.toString() || 'N/A',
       'Customer Impact': report.inspectionDetail?.timeEstimateHours ? 'Potential Delay' : 'Minimal',
       'Remarks': report.gmApproval?.remarks || 'None',
@@ -189,7 +192,7 @@ export class NotificationListener {
         type: 'Report Approved',
         message: 'A defect report has been fully approved by the General Manager.',
         event: NotificationEvent.REPORT_APPROVED,
-        subject: `Approved Report: ${report.reportNo}`,
+        subject: `Approved Report: ${report.reportNumber}`,
         reportId: report.id,
         templateData: {
           title: 'Defect Report Approved',
@@ -204,7 +207,7 @@ export class NotificationListener {
     }
 
     const storesSummary = {
-      'Report Number': report.reportNo,
+      'Report Number': report.reportNumber,
       'Component Details': report.componentName,
       'Required Action': 'Prepare replacement components',
       'Rework Information': report.defectDescription,
@@ -218,7 +221,7 @@ export class NotificationListener {
         type: 'Action Required',
         message: 'A defect report has been approved and requires components to be issued.',
         event: NotificationEvent.REPORT_APPROVED,
-        subject: `Action Required - Approved Report: ${report.reportNo}`,
+        subject: `Action Required - Approved Report: ${report.reportNumber}`,
         reportId: report.id,
         templateData: {
           title: 'Component Issue Request',
@@ -226,6 +229,51 @@ export class NotificationListener {
           summaryTable: storesSummary,
           primaryButton: {
             text: 'Issue Components',
+            url: `http://localhost:5173/reports/${report.id}`,
+          },
+        },
+      });
+    }
+  }
+
+  private async handleComponentsIssued(report: DefectReport) {
+    const notifyIds = new Set<string>();
+    
+    // Notify Sales
+    const salesUsers = await this.usersRepo.find({ where: { role: Role.SALES, isActive: true } });
+    salesUsers.forEach(u => notifyIds.add(u.id));
+
+    // Notify Inspector who raised/inspected it
+    const inspectorId = report.inspectionDetail?.inspectorId || (report.raisedByRole === RaisedByRole.INSPECTOR ? report.raisedById : null);
+    if (inspectorId) notifyIds.add(inspectorId);
+
+    const usersToNotify = await this.usersRepo.find({
+      where: Array.from(notifyIds).map(id => ({ id })),
+    });
+
+    const summaryTable = {
+      'Report Number': report.reportNumber,
+      'Issued By': report.componentsIssuedById ? (await this.usersRepo.findOne({ where: { id: report.componentsIssuedById } }))?.name || 'Store Manager' : 'Store Manager',
+      'Issue Time': report.componentsIssuedAt ? new Date(report.componentsIssuedAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
+      'Remarks': report.issueRemarks || 'None',
+    };
+
+    for (const user of usersToNotify) {
+      await this.notificationsService.create({
+        userId: user.id,
+        userEmail: user.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'Components Issued',
+        message: 'The required replacement components have been successfully issued by the Store Manager.',
+        event: NotificationEvent.REPORT_UPDATED,
+        subject: `Components Issued: ${report.reportNumber}`,
+        reportId: report.id,
+        templateData: {
+          title: 'Components Issued Successfully',
+          message: 'The required replacement components have been successfully issued by the Store Manager.',
+          summaryTable,
+          primaryButton: {
+            text: 'View Report',
             url: `http://localhost:5173/reports/${report.id}`,
           },
         },
@@ -247,7 +295,7 @@ export class NotificationListener {
       });
 
       const summaryTable = {
-        'Report Number': report.reportNo,
+        'Report Number': report.reportNumber,
         'Reason': report.gmApproval.remarks || 'No remarks provided',
         'Remarks': 'Rejected by General Manager',
         'Action Required': 'Review rejection and take corrective action if needed.',
@@ -261,7 +309,7 @@ export class NotificationListener {
           type: 'Report Rejected',
           message: 'Your report was rejected during the final approval stage.',
           event: NotificationEvent.REPORT_REJECTED,
-          subject: `Report Rejected: ${report.reportNo}`,
+          subject: `Report Rejected: ${report.reportNumber}`,
           reportId: report.id,
           templateData: {
             title: 'Report Rejected',
@@ -287,13 +335,13 @@ export class NotificationListener {
           type: 'Report Rejected',
           message: 'Your report was rejected during Senior Manager review.',
           event: NotificationEvent.REPORT_REJECTED,
-          subject: `Report Rejected: ${report.reportNo}`,
+          subject: `Report Rejected: ${report.reportNumber}`,
           reportId: report.id,
           templateData: {
             title: 'Report Rejected',
             message: 'Your report was rejected during Senior Manager review.',
             summaryTable: {
-              'Report Number': report.reportNo,
+              'Report Number': report.reportNumber,
               'Reason': report.smReview.decisionNote || 'No reason provided',
               'Remarks': 'Please check the report for details.',
             },
@@ -319,13 +367,13 @@ export class NotificationListener {
       userEmail: user.email,
       channel: NotificationChannel.APP_AND_EMAIL,
       type: 'Components Issued',
-      message: `Components have been issued to you for Defect Report ${report?.reportNo || payload.reportId}.`,
+      message: `Components have been issued to you for Defect Report ${report?.reportNumber || payload.reportId}.`,
       event: NotificationEvent.COMPONENT_ISSUED,
       subject: 'Components Issued',
       reportId: payload.reportId,
       templateData: {
         title: 'Components Issued for Report',
-        message: `Components have been issued to you for Defect Report ${report?.reportNo || payload.reportId}.`,
+        message: `Components have been issued to you for Defect Report ${report?.reportNumber || payload.reportId}.`,
         summaryTable: {
           'Issued Components': 'See system for details',
           'Store Manager': 'N/A', 
@@ -379,7 +427,7 @@ export class NotificationListener {
         type: 'Vendor Fault',
         message: 'A vendor fault has been formally recorded and requires attention.',
         event: NotificationEvent.VENDOR_FAULT,
-        subject: `Vendor Fault Logged: ${report?.reportNo || payload.reportId}`,
+        subject: `Vendor Fault Logged: ${report?.reportNumber || payload.reportId}`,
         reportId: payload.reportId,
         templateData: {
           title: 'Vendor Fault Recorded',
@@ -387,7 +435,7 @@ export class NotificationListener {
           summaryTable: {
             'Fault ID': payload.faultId,
             'Vendor ID': payload.vendorId,
-            'Report Number': report?.reportNo || payload.reportId,
+            'Report Number': report?.reportNumber || payload.reportId,
           },
           primaryButton: {
             text: 'View Report',

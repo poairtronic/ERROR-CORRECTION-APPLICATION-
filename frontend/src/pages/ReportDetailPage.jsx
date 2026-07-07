@@ -117,8 +117,9 @@ export default function ReportDetailPage() {
           </button>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             Report <span className={`badge badge-${STATUS_COLORS[status] || 'draft'}`}>{STATUS_LABELS[status] || status}</span>
+            {report.componentsIssued && <span className="badge badge-success">Components Issued</span>}
           </h1>
-          <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>ID: {id}</p>
+          <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>ID: {report.reportNumber}</p>
         </div>
         <div className="flex gap-8">
           <button className="btn btn-ghost" onClick={() => window.print()}><FiPrinter /> Print</button>
@@ -133,6 +134,9 @@ export default function ReportDetailPage() {
               <button className="btn btn-success" onClick={() => setModal('gm-approve')}><FiCheckCircle /> Approve</button>
               <button className="btn btn-danger" onClick={() => setModal('gm-reject')}><FiXCircle /> Reject</button>
             </>
+          )}
+          {role === 'STORE_MANAGER' && status === 'APPROVED' && !report.componentsIssued && (
+            <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
         </div>
       </div>
@@ -157,6 +161,10 @@ export default function ReportDetailPage() {
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
+                ...(report.componentsIssued ? [
+                  ['Components Issued On', new Date(report.componentsIssuedAt).toLocaleString('en-IN'), undefined],
+                  ['Issue Remarks', report.issueRemarks || '—', undefined]
+                ] : [])
               ].map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -357,6 +365,12 @@ export default function ReportDetailPage() {
       {modal === 'gm-reject' && (
         <ActionModal title="Reject Report" onClose={() => setModal(null)} actionLabel="Reject" variant="danger" loading={actionMutation.isPending} onConfirm={() => doAction('gm-approve', { approved: false, notes })}>
           <div className="form-group"><label>Reason for Rejection *</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain why this report is being rejected…" required /></div>
+        </ActionModal>
+      )}
+      {modal === 'issue-components' && (
+        <ActionModal title="Issue Components" onClose={() => setModal(null)} actionLabel="Confirm Issuance" loading={actionMutation.isPending} onConfirm={() => doAction('issue-components', { remarks: notes })}>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>Confirm that you have issued the required components for this defect report.</p>
+          <div className="form-group"><label>Issue Remarks (optional)</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add any remarks regarding the issued components…" /></div>
         </ActionModal>
       )}
     </>

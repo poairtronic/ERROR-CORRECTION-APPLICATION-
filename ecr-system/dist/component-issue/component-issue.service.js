@@ -107,7 +107,7 @@ let ComponentIssueService = class ComponentIssueService {
             });
             this.events.emit('report.status.changed', {
                 reportId: report.id,
-                reportNo: report.reportNo,
+                reportNumber: report.reportNumber,
                 status: report.status,
             });
             return savedIssue;

@@ -14,6 +14,7 @@ const inspection_detail_entity_1 = require("../inspection/inspection-detail.enti
 const sm_review_entity_1 = require("../sm-review/sm-review.entity");
 const gm_approval_entity_1 = require("../gm-approval/gm-approval.entity");
 const audit_log_entity_1 = require("../audit-log/audit-log.entity");
+const report_sequence_entity_1 = require("./report-sequence.entity");
 const defect_reports_service_1 = require("./defect-reports.service");
 const defect_reports_controller_1 = require("./defect-reports.controller");
 const image_upload_module_1 = require("../image-upload/image-upload.module");
@@ -30,6 +31,7 @@ exports.DefectReportsModule = DefectReportsModule = __decorate([
                 sm_review_entity_1.SmReview,
                 gm_approval_entity_1.GmApproval,
                 audit_log_entity_1.AuditLog,
+                report_sequence_entity_1.ReportSequence,
             ]),
         ],
         controllers: [defect_reports_controller_1.DefectReportsController],

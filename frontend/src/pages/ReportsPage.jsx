@@ -28,13 +28,13 @@ export default function ReportsPage() {
   const debouncedSearch = useDebounce(search, 300);
 
   const filtered = reports.filter(r => {
-    const matchSearch = !debouncedSearch || (r.id + r.componentName + r.errorTypeName + r.defectDescription).toLowerCase().includes(debouncedSearch.toLowerCase());
+    const matchSearch = !debouncedSearch || ((r.reportNumber || '') + r.id + r.componentName + r.errorTypeName + r.defectDescription).toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchStatus = !filterStatus || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
   const columns = [
-    { header: 'Report ID', render: (row) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.id.slice(0, 8).toUpperCase()}</span> },
+    { header: 'Report ID', render: (row) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.reportNumber}</span> },
     { header: 'Description', render: (row) => <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.defectDescription}</div> },
     { header: 'Component', accessor: 'componentName' },
     { header: 'Error Type', accessor: 'errorTypeName' },

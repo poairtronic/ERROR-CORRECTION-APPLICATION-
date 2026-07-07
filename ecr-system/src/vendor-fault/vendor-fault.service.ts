@@ -117,7 +117,7 @@ export class VendorFaultService {
       return;
     }
 
-    const note = `Auto-created vendor fault for Defect Report ${report.reportNo}. Notes: ${report.smReview?.decisionNote || ''}`;
+    const note = `Auto-created vendor fault for Defect Report ${report.reportNumber}. Notes: ${report.smReview?.decisionNote || ''}`;
 
     const record = this.faultRepo.create({
       reportId: report.id,

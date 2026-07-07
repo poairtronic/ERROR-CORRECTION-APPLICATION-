@@ -5,7 +5,7 @@ import { ReportStatus } from '../common/enums/report-status.enum';
 import { NotificationsService } from './notifications.service';
 interface StatusChangedEvent {
     reportId: string;
-    reportNo: string;
+    reportNumber: string;
     status: ReportStatus;
 }
 export declare class NotificationListener {
@@ -20,6 +20,7 @@ export declare class NotificationListener {
     private handlePendingSmReview;
     private handlePendingGmApproval;
     private handleApproved;
+    private handleComponentsIssued;
     private handleRejected;
     handleComponentIssued(payload: {
         reportId: string;

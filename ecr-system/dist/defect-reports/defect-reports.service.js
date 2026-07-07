@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const event_emitter_1 = require("@nestjs/event-emitter");
 const defect_report_entity_1 = require("./defect-report.entity");
+const report_sequence_entity_1 = require("./report-sequence.entity");
 const inspection_detail_entity_1 = require("../inspection/inspection-detail.entity");
 const sm_review_entity_1 = require("../sm-review/sm-review.entity");
 const gm_approval_entity_1 = require("../gm-approval/gm-approval.entity");
@@ -35,10 +36,26 @@ let DefectReportsService = class DefectReportsService {
         this.events = events;
         this.imageUploadService = imageUploadService;
     }
-    async nextReportNo() {
+    async onModuleInit() {
+        const reports = await this.reportsRepo.find({ order: { createdAt: 'ASC' } });
+        for (const report of reports) {
+            if (!report.reportNumber) {
+                report.reportNumber = await this.generateReportNumber();
+                await this.reportsRepo.save(report);
+            }
+        }
+    }
+    async generateReportNumber() {
         const year = new Date().getFullYear();
-        const count = await this.reportsRepo.count();
-        return `DR-${year}-${String(count + 1).padStart(5, '0')}`;
+        return await this.reportsRepo.manager.transaction(async (manager) => {
+            let seq = await manager.findOne(report_sequence_entity_1.ReportSequence, { where: { id: 'AGIPL' } });
+            if (!seq) {
+                seq = manager.create(report_sequence_entity_1.ReportSequence, { id: 'AGIPL', lastValue: 0 });
+            }
+            seq.lastValue += 1;
+            await manager.save(seq);
+            return `AGIPL-${year}-ERR-${String(seq.lastValue).padStart(5, '0')}`;
+        });
     }
     async logStatusChange(reportId, actor, from, to, note) {
         await this.auditRepo.save(this.auditRepo.create({
@@ -54,15 +71,15 @@ let DefectReportsService = class DefectReportsService {
     emitStatusChange(report) {
         this.events.emit('report.status.changed', {
             reportId: report.id,
-            reportNo: report.reportNo,
+            reportNumber: report.reportNumber,
             status: report.status,
         });
     }
     async create(dto, actor) {
         const raisedByRole = this.mapRoleToRaisedBy(actor.role);
-        const reportNo = await this.nextReportNo();
+        const reportNumber = await this.generateReportNumber();
         const report = this.reportsRepo.create({
-            reportNo,
+            reportNumber,
             raisedById: actor.id,
             raisedByRole,
             scOrPoNo: dto.scOrPoNo,
@@ -388,6 +405,33 @@ let DefectReportsService = class DefectReportsService {
         report.status = newStatus;
         await this.reportsRepo.save(report);
         await this.logStatusChange(report.id, actor, from, report.status, note || 'Status transitioned manually');
+        this.emitStatusChange(report);
+        return report;
+    }
+    async issueComponents(reportId, dto, actor) {
+        const report = await this.findOne(reportId);
+        if (report.status !== report_status_enum_1.ReportStatus.APPROVED) {
+            throw new common_1.BadRequestException('Report must be APPROVED before components can be issued.');
+        }
+        if (report.componentsIssued) {
+            throw new common_1.BadRequestException('Components have already been issued for this report.');
+        }
+        const from = report.status;
+        report.componentsIssued = true;
+        report.componentsIssuedById = actor.id;
+        report.componentsIssuedAt = new Date();
+        report.issueRemarks = dto.remarks || '';
+        report.status = report_status_enum_1.ReportStatus.COMPONENTS_ISSUED;
+        await this.reportsRepo.save(report);
+        await this.auditRepo.save(this.auditRepo.create({
+            reportId: report.id,
+            actorId: actor.id,
+            actorRole: actor.role,
+            actionType: audit_log_entity_1.AuditActionType.COMPONENT_ISSUED,
+            fromStatus: from,
+            toStatus: report.status,
+            note: dto.remarks || 'Components were issued by the Store Manager.',
+        }));
         this.emitStatusChange(report);
         return report;
     }

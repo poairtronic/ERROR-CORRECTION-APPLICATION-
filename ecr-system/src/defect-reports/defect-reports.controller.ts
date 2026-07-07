@@ -107,4 +107,14 @@ export class DefectReportsController {
     // import ReportStatus internally or assume string is valid since service validates
     return this.service.transitionStatus(id, body.status as any, body.note, user);
   }
+
+  @Patch(':id/issue-components')
+  @Roles(Role.STORE_MANAGER)
+  async issueComponents(
+    @Param('id') id: string,
+    @Body() body: { remarks: string },
+    @CurrentUser() user,
+  ) {
+    return this.service.issueComponents(id, body, user);
+  }
 }

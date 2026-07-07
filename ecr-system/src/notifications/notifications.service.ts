@@ -87,7 +87,7 @@ export class NotificationsService {
   findForUser(userId: string, unreadOnly = false) {
     const where: any = { userId };
     if (unreadOnly) where.read = false;
-    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+    return this.repo.find({ where, order: { createdAt: 'DESC' }, relations: ['report'] });
   }
 
   findByReport(reportId: string) {

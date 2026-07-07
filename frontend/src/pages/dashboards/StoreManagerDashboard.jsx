@@ -16,7 +16,8 @@ export default function StoreManagerDashboard() {
     }
   });
 
-  const pendingApprovals = reports.filter(r => r.status === 'PENDING_STORE_APPROVAL');
+  const pendingApprovals = reports.filter(r => r.status === 'APPROVED' && !r.componentsIssued);
+  const issuedToday = reports.filter(r => r.componentsIssued && r.componentsIssuedAt && new Date(r.componentsIssuedAt).toDateString() === new Date().toDateString()).length;
 
   const columns = [
     { label: 'Report ID', key: 'id' },
@@ -44,7 +45,7 @@ export default function StoreManagerDashboard() {
           </div>
           <div className="stat-card">
             <div className="stat-label">Components Issued Today</div>
-            <div className="stat-value" style={{ color: 'var(--primary-light)' }}>12</div>
+            <div className="stat-value" style={{ color: 'var(--primary-light)' }}>{issuedToday}</div>
             <div className="stat-desc">Replacement components</div>
           </div>
         </div>

@@ -26,9 +26,9 @@ __decorate([
     __metadata("design:type", String)
 ], DefectReport.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ unique: true }),
+    (0, typeorm_1.Column)({ unique: true, nullable: true }),
     __metadata("design:type", String)
-], DefectReport.prototype, "reportNo", void 0);
+], DefectReport.prototype, "reportNumber", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => user_entity_1.User),
     (0, typeorm_1.JoinColumn)({ name: 'raised_by_id' }),
@@ -109,6 +109,22 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => audit_log_entity_1.AuditLog, (log) => log.report),
     __metadata("design:type", Array)
 ], DefectReport.prototype, "auditLogs", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], DefectReport.prototype, "componentsIssued", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], DefectReport.prototype, "componentsIssuedById", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'datetime', nullable: true }),
+    __metadata("design:type", Date)
+], DefectReport.prototype, "componentsIssuedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], DefectReport.prototype, "issueRemarks", void 0);
 __decorate([
     (0, typeorm_1.Index)(),
     (0, typeorm_1.CreateDateColumn)(),

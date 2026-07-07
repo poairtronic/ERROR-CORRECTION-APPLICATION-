@@ -12,7 +12,7 @@ const IntegratedAuditLog = memo(({ delay = 0 }) => {
     queryFn: async () => {
       const { data } = await api.get('/defect-reports');
       const allLogs = data.flatMap(r => 
-        (r.auditLogs || []).map(log => ({ ...log, reportId: r.id }))
+        (r.auditLogs || []).map(log => ({ ...log, reportId: r.id, reportNumber: r.reportNumber }))
       );
       return allLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
     },
@@ -64,7 +64,7 @@ const IntegratedAuditLog = memo(({ delay = 0 }) => {
                       <FiUser size={10} /> {audit.user?.name || 'System'}
                     </span>
                     <span style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' }}>
-                      ID: {audit.reportId.slice(0,8).toUpperCase()}
+                      ID: {audit.reportNumber}
                     </span>
                   </div>
                 </div>

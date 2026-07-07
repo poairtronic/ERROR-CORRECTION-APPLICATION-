@@ -23,9 +23,9 @@ export class DefectReport {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // human-readable: DR-2026-00001, generated in service on create
-  @Column({ unique: true })
-  reportNo: string;
+  // human-readable: AGIPL-2026-ERR-00001, generated in service on create
+  @Column({ unique: true, nullable: true })
+  reportNumber: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'raised_by_id' })
@@ -88,6 +88,18 @@ export class DefectReport {
 
   @OneToMany(() => AuditLog, (log) => log.report)
   auditLogs: AuditLog[];
+
+  @Column({ default: false })
+  componentsIssued: boolean;
+
+  @Column({ nullable: true })
+  componentsIssuedById: string;
+
+  @Column({ type: 'datetime', nullable: true })
+  componentsIssuedAt: Date;
+
+  @Column({ type: 'text', nullable: true })
+  issueRemarks: string;
 
   @Index()
   @CreateDateColumn()

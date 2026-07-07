@@ -86,7 +86,7 @@ let SalaryDeductionService = class SalaryDeductionService {
             return;
         }
         const amount = report.smReview?.lossAmount ?? 0;
-        const reason = `Auto-created deduction for Defect Report ${report.reportNo}. Notes: ${report.smReview?.decisionNote || ''}`;
+        const reason = `Auto-created deduction for Defect Report ${report.reportNumber}. Notes: ${report.smReview?.decisionNote || ''}`;
         const now = new Date();
         const monthRef = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const record = this.deductionRepo.create({

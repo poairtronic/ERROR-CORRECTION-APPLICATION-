@@ -15,7 +15,7 @@ export default function AuditViewerPage() {
       // Mocking fetch by getting all defect reports and extracting their audits for demo purposes
       const { data } = await api.get('/defect-reports');
       const allLogs = data.flatMap(r => 
-        (r.auditLogs || []).map(log => ({ ...log, reportId: r.id }))
+        (r.auditLogs || []).map(log => ({ ...log, reportId: r.id, reportNumber: r.reportNumber }))
       );
       return allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
@@ -27,14 +27,14 @@ export default function AuditViewerPage() {
     !debouncedSearch || 
     a.actionType.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
     (a.actor?.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    a.reportId.toLowerCase().includes(debouncedSearch.toLowerCase())
+    (a.reportNumber || a.reportId).toLowerCase().includes(debouncedSearch.toLowerCase())
   );
 
   const columns = [
     { header: 'Date', render: (row) => new Date(row.timestamp).toLocaleString('en-IN') },
     { header: 'Action', accessor: 'actionType' },
     { header: 'User', render: (row) => row.actor?.name || row.actorRole || 'System' },
-    { header: 'Entity / Report ID', render: (row) => <span style={{ fontFamily: 'monospace' }}>{row.reportId.slice(0,8).toUpperCase()}</span> },
+    { header: 'Entity / Report ID', render: (row) => <span style={{ fontFamily: 'monospace' }}>{row.reportNumber}</span> },
     { header: 'Notes', accessor: 'notes' }
   ];
 

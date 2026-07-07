@@ -62,6 +62,9 @@ let DefectReportsController = class DefectReportsController {
     async transitionStatus(id, body, user) {
         return this.service.transitionStatus(id, body.status, body.note, user);
     }
+    async issueComponents(id, body, user) {
+        return this.service.issueComponents(id, body, user);
+    }
 };
 exports.DefectReportsController = DefectReportsController;
 __decorate([
@@ -160,6 +163,16 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], DefectReportsController.prototype, "transitionStatus", null);
+__decorate([
+    (0, common_1.Patch)(':id/issue-components'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.STORE_MANAGER),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], DefectReportsController.prototype, "issueComponents", null);
 exports.DefectReportsController = DefectReportsController = __decorate([
     (0, common_1.Controller)('defect-reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

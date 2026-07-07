@@ -36,7 +36,7 @@ export default function DashboardQueueTable({
                 {columns.map((col, idx) => {
                   let content;
                   if (col.key === 'id') {
-                    content = <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{item.id.slice(0,8).toUpperCase()}</span>;
+                    content = <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{item.reportNumber}</span>;
                   } else if (col.key === 'status') {
                     content = <span className={`badge badge-${STATUS_COLORS[item.status] || 'draft'}`}>{STATUS_LABELS[item.status] || item.status}</span>;
                   } else if (col.render) {

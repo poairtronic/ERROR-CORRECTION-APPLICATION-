@@ -40,6 +40,7 @@ export class AnalyticsService {
     const pendingInspect = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } });
     const pendingSm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } });
     const pendingGm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } });
+    const pendingStore = await this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } });
 
     // Financial aggregations
     // We can use QueryBuilder to sum costEstimate, lossAmount, etc.
@@ -57,6 +58,7 @@ export class AnalyticsService {
       pendingInspect,
       pendingSm,
       pendingGm,
+      pendingStore,
       totalCost: costs?.totalCost || 0,
       totalLoss: costs?.totalLoss || 0,
       vendorCases,
@@ -148,12 +150,14 @@ export class AnalyticsService {
     const pendingInspect = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } });
     const pendingSm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } });
     const pendingGm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } });
+    const pendingStore = await this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } });
 
     return {
       averageResolutionDays: result?.avgResolutionDays ? parseFloat(result.avgResolutionDays).toFixed(1) : 0,
       inspectionQueue: pendingInspect,
       smQueue: pendingSm,
-      gmQueue: pendingGm
+      gmQueue: pendingGm,
+      storeQueue: pendingStore
     };
   }
 
@@ -165,7 +169,8 @@ export class AnalyticsService {
       where: [
         { status: ReportStatus.PENDING_INSPECTION },
         { status: ReportStatus.PENDING_SM_REVIEW },
-        { status: ReportStatus.PENDING_GM_APPROVAL }
+        { status: ReportStatus.PENDING_GM_APPROVAL },
+        { status: ReportStatus.APPROVED, componentsIssued: false }
       ]
     });
     score -= (openCount * 2); // -2 points per open report

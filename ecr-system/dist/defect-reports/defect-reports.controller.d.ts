@@ -24,4 +24,7 @@ export declare class DefectReportsController {
         status: string;
         note: string;
     }, user: any): Promise<import("./defect-report.entity").DefectReport>;
+    issueComponents(id: string, body: {
+        remarks: string;
+    }, user: any): Promise<import("./defect-report.entity").DefectReport>;
 }
