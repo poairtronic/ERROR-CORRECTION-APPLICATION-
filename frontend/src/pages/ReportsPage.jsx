@@ -28,7 +28,7 @@ export default function ReportsPage() {
   const debouncedSearch = useDebounce(search, 300);
 
   const filtered = reports.filter(r => {
-    const matchSearch = !debouncedSearch || ((r.reportNumber || '') + r.id + r.componentName + r.errorTypeName + r.defectDescription).toLowerCase().includes(debouncedSearch.toLowerCase());
+    const matchSearch = !debouncedSearch || ((r.reportNumber || '') + r.id + r.componentName + r.errorTypeName + r.defectDescription + (r.raisedBy?.name || '') + (r.raisedBy?.username || '')).toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchStatus = !filterStatus || r.status === filterStatus;
     return matchSearch && matchStatus;
   });

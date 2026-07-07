@@ -39,7 +39,7 @@ let DefectReportsService = class DefectReportsService {
     async onModuleInit() {
         const reports = await this.reportsRepo.find({ order: { createdAt: 'ASC' } });
         for (const report of reports) {
-            if (!report.reportNumber) {
+            if (!report.reportNumber || !report.reportNumber.startsWith('AGIPL')) {
                 report.reportNumber = await this.generateReportNumber();
                 await this.reportsRepo.save(report);
             }
