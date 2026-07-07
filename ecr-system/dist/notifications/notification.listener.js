@@ -42,6 +42,9 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
         if (!report)
             return;
         switch (event.status) {
+            case report_status_enum_1.ReportStatus.PENDING_INSPECTION:
+                await this.handlePendingInspection(report);
+                break;
             case report_status_enum_1.ReportStatus.PENDING_SM_REVIEW:
                 await this.handlePendingSmReview(report);
                 break;
@@ -56,6 +59,38 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
                 break;
             default:
                 break;
+        }
+    }
+    async handlePendingInspection(report) {
+        const inspectors = await this.usersRepo.find({ where: { role: role_enum_1.Role.INSPECTOR, isActive: true } });
+        const summaryTable = {
+            'Report Number': report.reportNo,
+            'Product': report.productId,
+            'Component': report.componentName,
+            'Error Type': report.errorTypeName || 'N/A',
+            'Raised By': report.raisedBy?.name || 'Unknown',
+            'Submission Time': report.createdAt.toISOString(),
+        };
+        for (const inspector of inspectors) {
+            await this.notificationsService.create({
+                userId: inspector.id,
+                userEmail: inspector.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'New Defect Report',
+                message: 'A new Defect Report has been submitted by an Operator and requires your inspection.',
+                event: notification_event_enum_1.NotificationEvent.REPORT_CREATED,
+                subject: 'New Defect Report Pending Inspection',
+                reportId: report.id,
+                templateData: {
+                    title: 'New Defect Report Pending Your Inspection',
+                    message: 'A new Defect Report has been submitted by an Operator and requires your inspection.',
+                    summaryTable,
+                    primaryButton: {
+                        text: 'Open Report',
+                        url: `http://localhost:5173/reports/${report.id}`,
+                    },
+                },
+            });
         }
     }
     async handlePendingSmReview(report) {

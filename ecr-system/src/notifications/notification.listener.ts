@@ -39,6 +39,9 @@ export class NotificationListener {
     if (!report) return;
 
     switch (event.status) {
+      case ReportStatus.PENDING_INSPECTION:
+        await this.handlePendingInspection(report);
+        break;
       case ReportStatus.PENDING_SM_REVIEW:
         await this.handlePendingSmReview(report);
         break;
@@ -53,6 +56,41 @@ export class NotificationListener {
         break;
       default:
         break;
+    }
+  }
+
+  private async handlePendingInspection(report: DefectReport) {
+    const inspectors = await this.usersRepo.find({ where: { role: Role.INSPECTOR, isActive: true } });
+
+    const summaryTable = {
+      'Report Number': report.reportNo,
+      'Product': report.productId,
+      'Component': report.componentName,
+      'Error Type': report.errorTypeName || 'N/A',
+      'Raised By': report.raisedBy?.name || 'Unknown',
+      'Submission Time': report.createdAt.toISOString(),
+    };
+
+    for (const inspector of inspectors) {
+      await this.notificationsService.create({
+        userId: inspector.id,
+        userEmail: inspector.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'New Defect Report',
+        message: 'A new Defect Report has been submitted by an Operator and requires your inspection.',
+        event: NotificationEvent.REPORT_CREATED,
+        subject: 'New Defect Report Pending Inspection',
+        reportId: report.id,
+        templateData: {
+          title: 'New Defect Report Pending Your Inspection',
+          message: 'A new Defect Report has been submitted by an Operator and requires your inspection.',
+          summaryTable,
+          primaryButton: {
+            text: 'Open Report',
+            url: `http://localhost:5173/reports/${report.id}`,
+          },
+        },
+      });
     }
   }
 

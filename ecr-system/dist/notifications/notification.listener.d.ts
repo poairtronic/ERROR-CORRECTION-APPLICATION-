@@ -16,6 +16,7 @@ export declare class NotificationListener {
     constructor(usersRepo: Repository<User>, reportsRepo: Repository<DefectReport>, notificationsService: NotificationsService);
     private fetchReportWithRelations;
     handleStatusChanged(event: StatusChangedEvent): Promise<void>;
+    private handlePendingInspection;
     private handlePendingSmReview;
     private handlePendingGmApproval;
     private handleApproved;
