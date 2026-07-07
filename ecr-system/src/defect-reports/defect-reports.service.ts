@@ -208,7 +208,7 @@ export class DefectReportsService {
 
     let inspection = await this.inspectionRepo.findOne({ where: { reportId: report.id } });
     if (!inspection) {
-      inspection = this.inspectionRepo.create({ reportId: report.id });
+      inspection = this.inspectionRepo.create({ reportId: report.id, report });
     }
     Object.assign(inspection, {
       inspectorId: actor.id,
