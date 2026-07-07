@@ -8,7 +8,7 @@ export default function GeneralManagerDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: reports = [], isLoading } = useQuery({
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['gm-reports'],
     queryFn: async () => {
       const { data } = await api.get('/defect-reports');
@@ -16,12 +16,27 @@ export default function GeneralManagerDashboard() {
     }
   });
 
+  const { data: kpis, isLoading: kpisLoading } = useQuery({
+    queryKey: ['analytics-kpis-gm'],
+    queryFn: async () => {
+      const { data } = await api.get('/analytics/kpis');
+      return data;
+    },
+    staleTime: 30000
+  });
+
   const pendingApprovals = reports.filter(r => r.status === 'PENDING_GM_APPROVAL');
   
-  // Dummy data for budget metrics
-  const budgetSummary = '$24,500';
-  const vendorCases = reports.filter(r => r.responsibleParty === 'VENDOR').length;
-  const salaryDeductions = 5;
+  // Format currency helper
+  const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
+
+  const budgetSummary = formatCurrency(kpis?.totalLoss);
+  const vendorCases = kpis?.vendorCases || 0;
+  
+  // Using openReports as a stand-in for general active cases or unassigned work instead of salaryDeductions
+  const activeCases = kpis?.openReports || 0;
+
+  const isLoading = reportsLoading || kpisLoading;
 
   return (
     <>
@@ -40,9 +55,9 @@ export default function GeneralManagerDashboard() {
             <div className="stat-desc">Requires attention</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Cost Impact (MTD)</div>
+            <div className="stat-label">Loss Impact (MTD)</div>
             <div className="stat-value" style={{ color: '#f87171' }}>{budgetSummary}</div>
-            <div className="stat-desc">Estimated loss</div>
+            <div className="stat-desc">Estimated rework loss</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Vendor Cases</div>
@@ -50,9 +65,9 @@ export default function GeneralManagerDashboard() {
             <div className="stat-desc">Active issues</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Salary Deductions</div>
-            <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{salaryDeductions}</div>
-            <div className="stat-desc">Processed this month</div>
+            <div className="stat-label">Total Active Cases</div>
+            <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{activeCases}</div>
+            <div className="stat-desc">System wide</div>
           </div>
         </div>
 
@@ -79,7 +94,9 @@ export default function GeneralManagerDashboard() {
                       <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id.slice(0,8).toUpperCase()}</td>
                       <td>{r.componentName || '—'}</td>
                       <td>{r.errorTypeName || '—'}</td>
-                      <td>$1,200</td>
+                      <td style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
+                        {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
+                      </td>
                       <td style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-IN')}</td>
                       <td>
                         <button className="btn btn-primary btn-sm" onClick={() => navigate(`/reports/${r.id}`)}>Review</button>

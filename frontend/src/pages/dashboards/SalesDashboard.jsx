@@ -8,7 +8,7 @@ export default function SalesDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: reports = [], isLoading } = useQuery({
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['sales-reports'],
     queryFn: async () => {
       const { data } = await api.get('/defect-reports');
@@ -16,7 +16,24 @@ export default function SalesDashboard() {
     }
   });
 
+  const { data: kpis, isLoading: kpisLoading } = useQuery({
+    queryKey: ['analytics-kpis-sales'],
+    queryFn: async () => {
+      const { data } = await api.get('/analytics/kpis');
+      return data;
+    },
+    staleTime: 30000
+  });
+
   const approvedReports = reports.filter(r => r.status === 'APPROVED' || r.status === 'CLOSED');
+  
+  const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
+  
+  const totalCost = kpis?.totalCost || 0;
+  // Assume vendor recoveries is a dummy metric, we can just show totalLoss for now
+  const vendorRecoveries = kpis?.totalLoss || 0;
+
+  const isLoading = reportsLoading || kpisLoading;
 
   return (
     <>
@@ -31,13 +48,13 @@ export default function SalesDashboard() {
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-label">Total ECR Cost</div>
-            <div className="stat-value" style={{ color: '#f87171' }}>$42,100</div>
+            <div className="stat-value" style={{ color: '#f87171' }}>{formatCurrency(totalCost)}</div>
             <div className="stat-desc">Year to Date</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Vendor Recoveries</div>
-            <div className="stat-value" style={{ color: '#4ade80' }}>$12,500</div>
-            <div className="stat-desc">Successfully claimed</div>
+            <div className="stat-label">Estimated Loss</div>
+            <div className="stat-value" style={{ color: '#fbbf24' }}>{formatCurrency(vendorRecoveries)}</div>
+            <div className="stat-desc">System wide loss</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Approved Reports</div>
@@ -68,7 +85,9 @@ export default function SalesDashboard() {
                     <tr key={r.id}>
                       <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id.slice(0,8).toUpperCase()}</td>
                       <td>{r.componentName || '—'}</td>
-                      <td>$1,200</td>
+                      <td style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
+                        {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
+                      </td>
                       <td>{r.responsibleParty || '—'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-IN')}</td>
                       <td>
