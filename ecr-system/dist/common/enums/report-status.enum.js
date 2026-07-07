@@ -49,8 +49,9 @@ var NotificationChannel;
 })(NotificationChannel || (exports.NotificationChannel = NotificationChannel = {}));
 var NotificationStatus;
 (function (NotificationStatus) {
-    NotificationStatus["PENDING"] = "PENDING";
+    NotificationStatus["QUEUED"] = "QUEUED";
     NotificationStatus["SENT"] = "SENT";
     NotificationStatus["FAILED"] = "FAILED";
+    NotificationStatus["DELIVERED"] = "DELIVERED";
 })(NotificationStatus || (exports.NotificationStatus = NotificationStatus = {}));
 //# sourceMappingURL=report-status.enum.js.map

@@ -45,9 +45,9 @@ export class Notification {
   read: boolean;
 
   @Column({
-    type: 'simple-enum',
+    type: 'enum',
     enum: NotificationStatus,
-    default: NotificationStatus.PENDING,
+    default: NotificationStatus.QUEUED,
   })
   status: NotificationStatus;
 

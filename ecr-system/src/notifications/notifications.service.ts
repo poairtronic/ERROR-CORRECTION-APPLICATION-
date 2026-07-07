@@ -97,4 +97,8 @@ export class NotificationsService {
   async markRead(id: string) {
     await this.repo.update(id, { read: true });
   }
+
+  async markDelivered(id: string) {
+    await this.repo.update(id, { status: NotificationStatus.DELIVERED });
+  }
 }

@@ -88,6 +88,9 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
     async markRead(id) {
         await this.repo.update(id, { read: true });
     }
+    async markDelivered(id) {
+        await this.repo.update(id, { status: report_status_enum_1.NotificationStatus.DELIVERED });
+    }
 };
 exports.NotificationsService = NotificationsService;
 exports.NotificationsService = NotificationsService = NotificationsService_1 = __decorate([

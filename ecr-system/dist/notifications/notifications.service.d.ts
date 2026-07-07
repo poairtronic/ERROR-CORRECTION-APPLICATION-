@@ -22,4 +22,5 @@ export declare class NotificationsService {
     }>;
     findForUser(userId: string, unreadOnly?: boolean): Promise<Notification[]>;
     markRead(id: string): Promise<void>;
+    markDelivered(id: string): Promise<void>;
 }

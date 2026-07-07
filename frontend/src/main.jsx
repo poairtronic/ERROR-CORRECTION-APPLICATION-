@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import './index.css';
 
 import { Suspense, lazy } from 'react';
@@ -38,9 +39,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' } }} />
-          <Suspense fallback={<div className="page-content"><div className="spinner" /></div>}>
+        <NotificationProvider>
+          <BrowserRouter>
+            <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' } }} />
+            <Suspense fallback={<div className="page-content"><div className="spinner" /></div>}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -70,7 +72,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
-        </BrowserRouter>
+          </BrowserRouter>
+        </NotificationProvider>
       </AuthProvider>
     </QueryClientProvider>
   </React.StrictMode>

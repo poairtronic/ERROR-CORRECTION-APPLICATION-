@@ -11,20 +11,24 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const notification_entity_1 = require("./notification.entity");
 const user_entity_1 = require("../users/user.entity");
+const defect_report_entity_1 = require("../defect-reports/defect-report.entity");
 const notifications_service_1 = require("./notifications.service");
 const notifications_controller_1 = require("./notifications.controller");
 const notification_listener_1 = require("./notification.listener");
 const notification_retry_cron_1 = require("./notification-retry.cron");
 const notifications_gateway_1 = require("./notifications.gateway");
+const socket_registry_service_1 = require("./socket-registry.service");
 const email_module_1 = require("../email/email.module");
+const auth_module_1 = require("../auth/auth.module");
 let NotificationsModule = class NotificationsModule {
 };
 exports.NotificationsModule = NotificationsModule;
 exports.NotificationsModule = NotificationsModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([notification_entity_1.Notification, user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([notification_entity_1.Notification, user_entity_1.User, defect_report_entity_1.DefectReport]),
             (0, common_1.forwardRef)(() => email_module_1.EmailModule),
+            auth_module_1.AuthModule,
         ],
         controllers: [notifications_controller_1.NotificationsController],
         providers: [
@@ -32,6 +36,7 @@ exports.NotificationsModule = NotificationsModule = __decorate([
             notification_listener_1.NotificationListener,
             notification_retry_cron_1.NotificationRetryCron,
             notifications_gateway_1.NotificationsGateway,
+            socket_registry_service_1.SocketRegistryService,
         ],
         exports: [notifications_service_1.NotificationsService, notifications_gateway_1.NotificationsGateway],
     })

@@ -10,6 +10,7 @@ export class EmailController {
   @HttpCode(HttpStatus.OK)
   async sendTestEmail(@Body('to') to: string) {
     const email = await this.emailService.queueEmail({
+      recipientId: 'test-user-id',
       recipient: to || 'test@example.com',
       subject: 'Test Notification from ECR',
       event: NotificationEvent.REPORT_CREATED,
@@ -25,6 +26,7 @@ export class EmailController {
   @HttpCode(HttpStatus.OK)
   async sendTestHtmlEmail(@Body('to') to: string) {
     const email = await this.emailService.queueEmail({
+      recipientId: 'test-user-id',
       recipient: to || 'test@example.com',
       subject: 'HTML Test Notification',
       event: NotificationEvent.REPORT_UPDATED,

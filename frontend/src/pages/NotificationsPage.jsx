@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiBell, FiCheck } from 'react-icons/fi';
+import { useNotifications } from '../contexts/NotificationContext';
 
 export default function NotificationsPage() {
+  const { setUnreadCount } = useNotifications();
   const [notifs, setNotifs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,6 +19,7 @@ export default function NotificationsPage() {
     try {
       await api.patch(`/notifications/${id}/read`);
       setNotifs(n => n.map(x => x.id === id ? { ...x, read: true } : x));
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch { toast.error('Failed to mark as read'); }
   };
 
@@ -24,6 +27,7 @@ export default function NotificationsPage() {
     const unread = notifs.filter(n => !n.read);
     await Promise.all(unread.map(n => api.patch(`/notifications/${n.id}/read`).catch(() => {})));
     setNotifs(n => n.map(x => ({ ...x, read: true })));
+    setUnreadCount(0);
     toast.success('All marked as read');
   };
 

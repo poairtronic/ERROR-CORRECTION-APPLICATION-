@@ -77,6 +77,7 @@ export class NotificationListener {
 
     for (const sm of smUsers) {
       await this.emailService.queueEmail({
+        recipientId: sm.id,
         recipient: sm.email,
         subject: 'New ECR Pending Review',
         event: NotificationEvent.REPORT_UPDATED,
@@ -108,6 +109,7 @@ export class NotificationListener {
 
     for (const gm of gmUsers) {
       await this.emailService.queueEmail({
+        recipientId: gm.id,
         recipient: gm.email,
         subject: 'Pending GM Approval',
         event: NotificationEvent.REPORT_UPDATED,
@@ -138,6 +140,7 @@ export class NotificationListener {
 
     for (const sales of salesUsers) {
       await this.emailService.queueEmail({
+        recipientId: sales.id,
         recipient: sales.email,
         subject: `Approved Report: ${report.reportNo}`,
         event: NotificationEvent.REPORT_APPROVED,
@@ -163,6 +166,7 @@ export class NotificationListener {
 
     for (const store of storeUsers) {
       await this.emailService.queueEmail({
+        recipientId: store.id,
         recipient: store.email,
         subject: `Action Required - Approved Report: ${report.reportNo}`,
         event: NotificationEvent.REPORT_APPROVED,
@@ -202,6 +206,7 @@ export class NotificationListener {
 
       for (const user of usersToNotify) {
         await this.emailService.queueEmail({
+          recipientId: user.id,
           recipient: user.email,
           subject: `Report Rejected: ${report.reportNo}`,
           event: NotificationEvent.REPORT_REJECTED,
@@ -224,6 +229,7 @@ export class NotificationListener {
 
       if (inspector) {
         await this.emailService.queueEmail({
+          recipientId: inspector.id,
           recipient: inspector.email,
           subject: `Report Rejected: ${report.reportNo}`,
           event: NotificationEvent.REPORT_REJECTED,
@@ -254,6 +260,7 @@ export class NotificationListener {
     const report = await this.fetchReportWithRelations(payload.reportId);
 
     await this.emailService.queueEmail({
+      recipientId: user.id,
       recipient: user.email,
       subject: 'Components Issued',
       event: NotificationEvent.COMPONENT_ISSUED,
@@ -280,6 +287,7 @@ export class NotificationListener {
 
     for (const admin of adminUsers) {
       await this.emailService.queueEmail({
+        recipientId: admin.id,
         recipient: admin.email,
         subject: 'New Salary Deduction Logged',
         event: NotificationEvent.SALARY_DEDUCTION,
@@ -304,6 +312,7 @@ export class NotificationListener {
     
     for (const admin of adminUsers) {
       await this.emailService.queueEmail({
+        recipientId: admin.id,
         recipient: admin.email,
         subject: `Vendor Fault Logged: ${report?.reportNo || payload.reportId}`,
         event: NotificationEvent.VENDOR_FAULT,

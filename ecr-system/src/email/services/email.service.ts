@@ -10,6 +10,7 @@ import { EmailTemplateService, TemplateData } from './email-template.service';
 import { NotificationsGateway } from '../../notifications/notifications.gateway';
 
 export interface SendEmailOptions {
+  recipientId: string;
   recipient: string;
   cc?: string;
   bcc?: string;
@@ -78,7 +79,8 @@ export class EmailService implements OnModuleInit {
 
     // Reuse existing Websocket for in-app notification
     try {
-      this.notificationsGateway.server.emit('notification', {
+      await this.notificationsGateway.pushToUser(options.recipientId, {
+        id: savedLog.id, // Pass ID for ACK
         type: options.event,
         title: options.subject,
         message: options.templateData.message,

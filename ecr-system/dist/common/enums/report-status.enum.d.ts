@@ -39,7 +39,8 @@ export declare enum NotificationChannel {
     APP = "APP"
 }
 export declare enum NotificationStatus {
-    PENDING = "PENDING",
+    QUEUED = "QUEUED",
     SENT = "SENT",
-    FAILED = "FAILED"
+    FAILED = "FAILED",
+    DELIVERED = "DELIVERED"
 }

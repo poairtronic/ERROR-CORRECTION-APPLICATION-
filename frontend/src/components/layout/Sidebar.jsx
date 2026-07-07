@@ -1,15 +1,20 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut, FiPieChart } from 'react-icons/fi';
 
 const roleLabels = { ADMIN: 'Administrator', OPERATOR: 'Operator', INSPECTOR: 'Inspector', SENIOR_MANAGER: 'Senior Manager', GENERAL_MANAGER: 'General Manager', STORE_MANAGER: 'Store Manager' };
 
-export default function Sidebar({ notifCount = 0 }) {
+export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { unreadCount: notifCount, isConnected } = useNotifications();
   const navigate = useNavigate();
   const role = user?.role?.toUpperCase();
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const initials = user?.username?.slice(0, 2).toUpperCase() || 'U';
 
@@ -57,6 +62,16 @@ export default function Sidebar({ notifCount = 0 }) {
       </nav>
 
       <div className="sidebar-footer">
+        <div style={{ padding: '0 8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%',
+            backgroundColor: isConnected ? 'var(--success)' : 'var(--danger)',
+            boxShadow: `0 0 8px ${isConnected ? 'var(--success)' : 'var(--danger)'}`
+          }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-dim)', fontWeight: 500 }}>
+            {isConnected ? 'Real-Time Active' : 'Disconnected'}
+          </span>
+        </div>
         <div className="user-chip">
           <div className="user-avatar">{initials}</div>
           <div className="user-info">
