@@ -12,13 +12,13 @@ import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false }) {
   return (
     <Dialog open={true} onClose={onClose} title={title}>
-      <div style={{ minWidth: 400 }}>
+      <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }} style={{ minWidth: 400 }}>
         {children}
         <div className="modal-footer" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-          <button className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
-          <button className={`btn btn-${variant}`} onClick={onConfirm} disabled={loading}>{loading ? 'Submitting…' : actionLabel}</button>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+          <button type="submit" className={`btn btn-${variant}`} disabled={loading}>{loading ? 'Submitting…' : actionLabel}</button>
         </div>
-      </div>
+      </form>
     </Dialog>
   );
 }
@@ -49,7 +49,10 @@ export default function ReportDetailPage() {
       setModal(null);
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     },
-    onError: (err) => toast.error(err.response?.data?.message || 'Action failed')
+    onError: (err) => {
+      const msg = err.response?.data?.message;
+      toast.error(Array.isArray(msg) ? msg.join(', ') : (msg || 'Action failed'));
+    }
   });
 
   const [inspectData, setInspectData] = useState({
