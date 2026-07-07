@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiTrendingUp } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import DashboardQueueTable from '../../components/dashboards/DashboardQueueTable';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export default function SalesDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['sales-reports'],
@@ -27,13 +27,25 @@ export default function SalesDashboard() {
 
   const approvedReports = reports.filter(r => r.status === 'APPROVED' || r.status === 'CLOSED');
   
-  const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
-  
   const totalCost = kpis?.totalCost || 0;
-  // Assume vendor recoveries is a dummy metric, we can just show totalLoss for now
   const vendorRecoveries = kpis?.totalLoss || 0;
-
   const isLoading = reportsLoading || kpisLoading;
+
+  const columns = [
+    { label: 'Report ID', key: 'id' },
+    { label: 'Component', key: 'componentName' },
+    { 
+      label: 'Cost Impact', 
+      key: 'costEstimate',
+      render: (r) => (
+        <span style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
+          {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
+        </span>
+      )
+    },
+    { label: 'Responsible Party', key: 'responsibleParty' },
+    { label: 'Date Closed', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
+  ];
 
   return (
     <>
@@ -66,38 +78,12 @@ export default function SalesDashboard() {
         <div className="card">
           <div className="card-title"><FiTrendingUp /> Recent Financial Impacts</div>
           {isLoading ? <div className="spinner" /> : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Report ID</th>
-                    <th>Component</th>
-                    <th>Cost Impact</th>
-                    <th>Responsible Party</th>
-                    <th>Date Closed</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {approvedReports.length === 0 ? (
-                    <tr><td colSpan={6}><div className="empty-state"><p>No approved reports available.</p></div></td></tr>
-                  ) : approvedReports.slice(0, 10).map(r => (
-                    <tr key={r.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id.slice(0,8).toUpperCase()}</td>
-                      <td>{r.componentName || '—'}</td>
-                      <td style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
-                        {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
-                      </td>
-                      <td>{r.responsibleParty || '—'}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-IN')}</td>
-                      <td>
-                        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/reports/${r.id}`)}>View</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DashboardQueueTable 
+              data={approvedReports.slice(0, 10)} 
+              columns={columns} 
+              emptyMessage="No approved reports available."
+              actionLabel="View" 
+            />
           )}
         </div>
       </div>

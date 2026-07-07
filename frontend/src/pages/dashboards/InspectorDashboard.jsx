@@ -4,6 +4,8 @@ import api from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiCheckCircle, FiPlus } from 'react-icons/fi';
 import { SIMPLIFIED_WORKFLOW } from '../../utils/constants';
+import DashboardQueueTable from '../../components/dashboards/DashboardQueueTable';
+import { formatDate } from '../../utils/formatters';
 
 export default function InspectorDashboard() {
   const { user } = useAuth();
@@ -21,6 +23,14 @@ export default function InspectorDashboard() {
   const completedToday = reports.filter(r => 
     r.auditLogs?.some(log => log.action === 'INSPECTED' && new Date(log.createdAt).toDateString() === new Date().toDateString())
   ).length;
+
+  const columns = [
+    { label: 'Report ID', key: 'id' },
+    { label: 'Component', key: 'componentName' },
+    { label: 'Error Type', key: 'errorTypeName' },
+    { label: 'Raised By', key: 'raisedBy', render: (r) => r.raisedBy?.name || '—' },
+    { label: 'Date Raised', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
+  ];
 
   return (
     <>
@@ -60,36 +70,12 @@ export default function InspectorDashboard() {
         <div className="card">
           <div className="card-title"><FiCheckCircle /> Inspection Queue</div>
           {isLoading ? <div className="spinner" /> : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Report ID</th>
-                    <th>Component</th>
-                    <th>Error Type</th>
-                    <th>Raised By</th>
-                    <th>Date Raised</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingInspections.length === 0 ? (
-                    <tr><td colSpan={6}><div className="empty-state"><p>No pending inspections.</p></div></td></tr>
-                  ) : pendingInspections.map(r => (
-                    <tr key={r.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id.slice(0,8).toUpperCase()}</td>
-                      <td>{r.componentName || '—'}</td>
-                      <td>{r.errorTypeName || '—'}</td>
-                      <td>{r.raisedBy?.name || '—'}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-IN')}</td>
-                      <td>
-                        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/reports/${r.id}`)}>Inspect</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DashboardQueueTable 
+              data={pendingInspections} 
+              columns={columns} 
+              emptyMessage="No pending inspections." 
+              actionLabel="Inspect" 
+            />
           )}
         </div>
       </div>

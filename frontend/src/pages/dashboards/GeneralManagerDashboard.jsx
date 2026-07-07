@@ -1,12 +1,12 @@
-import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FiCheckCircle } from 'react-icons/fi';
+import DashboardQueueTable from '../../components/dashboards/DashboardQueueTable';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export default function GeneralManagerDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['gm-reports'],
@@ -26,17 +26,31 @@ export default function GeneralManagerDashboard() {
   });
 
   const pendingApprovals = reports.filter(r => r.status === 'PENDING_GM_APPROVAL');
-  
-  // Format currency helper
-  const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
-
   const budgetSummary = formatCurrency(kpis?.totalLoss);
   const vendorCases = kpis?.vendorCases || 0;
-  
-  // Using openReports as a stand-in for general active cases or unassigned work instead of salaryDeductions
   const activeCases = kpis?.openReports || 0;
-
   const isLoading = reportsLoading || kpisLoading;
+
+  const columns = [
+    { label: 'Report ID', key: 'id' },
+    { label: 'Component', key: 'componentName' },
+    { label: 'Error Type', key: 'errorTypeName' },
+    { 
+      label: 'Cost Estimate', 
+      key: 'costEstimate',
+      render: (r) => (
+        <span style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
+          {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
+        </span>
+      )
+    },
+    { 
+      label: 'Date Raised', 
+      key: 'createdAt', 
+      style: { color: 'var(--text-muted)' },
+      render: (r) => formatDate(r.createdAt)
+    }
+  ];
 
   return (
     <>
@@ -74,38 +88,12 @@ export default function GeneralManagerDashboard() {
         <div className="card">
           <div className="card-title"><FiCheckCircle /> Approval Queue</div>
           {isLoading ? <div className="spinner" /> : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Report ID</th>
-                    <th>Component</th>
-                    <th>Error Type</th>
-                    <th>Cost Estimate</th>
-                    <th>Date Raised</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingApprovals.length === 0 ? (
-                    <tr><td colSpan={6}><div className="empty-state"><p>No pending approvals.</p></div></td></tr>
-                  ) : pendingApprovals.map(r => (
-                    <tr key={r.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id.slice(0,8).toUpperCase()}</td>
-                      <td>{r.componentName || '—'}</td>
-                      <td>{r.errorTypeName || '—'}</td>
-                      <td style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
-                        {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
-                      </td>
-                      <td style={{ color: 'var(--text-muted)' }}>{new Date(r.createdAt).toLocaleDateString('en-IN')}</td>
-                      <td>
-                        <button className="btn btn-primary btn-sm" onClick={() => navigate(`/reports/${r.id}`)}>Review</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DashboardQueueTable 
+              data={pendingApprovals} 
+              columns={columns} 
+              emptyMessage="No pending approvals."
+              actionLabel="Review" 
+            />
           )}
         </div>
       </div>

@@ -1,17 +1,6 @@
 import { Repository } from 'typeorm';
 import { Component } from './component.entity';
-export declare class ComponentsController {
-    private repo;
+import { BaseCrudController } from '../../common/controllers/base-crud.controller';
+export declare class ComponentsController extends BaseCrudController<Component> {
     constructor(repo: Repository<Component>);
-    findAll(): Promise<Component[]>;
-    create(body: Partial<Component>): Promise<Component>;
-    update(id: string, body: Partial<Component>): Promise<{
-        id: string;
-        code?: string | undefined;
-        name?: string | undefined;
-        stockQty?: number | undefined;
-        unit?: string | undefined;
-        isActive?: boolean | undefined;
-    } & Component>;
-    deactivate(id: string): Promise<import("typeorm").UpdateResult>;
 }

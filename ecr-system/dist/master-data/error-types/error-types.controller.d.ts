@@ -1,18 +1,6 @@
 import { Repository } from 'typeorm';
 import { ErrorType } from './error-type.entity';
-export declare class ErrorTypesController {
-    private repo;
+import { BaseCrudController } from '../../common/controllers/base-crud.controller';
+export declare class ErrorTypesController extends BaseCrudController<ErrorType> {
     constructor(repo: Repository<ErrorType>);
-    findAll(): Promise<ErrorType[]>;
-    create(body: {
-        name: string;
-        description?: string;
-    }): Promise<ErrorType>;
-    update(id: string, body: Partial<ErrorType>): Promise<{
-        id: string;
-        name?: string | undefined;
-        description?: string | undefined;
-        isActive?: boolean | undefined;
-    } & ErrorType>;
-    deactivate(id: string): Promise<import("typeorm").UpdateResult>;
 }
