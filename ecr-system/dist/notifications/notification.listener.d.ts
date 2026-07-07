@@ -1,7 +1,9 @@
 import { Repository } from 'typeorm';
-import { NotificationsService } from './notifications.service';
 import { User } from '../users/user.entity';
+import { DefectReport } from '../defect-reports/defect-report.entity';
 import { ReportStatus } from '../common/enums/report-status.enum';
+import { NotificationsService } from './notifications.service';
+import { EmailService } from '../email/services/email.service';
 interface StatusChangedEvent {
     reportId: string;
     reportNo: string;
@@ -9,9 +11,17 @@ interface StatusChangedEvent {
 }
 export declare class NotificationListener {
     private usersRepo;
+    private reportsRepo;
     private notificationsService;
-    constructor(usersRepo: Repository<User>, notificationsService: NotificationsService);
+    private emailService;
+    private readonly logger;
+    constructor(usersRepo: Repository<User>, reportsRepo: Repository<DefectReport>, notificationsService: NotificationsService, emailService: EmailService);
+    private fetchReportWithRelations;
     handleStatusChanged(event: StatusChangedEvent): Promise<void>;
+    private handlePendingSmReview;
+    private handlePendingGmApproval;
+    private handleApproved;
+    private handleRejected;
     handleComponentIssued(payload: {
         reportId: string;
         issueId: string;

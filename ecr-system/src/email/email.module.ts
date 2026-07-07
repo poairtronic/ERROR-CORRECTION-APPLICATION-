@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EmailLog } from './entities/email-log.entity';
 import { NotificationPreference } from './entities/notification-preference.entity';
@@ -11,7 +11,7 @@ import { NotificationsModule } from '../notifications/notifications.module'; // 
 @Module({
   imports: [
     TypeOrmModule.forFeature([EmailLog, NotificationPreference]),
-    NotificationsModule,
+    forwardRef(() => NotificationsModule),
   ],
   providers: [EmailTemplateService, EmailService, EmailQueueService],
   controllers: [EmailController],

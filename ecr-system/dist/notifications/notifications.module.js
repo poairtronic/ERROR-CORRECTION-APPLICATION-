@@ -16,12 +16,16 @@ const notifications_controller_1 = require("./notifications.controller");
 const notification_listener_1 = require("./notification.listener");
 const notification_retry_cron_1 = require("./notification-retry.cron");
 const notifications_gateway_1 = require("./notifications.gateway");
+const email_module_1 = require("../email/email.module");
 let NotificationsModule = class NotificationsModule {
 };
 exports.NotificationsModule = NotificationsModule;
 exports.NotificationsModule = NotificationsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([notification_entity_1.Notification, user_entity_1.User])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([notification_entity_1.Notification, user_entity_1.User]),
+            (0, common_1.forwardRef)(() => email_module_1.EmailModule),
+        ],
         controllers: [notifications_controller_1.NotificationsController],
         providers: [
             notifications_service_1.NotificationsService,
