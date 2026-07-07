@@ -57,7 +57,7 @@ __decorate([
 ], Notification.prototype, "read", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: 'enum',
+        type: 'simple-enum',
         enum: report_status_enum_1.NotificationStatus,
         default: report_status_enum_1.NotificationStatus.QUEUED,
     }),
