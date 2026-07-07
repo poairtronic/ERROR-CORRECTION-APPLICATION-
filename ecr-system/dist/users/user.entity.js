@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const typeorm_1 = require("typeorm");
 const role_enum_1 = require("../common/enums/role.enum");
+const notification_preference_entity_1 = require("../email/entities/notification-preference.entity");
 let User = class User {
 };
 exports.User = User;
@@ -55,6 +56,10 @@ __decorate([
     (0, typeorm_1.UpdateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "updatedAt", void 0);
+__decorate([
+    (0, typeorm_1.OneToOne)(() => notification_preference_entity_1.NotificationPreference, (pref) => pref.user, { cascade: true }),
+    __metadata("design:type", notification_preference_entity_1.NotificationPreference)
+], User.prototype, "notificationPreference", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

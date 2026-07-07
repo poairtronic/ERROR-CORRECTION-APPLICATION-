@@ -16,6 +16,8 @@ import { SalaryDeductionModule } from './salary-deduction/salary-deduction.modul
 import { ImageUploadModule } from './image-upload/image-upload.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 
+import { EmailModule } from './email/email.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -41,6 +43,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     SalaryDeductionModule,
     ImageUploadModule,
     AnalyticsModule,
+    EmailModule,
   ],
 })
 export class AppModule {}

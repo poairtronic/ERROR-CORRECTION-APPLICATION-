@@ -4,8 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToOne,
 } from 'typeorm';
 import { Role } from '../common/enums/role.enum';
+import { NotificationPreference } from '../email/entities/notification-preference.entity';
 
 @Entity('users')
 export class User {
@@ -39,4 +41,7 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToOne(() => NotificationPreference, (pref) => pref.user, { cascade: true })
+  notificationPreference: NotificationPreference;
 }
