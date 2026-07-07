@@ -97,6 +97,7 @@ __decorate([
 ], NotificationsGateway.prototype, "handleAcknowledge", null);
 exports.NotificationsGateway = NotificationsGateway = NotificationsGateway_1 = __decorate([
     (0, websockets_1.WebSocketGateway)({ cors: { origin: '*' } }),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
     __metadata("design:paramtypes", [jwt_1.JwtService,
         socket_registry_service_1.SocketRegistryService,
         notifications_service_1.NotificationsService])

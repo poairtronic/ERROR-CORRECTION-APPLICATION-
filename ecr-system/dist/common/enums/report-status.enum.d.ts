@@ -36,7 +36,8 @@ export declare enum RecoveryStatus {
 }
 export declare enum NotificationChannel {
     EMAIL = "EMAIL",
-    APP = "APP"
+    APP = "APP",
+    APP_AND_EMAIL = "APP_AND_EMAIL"
 }
 export declare enum NotificationStatus {
     QUEUED = "QUEUED",

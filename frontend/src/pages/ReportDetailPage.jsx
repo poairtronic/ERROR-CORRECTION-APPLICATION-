@@ -37,6 +37,11 @@ export default function ReportDetailPage() {
     queryFn: async () => (await api.get(`/defect-reports/${id}`)).data
   });
 
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['report-notifications', id],
+    queryFn: async () => (await api.get(`/notifications/report/${id}`)).data
+  });
+
   const actionMutation = useMutation({
     mutationFn: async ({ endpoint, body }) => api.patch(`/defect-reports/${id}/${endpoint}`, body),
     onSuccess: () => {
@@ -209,6 +214,34 @@ export default function ReportDetailPage() {
               </div>
             ) : (
               <div className="empty-state"><div className="icon">📝</div><p>No audit trail yet.</p></div>
+            )}
+          </div>
+
+          <div className="card" style={{ marginTop: 20 }}>
+            <div className="card-title">Notification Timeline</div>
+            {notifications.length > 0 ? (
+              <div className="timeline">
+                {notifications.map((notif, i) => (
+                  <div key={i} className="timeline-item">
+                    <div className="timeline-line">
+                      <div className="timeline-dot" style={{ background: notif.status === 'DELIVERED' ? '#4ade80' : notif.status === 'FAILED' ? '#f87171' : 'var(--primary)' }} />
+                      <div className="timeline-line-bar" />
+                    </div>
+                    <div className="timeline-content">
+                      <div className="timeline-event" style={{ fontSize: '13px' }}>
+                        {notif.type} 
+                        <span style={{ marginLeft: 8, fontSize: '11px', fontWeight: 'normal', color: 'var(--text-muted)' }}>
+                          Status: {notif.status} | Read: {notif.read ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      <div className="timeline-time">{new Date(notif.createdAt).toLocaleString('en-IN')}</div>
+                      <div className="timeline-note" style={{ fontSize: '12px' }}>{notif.message}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state"><div className="icon">📭</div><p>No notifications recorded.</p></div>
             )}
           </div>
         </div>

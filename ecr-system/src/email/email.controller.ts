@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { EmailService } from './services/email.service';
 import { NotificationEvent } from './enums/notification-event.enum';
 
@@ -6,11 +6,15 @@ import { NotificationEvent } from './enums/notification-event.enum';
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}
 
+  @Get('logs')
+  getLogs() {
+    return this.emailService.findAll();
+  }
+
   @Post('test')
   @HttpCode(HttpStatus.OK)
   async sendTestEmail(@Body('to') to: string) {
     const email = await this.emailService.queueEmail({
-      recipientId: 'test-user-id',
       recipient: to || 'test@example.com',
       subject: 'Test Notification from ECR',
       event: NotificationEvent.REPORT_CREATED,
@@ -26,7 +30,6 @@ export class EmailController {
   @HttpCode(HttpStatus.OK)
   async sendTestHtmlEmail(@Body('to') to: string) {
     const email = await this.emailService.queueEmail({
-      recipientId: 'test-user-id',
       recipient: to || 'test@example.com',
       subject: 'HTML Test Notification',
       event: NotificationEvent.REPORT_UPDATED,

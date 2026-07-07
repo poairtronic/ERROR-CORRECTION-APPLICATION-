@@ -57,6 +57,9 @@ export default function Sidebar() {
             <NavLink to="/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
               <FiFileText className="icon" /> System Audit
             </NavLink>
+            <NavLink to="/admin/emails" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+              <FiBell className="icon" /> Email Queue
+            </NavLink>
           </>
         )}
       </nav>

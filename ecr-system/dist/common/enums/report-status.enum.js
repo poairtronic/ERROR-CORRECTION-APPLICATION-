@@ -46,6 +46,7 @@ var NotificationChannel;
 (function (NotificationChannel) {
     NotificationChannel["EMAIL"] = "EMAIL";
     NotificationChannel["APP"] = "APP";
+    NotificationChannel["APP_AND_EMAIL"] = "APP_AND_EMAIL";
 })(NotificationChannel || (exports.NotificationChannel = NotificationChannel = {}));
 var NotificationStatus;
 (function (NotificationStatus) {

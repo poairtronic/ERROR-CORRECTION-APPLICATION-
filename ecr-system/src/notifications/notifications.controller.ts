@@ -13,6 +13,11 @@ export class NotificationsController {
     return this.service.findForUser(user.id, unread === 'true');
   }
 
+  @Get('report/:reportId')
+  findByReport(@Param('reportId') reportId: string) {
+    return this.service.findByReport(reportId);
+  }
+
   @Patch(':id/read')
   markRead(@Param('id') id: string) {
     return this.service.markRead(id);

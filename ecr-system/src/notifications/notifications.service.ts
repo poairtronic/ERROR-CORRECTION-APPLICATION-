@@ -1,41 +1,39 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 import { Notification } from './notification.entity';
 import {
   NotificationChannel,
   NotificationStatus,
 } from '../common/enums/report-status.enum';
+import { EmailService } from '../email/services/email.service';
+import { NotificationsGateway } from './notifications.gateway';
+import { NotificationEvent } from '../email/enums/notification-event.enum';
+import { TemplateData } from '../email/services/email-template.service';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private transporter: nodemailer.Transporter;
 
   constructor(
     @InjectRepository(Notification) private repo: Repository<Notification>,
     private config: ConfigService,
-  ) {
-    this.transporter = nodemailer.createTransport({
-      host: this.config.get('SMTP_HOST'),
-      port: Number(this.config.get('SMTP_PORT')),
-      auth: {
-        user: this.config.get('SMTP_USER'),
-        pass: this.config.get('SMTP_PASS'),
-      },
-    });
-  }
+    @Inject(forwardRef(() => EmailService)) private emailService: EmailService,
+    @Inject(forwardRef(() => NotificationsGateway)) private gateway: NotificationsGateway,
+  ) {}
 
-  /** Creates the notification row and attempts immediate delivery. */
-  async send(params: {
+  /** Creates the notification row and queues email + websocket push. */
+  async create(params: {
     userId: string;
     userEmail: string;
     reportId?: string;
     channel: NotificationChannel;
     type: string;
     message: string;
+    event: NotificationEvent;
+    templateData: TemplateData;
+    subject: string;
   }) {
     const notification = await this.repo.save(
       this.repo.create({
@@ -44,54 +42,56 @@ export class NotificationsService {
         channel: params.channel,
         type: params.type,
         message: params.message,
+        status: NotificationStatus.QUEUED,
+        attemptCount: 1,
       }),
     );
 
-    await this.attemptDelivery(notification, params.userEmail);
+    // 1. Push WebSocket
+    try {
+      await this.gateway.pushToUser(params.userId, {
+        id: notification.id,
+        type: params.event,
+        title: params.subject,
+        message: params.message,
+        reportId: params.reportId,
+      });
+      notification.status = NotificationStatus.SENT;
+      notification.sentAt = new Date();
+      await this.repo.save(notification);
+    } catch (err) {
+      this.logger.warn(`Failed to emit websocket notification: ${err.message}`);
+    }
+
+    // 2. Queue Email
+    if (params.channel === NotificationChannel.EMAIL || params.channel === NotificationChannel.APP_AND_EMAIL) {
+      await this.emailService.queueEmail({
+        notificationId: notification.id,
+        recipient: params.userEmail,
+        subject: params.subject,
+        event: params.event,
+        templateData: params.templateData,
+        relatedReportId: params.reportId,
+      });
+    }
+
     return notification;
   }
 
-  private async attemptDelivery(notification: Notification, email?: string) {
-    try {
-      if (notification.channel === NotificationChannel.EMAIL && email) {
-        await this.transporter.sendMail({
-          from: this.config.get('EMAIL_FROM'),
-          to: email,
-          subject: `ECR Notification: ${notification.type}`,
-          text: notification.message,
-        });
-      }
-      // APP channel delivery (Socket.IO emit) is handled by the gateway listener separately;
-      // marking SENT here just means "queued for socket push", actual push is fire-and-forget.
-      notification.status = NotificationStatus.SENT;
-      notification.sentAt = new Date();
-    } catch (err) {
-      this.logger.warn(`Notification ${notification.id} delivery failed: ${err.message}`);
-      notification.status = NotificationStatus.FAILED;
-    }
-    notification.attemptCount += 1;
-    await this.repo.save(notification);
-  }
-
-  /** Called by the cron job every N minutes to retry FAILED notifications. */
   async retryFailed(maxAttempts = 3) {
-    const failed = await this.repo.find({
-      where: { status: NotificationStatus.FAILED },
-      relations: ['user'],
-      take: 50,
-    });
-
-    for (const n of failed) {
-      if (n.attemptCount >= maxAttempts) continue;
-      await this.attemptDelivery(n, n.user?.email);
-    }
-    return { retried: failed.length };
+    // Retry is now handled primarily by EmailQueueService for emails.
+    // For websockets, offline sync fetches missed notifications.
+    return { retried: 0 };
   }
 
   findForUser(userId: string, unreadOnly = false) {
     const where: any = { userId };
     if (unreadOnly) where.read = false;
     return this.repo.find({ where, order: { createdAt: 'DESC' } });
+  }
+
+  findByReport(reportId: string) {
+    return this.repo.find({ where: { reportId }, order: { createdAt: 'ASC' } });
   }
 
   async markRead(id: string) {

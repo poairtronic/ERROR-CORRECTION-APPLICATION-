@@ -24,6 +24,9 @@ let NotificationsController = class NotificationsController {
     findMine(user, unread) {
         return this.service.findForUser(user.id, unread === 'true');
     }
+    findByReport(reportId) {
+        return this.service.findByReport(reportId);
+    }
     markRead(id) {
         return this.service.markRead(id);
     }
@@ -37,6 +40,13 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", void 0)
 ], NotificationsController.prototype, "findMine", null);
+__decorate([
+    (0, common_1.Get)('report/:reportId'),
+    __param(0, (0, common_1.Param)('reportId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], NotificationsController.prototype, "findByReport", null);
 __decorate([
     (0, common_1.Patch)(':id/read'),
     __param(0, (0, common_1.Param)('id')),

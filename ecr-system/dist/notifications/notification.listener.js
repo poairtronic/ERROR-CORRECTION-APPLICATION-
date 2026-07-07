@@ -23,14 +23,12 @@ const defect_report_entity_1 = require("../defect-reports/defect-report.entity")
 const role_enum_1 = require("../common/enums/role.enum");
 const report_status_enum_1 = require("../common/enums/report-status.enum");
 const notifications_service_1 = require("./notifications.service");
-const email_service_1 = require("../email/services/email.service");
 const notification_event_enum_1 = require("../email/enums/notification-event.enum");
 let NotificationListener = NotificationListener_1 = class NotificationListener {
-    constructor(usersRepo, reportsRepo, notificationsService, emailService) {
+    constructor(usersRepo, reportsRepo, notificationsService) {
         this.usersRepo = usersRepo;
         this.reportsRepo = reportsRepo;
         this.notificationsService = notificationsService;
-        this.emailService = emailService;
         this.logger = new common_1.Logger(NotificationListener_1.name);
     }
     async fetchReportWithRelations(reportId) {
@@ -77,12 +75,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
             'Submission Time': report.createdAt.toISOString(),
         };
         for (const sm of smUsers) {
-            await this.emailService.queueEmail({
-                recipientId: sm.id,
-                recipient: sm.email,
-                subject: 'New ECR Pending Review',
+            await this.notificationsService.create({
+                userId: sm.id,
+                userEmail: sm.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'New ECR Pending Review',
+                message: 'A new Defect Report has been submitted by an Inspector and requires your review.',
                 event: notification_event_enum_1.NotificationEvent.REPORT_UPDATED,
-                relatedReportId: report.id,
+                subject: 'New ECR Pending Review',
+                reportId: report.id,
                 templateData: {
                     title: 'New Defect Report Pending Your Review',
                     message: 'A new Defect Report has been submitted by an Inspector and requires your review.',
@@ -106,12 +107,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
             'SM Notes': report.smReview?.decisionNote || 'None',
         };
         for (const gm of gmUsers) {
-            await this.emailService.queueEmail({
-                recipientId: gm.id,
-                recipient: gm.email,
-                subject: 'Pending GM Approval',
+            await this.notificationsService.create({
+                userId: gm.id,
+                userEmail: gm.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'Pending GM Approval',
+                message: 'The Senior Manager has approved this report and forwarded it for your final decision.',
                 event: notification_event_enum_1.NotificationEvent.REPORT_UPDATED,
-                relatedReportId: report.id,
+                subject: 'Pending GM Approval',
+                reportId: report.id,
                 templateData: {
                     title: 'Report Pending Final Approval',
                     message: 'The Senior Manager has approved this report and forwarded it for your final decision.',
@@ -134,12 +138,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
             'Remarks': report.gmApproval?.remarks || 'None',
         };
         for (const sales of salesUsers) {
-            await this.emailService.queueEmail({
-                recipientId: sales.id,
-                recipient: sales.email,
-                subject: `Approved Report: ${report.reportNo}`,
+            await this.notificationsService.create({
+                userId: sales.id,
+                userEmail: sales.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'Report Approved',
+                message: 'A defect report has been fully approved by the General Manager.',
                 event: notification_event_enum_1.NotificationEvent.REPORT_APPROVED,
-                relatedReportId: report.id,
+                subject: `Approved Report: ${report.reportNo}`,
+                reportId: report.id,
                 templateData: {
                     title: 'Defect Report Approved',
                     message: 'A defect report has been fully approved by the General Manager.',
@@ -158,12 +165,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
             'Rework Information': report.defectDescription,
         };
         for (const store of storeUsers) {
-            await this.emailService.queueEmail({
-                recipientId: store.id,
-                recipient: store.email,
-                subject: `Action Required - Approved Report: ${report.reportNo}`,
+            await this.notificationsService.create({
+                userId: store.id,
+                userEmail: store.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'Action Required',
+                message: 'A defect report has been approved and requires components to be issued.',
                 event: notification_event_enum_1.NotificationEvent.REPORT_APPROVED,
-                relatedReportId: report.id,
+                subject: `Action Required - Approved Report: ${report.reportNo}`,
+                reportId: report.id,
                 templateData: {
                     title: 'Component Issue Request',
                     message: 'A defect report has been approved and requires components to be issued.',
@@ -195,12 +205,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
                 'Action Required': 'Review rejection and take corrective action if needed.',
             };
             for (const user of usersToNotify) {
-                await this.emailService.queueEmail({
-                    recipientId: user.id,
-                    recipient: user.email,
-                    subject: `Report Rejected: ${report.reportNo}`,
+                await this.notificationsService.create({
+                    userId: user.id,
+                    userEmail: user.email,
+                    channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                    type: 'Report Rejected',
+                    message: 'Your report was rejected during the final approval stage.',
                     event: notification_event_enum_1.NotificationEvent.REPORT_REJECTED,
-                    relatedReportId: report.id,
+                    subject: `Report Rejected: ${report.reportNo}`,
+                    reportId: report.id,
                     templateData: {
                         title: 'Report Rejected',
                         message: 'Your report was rejected during the final approval stage.',
@@ -217,12 +230,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
             const inspectorId = report.inspectionDetail?.inspectorId || report.raisedById;
             const inspector = await this.usersRepo.findOne({ where: { id: inspectorId } });
             if (inspector) {
-                await this.emailService.queueEmail({
-                    recipientId: inspector.id,
-                    recipient: inspector.email,
-                    subject: `Report Rejected: ${report.reportNo}`,
+                await this.notificationsService.create({
+                    userId: inspector.id,
+                    userEmail: inspector.email,
+                    channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                    type: 'Report Rejected',
+                    message: 'Your report was rejected during Senior Manager review.',
                     event: notification_event_enum_1.NotificationEvent.REPORT_REJECTED,
-                    relatedReportId: report.id,
+                    subject: `Report Rejected: ${report.reportNo}`,
+                    reportId: report.id,
                     templateData: {
                         title: 'Report Rejected',
                         message: 'Your report was rejected during Senior Manager review.',
@@ -245,12 +261,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
         if (!user)
             return;
         const report = await this.fetchReportWithRelations(payload.reportId);
-        await this.emailService.queueEmail({
-            recipientId: user.id,
-            recipient: user.email,
-            subject: 'Components Issued',
+        await this.notificationsService.create({
+            userId: user.id,
+            userEmail: user.email,
+            channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+            type: 'Components Issued',
+            message: `Components have been issued to you for Defect Report ${report?.reportNo || payload.reportId}.`,
             event: notification_event_enum_1.NotificationEvent.COMPONENT_ISSUED,
-            relatedReportId: payload.reportId,
+            subject: 'Components Issued',
+            reportId: payload.reportId,
             templateData: {
                 title: 'Components Issued for Report',
                 message: `Components have been issued to you for Defect Report ${report?.reportNo || payload.reportId}.`,
@@ -269,12 +288,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
     async handleSalaryDeductionCreated(payload) {
         const adminUsers = await this.usersRepo.find({ where: { role: role_enum_1.Role.ADMIN, isActive: true } });
         for (const admin of adminUsers) {
-            await this.emailService.queueEmail({
-                recipientId: admin.id,
-                recipient: admin.email,
-                subject: 'New Salary Deduction Logged',
+            await this.notificationsService.create({
+                userId: admin.id,
+                userEmail: admin.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'Salary Deduction',
+                message: 'A new salary deduction has been recorded in the system.',
                 event: notification_event_enum_1.NotificationEvent.SALARY_DEDUCTION,
-                relatedReportId: payload.deductionId,
+                subject: 'New Salary Deduction Logged',
+                reportId: payload.deductionId,
                 templateData: {
                     title: 'Salary Deduction Record',
                     message: 'A new salary deduction has been recorded in the system.',
@@ -291,12 +313,15 @@ let NotificationListener = NotificationListener_1 = class NotificationListener {
         const adminUsers = await this.usersRepo.find({ where: { role: role_enum_1.Role.ADMIN, isActive: true } });
         const report = await this.fetchReportWithRelations(payload.reportId);
         for (const admin of adminUsers) {
-            await this.emailService.queueEmail({
-                recipientId: admin.id,
-                recipient: admin.email,
-                subject: `Vendor Fault Logged: ${report?.reportNo || payload.reportId}`,
+            await this.notificationsService.create({
+                userId: admin.id,
+                userEmail: admin.email,
+                channel: report_status_enum_1.NotificationChannel.APP_AND_EMAIL,
+                type: 'Vendor Fault',
+                message: 'A vendor fault has been formally recorded and requires attention.',
                 event: notification_event_enum_1.NotificationEvent.VENDOR_FAULT,
-                relatedReportId: payload.reportId,
+                subject: `Vendor Fault Logged: ${report?.reportNo || payload.reportId}`,
+                reportId: payload.reportId,
                 templateData: {
                     title: 'Vendor Fault Recorded',
                     message: 'A vendor fault has been formally recorded and requires attention.',
@@ -343,10 +368,8 @@ exports.NotificationListener = NotificationListener = NotificationListener_1 = _
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(1, (0, typeorm_1.InjectRepository)(defect_report_entity_1.DefectReport)),
-    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => email_service_1.EmailService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        notifications_service_1.NotificationsService,
-        email_service_1.EmailService])
+        notifications_service_1.NotificationsService])
 ], NotificationListener);
 //# sourceMappingURL=notification.listener.js.map

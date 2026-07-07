@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject, forwardRef } from '@nestjs/common';
 import { SocketRegistryService } from './socket-registry.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationStatus } from '../common/enums/report-status.enum';
@@ -23,7 +23,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   constructor(
     private readonly jwtService: JwtService,
     private readonly registry: SocketRegistryService,
-    private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => NotificationsService)) private readonly notificationsService: NotificationsService,
   ) {}
 
   async handleConnection(client: Socket) {

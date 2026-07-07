@@ -42,6 +42,7 @@ export enum RecoveryStatus {
 export enum NotificationChannel {
   EMAIL = 'EMAIL',
   APP = 'APP',
+  APP_AND_EMAIL = 'APP_AND_EMAIL',
 }
 
 export enum NotificationStatus {

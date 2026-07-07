@@ -7,10 +7,9 @@ import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
 import { EmailTemplateService, TemplateData } from './email-template.service';
-import { NotificationsGateway } from '../../notifications/notifications.gateway';
 
 export interface SendEmailOptions {
-  recipientId: string;
+  notificationId?: string;
   recipient: string;
   cc?: string;
   bcc?: string;
@@ -29,7 +28,6 @@ export class EmailService implements OnModuleInit {
     @InjectRepository(EmailLog) private emailLogRepo: Repository<EmailLog>,
     private configService: ConfigService,
     private templateService: EmailTemplateService,
-    private notificationsGateway: NotificationsGateway, // Reuse existing websocket
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
@@ -47,7 +45,10 @@ export class EmailService implements OnModuleInit {
       await this.transporter.verify();
       this.logger.log('SMTP Connection verified successfully');
     } catch (error) {
-      this.logger.error('SMTP Connection failed on startup', error.message);
+      this.logger.error(
+        `SMTP Connection failed on startup. Host: ${this.configService.get('SMTP_HOST')}, Port: ${this.configService.get('SMTP_PORT')}, User: ${this.configService.get('SMTP_USER')}`,
+        error.message,
+      );
       // We don't throw here to ensure application starts even if SMTP is down
     }
   }
@@ -58,7 +59,6 @@ export class EmailService implements OnModuleInit {
 
   /**
    * Queue an email to be sent asynchronously.
-   * Emits a websocket event concurrently (reusing existing infra).
    */
   async queueEmail(options: SendEmailOptions): Promise<EmailLog> {
     const htmlContent = this.templateService.renderHtml(options.templateData);
@@ -73,24 +73,15 @@ export class EmailService implements OnModuleInit {
       event: options.event,
       status: EmailStatus.PENDING,
       relatedReportId: options.relatedReportId,
+      notificationId: options.notificationId,
     });
 
     const savedLog = await this.emailLogRepo.save(emailLog);
 
-    // Reuse existing Websocket for in-app notification
-    try {
-      await this.notificationsGateway.pushToUser(options.recipientId, {
-        id: savedLog.id, // Pass ID for ACK
-        type: options.event,
-        title: options.subject,
-        message: options.templateData.message,
-        recipient: options.recipient,
-        reportId: options.relatedReportId,
-      });
-    } catch (error) {
-      this.logger.warn(`Failed to emit websocket notification: ${error.message}`);
-    }
-
     return savedLog;
+  }
+
+  findAll() {
+    return this.emailLogRepo.find({ order: { createdAt: 'DESC' } });
   }
 }
