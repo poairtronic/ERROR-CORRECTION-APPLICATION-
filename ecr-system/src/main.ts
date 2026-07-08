@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import * as cookieParser from 'cookie-parser';
+import * as compression from 'compression';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -16,12 +17,15 @@ async function bootstrap() {
   // Security Headers
   app.use(helmet());
 
+  // Performance
+  app.use(compression());
+
   // Global Error Handler to sanitize stack traces
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const frontendUrl = config.get('FRONTEND_URL') ?? 'http://localhost:5173';
+  // CORS is only needed for local development. Production is same-origin.
   app.enableCors({
-    origin: frontendUrl,
+    origin: 'http://localhost:5173',
     credentials: true,
   });
 

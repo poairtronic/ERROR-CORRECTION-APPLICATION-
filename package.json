@@ -1,0 +1,13 @@
+{
+  "name": "ecr-monolithic",
+  "version": "1.0.0",
+  "description": "Monolithic deployment for ECR System",
+  "scripts": {
+    "postinstall": "npm run install:all",
+    "install:all": "npm --prefix frontend install && npm --prefix ecr-system install",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix ecr-system run build",
+    "start": "npm --prefix ecr-system run start:prod"
+  }
+}

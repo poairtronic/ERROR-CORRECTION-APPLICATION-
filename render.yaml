@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ecr-system-web
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      # Note: FRONTEND_URL is no longer needed since it's a monolithic deployment.

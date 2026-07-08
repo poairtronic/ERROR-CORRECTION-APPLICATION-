@@ -12,6 +12,8 @@ const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const event_emitter_1 = require("@nestjs/event-emitter");
 const schedule_1 = require("@nestjs/schedule");
+const serve_static_1 = require("@nestjs/serve-static");
+const path_1 = require("path");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const defect_reports_module_1 = require("./defect-reports/defect-reports.module");
@@ -32,6 +34,10 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({ isGlobal: true }),
             event_emitter_1.EventEmitterModule.forRoot(),
             schedule_1.ScheduleModule.forRoot(),
+            serve_static_1.ServeStaticModule.forRoot({
+                rootPath: (0, path_1.join)(__dirname, '..', 'public'),
+                exclude: ['/api/(.*)'],
+            }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
