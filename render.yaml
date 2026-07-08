@@ -2,7 +2,9 @@ services:
   - type: web
     name: ecr-system-web
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: |
+      npm ci
+      npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV

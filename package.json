@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Monolithic deployment for ECR System",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "workspaces": [
     "frontend",
     "ecr-system"
