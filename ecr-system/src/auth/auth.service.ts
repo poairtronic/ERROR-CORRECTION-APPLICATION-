@@ -40,11 +40,11 @@ export class AuthService {
     });
 
     // Log the successful login silently
-    this.loginHistoryRepo.save({
-      user: { id: user.id },
-      ipAddress: ipAddress || null,
-      userAgent: userAgent || null,
-    }).catch(err => console.error('Failed to log login history:', err));
+    const history = new LoginHistory();
+    history.userId = user.id;
+    history.ipAddress = ipAddress || '';
+    history.userAgent = userAgent || '';
+    this.loginHistoryRepo.save(history).catch(err => console.error('Failed to log login history:', err));
 
     return {
       id: user.id,

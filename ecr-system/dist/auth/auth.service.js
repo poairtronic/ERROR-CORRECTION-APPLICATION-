@@ -45,11 +45,11 @@ let AuthService = class AuthService {
             sameSite: 'lax',
             maxAge: 8 * 60 * 60 * 1000,
         });
-        this.loginHistoryRepo.save({
-            user: { id: user.id },
-            ipAddress: ipAddress || null,
-            userAgent: userAgent || null,
-        }).catch(err => console.error('Failed to log login history:', err));
+        const history = new login_history_entity_1.LoginHistory();
+        history.userId = user.id;
+        history.ipAddress = ipAddress || '';
+        history.userAgent = userAgent || '';
+        this.loginHistoryRepo.save(history).catch(err => console.error('Failed to log login history:', err));
         return {
             id: user.id,
             username: user.name,
