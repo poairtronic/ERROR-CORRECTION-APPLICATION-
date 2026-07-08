@@ -7,7 +7,14 @@ node_modules/
 
 # Build output
 dist/
+build/
 
 
 # SQLite databases
 *.sqlite
+*sqlite*
+
+# Build and Testing
+build/
+coverage/
+logs/
