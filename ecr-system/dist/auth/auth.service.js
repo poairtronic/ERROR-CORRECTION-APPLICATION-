@@ -19,12 +19,14 @@ const typeorm_2 = require("typeorm");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = require("bcrypt");
 const user_entity_1 = require("../users/user.entity");
+const login_history_entity_1 = require("../users/login-history.entity");
 let AuthService = class AuthService {
-    constructor(usersRepo, jwtService) {
+    constructor(usersRepo, loginHistoryRepo, jwtService) {
         this.usersRepo = usersRepo;
+        this.loginHistoryRepo = loginHistoryRepo;
         this.jwtService = jwtService;
     }
-    async login(username, password, res) {
+    async login(username, password, res, ipAddress, userAgent) {
         const user = await this.usersRepo
             .createQueryBuilder('user')
             .addSelect('user.passwordHash')
@@ -43,6 +45,11 @@ let AuthService = class AuthService {
             sameSite: 'lax',
             maxAge: 8 * 60 * 60 * 1000,
         });
+        this.loginHistoryRepo.save({
+            user: { id: user.id },
+            ipAddress: ipAddress || null,
+            userAgent: userAgent || null,
+        }).catch(err => console.error('Failed to log login history:', err));
         return {
             id: user.id,
             username: user.name,
@@ -69,7 +76,9 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(1, (0, typeorm_1.InjectRepository)(login_history_entity_1.LoginHistory)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         jwt_1.JwtService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

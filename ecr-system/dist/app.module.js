@@ -36,8 +36,9 @@ exports.AppModule = AppModule = __decorate([
                 imports: [config_1.ConfigModule],
                 inject: [config_1.ConfigService],
                 useFactory: (config) => ({
-                    type: 'sqlite',
-                    database: 'ecr_db.sqlite',
+                    type: 'postgres',
+                    url: process.env.DATABASE_URL,
+                    ssl: { rejectUnauthorized: false },
                     autoLoadEntities: true,
                     synchronize: config.get('NODE_ENV') !== 'production',
                 }),

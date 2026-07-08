@@ -6,7 +6,7 @@ export declare class AuthController {
     login(body: {
         username: string;
         password: string;
-    }, res: Response): Promise<{
+    }, res: Response, req: Request): Promise<{
         id: string;
         username: string;
         role: string;

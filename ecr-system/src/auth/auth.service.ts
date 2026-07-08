@@ -4,16 +4,18 @@ import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
+import { LoginHistory } from '../users/login-history.entity';
 import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
+    @InjectRepository(LoginHistory) private loginHistoryRepo: Repository<LoginHistory>,
     private jwtService: JwtService,
   ) {}
 
-  async login(username: string, password: string, res: Response) {
+  async login(username: string, password: string, res: Response, ipAddress?: string, userAgent?: string) {
     // Accept login by email OR name field (username)
     const user = await this.usersRepo
       .createQueryBuilder('user')
@@ -36,6 +38,13 @@ export class AuthService {
       sameSite: 'lax',
       maxAge: 8 * 60 * 60 * 1000, // 8 hours
     });
+
+    // Log the successful login silently
+    this.loginHistoryRepo.save({
+      user: { id: user.id },
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+    }).catch(err => console.error('Failed to log login history:', err));
 
     return {
       id: user.id,

@@ -15,4 +15,5 @@ export declare class Notification {
     attemptCount: number;
     sentAt: Date;
     createdAt: Date;
+    updatedAt: Date;
 }

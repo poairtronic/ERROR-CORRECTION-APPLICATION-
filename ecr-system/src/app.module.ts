@@ -27,8 +27,9 @@ import { EmailModule } from './email/email.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'sqlite',
-        database: 'ecr_db.sqlite',
+        type: 'postgres',
+        url: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
         autoLoadEntities: true,
         synchronize: config.get('NODE_ENV') !== 'production', // dev only; use migrations in prod
       }),

@@ -12,8 +12,9 @@ export class AuthController {
   login(
     @Body() body: { username: string; password: string },
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    return this.authService.login(body.username, body.password, res);
+    return this.authService.login(body.username, body.password, res, req.ip, req.headers['user-agent']);
   }
 
   @Get('me')

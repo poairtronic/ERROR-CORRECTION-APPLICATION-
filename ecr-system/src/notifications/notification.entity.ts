@@ -5,6 +5,8 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../users/user.entity';
 import { DefectReport } from '../defect-reports/defect-report.entity';
@@ -41,6 +43,7 @@ export class Notification {
   @Column({ type: 'text' })
   message: string;
 
+  @Index()
   @Column({ default: false })
   read: boolean;
 
@@ -59,4 +62,7 @@ export class Notification {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

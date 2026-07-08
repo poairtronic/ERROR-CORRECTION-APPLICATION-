@@ -95,7 +95,7 @@ export class DefectReport {
   @Column({ nullable: true })
   componentsIssuedById: string;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   componentsIssuedAt: Date;
 
   @Column({ type: 'text', nullable: true })

@@ -1,0 +1,493 @@
+{
+  "version": "PostgreSQL 18.4 (eaf151e) on aarch64-unknown-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+  "tables": {
+    "production_log": {
+      "count": "0"
+    },
+    "velan_rows": {
+      "count": "0"
+    },
+    "velan_live_rows": {
+      "count": "0"
+    },
+    "sync_logs": {
+      "count": "0"
+    },
+    "alert_rules": {
+      "count": "7"
+    },
+    "alerts": {
+      "count": "0"
+    },
+    "operational_timeline": {
+      "count": "0"
+    },
+    "cut_pieces": {
+      "count": "0"
+    },
+    "cut_piece_inventory": {
+      "count": "0"
+    },
+    "long_bars": {
+      "count": "0"
+    },
+    "fine_blanks": {
+      "count": "0"
+    },
+    "fine_blank_inventory": {
+      "count": "0"
+    },
+    "fine_blank_production_log": {
+      "count": "0"
+    },
+    "playing_with_neon": {
+      "count": "10"
+    },
+    "migrations": {
+      "count": "1"
+    },
+    "report_sequence": {
+      "count": "1"
+    },
+    "error_types": {
+      "count": "0"
+    },
+    "cost_rates": {
+      "count": "0"
+    },
+    "components": {
+      "count": "0"
+    },
+    "email_logs": {
+      "count": "15"
+    },
+    "users": {
+      "count": "9"
+    },
+    "notification_preferences": {
+      "count": "0"
+    },
+    "defect_reports": {
+      "count": "13"
+    },
+    "inspection_details": {
+      "count": "8"
+    },
+    "sm_review": {
+      "count": "5"
+    },
+    "gm_approval": {
+      "count": "5"
+    },
+    "component_issue": {
+      "count": "0"
+    },
+    "audit_log": {
+      "count": "32"
+    },
+    "vendor_fault_log": {
+      "count": "0"
+    },
+    "vendors": {
+      "count": "1"
+    },
+    "salary_deduction": {
+      "count": "0"
+    },
+    "notifications": {
+      "count": "36"
+    }
+  },
+  "indexes": [
+    {
+      "tablename": "velan_rows",
+      "indexname": "velan_rows_pkey",
+      "indexdef": "CREATE UNIQUE INDEX velan_rows_pkey ON public.velan_rows USING btree (id)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "velan_rows_row_key_key",
+      "indexdef": "CREATE UNIQUE INDEX velan_rows_row_key_key ON public.velan_rows USING btree (row_key)"
+    },
+    {
+      "tablename": "velan_live_rows",
+      "indexname": "velan_live_rows_pkey",
+      "indexdef": "CREATE UNIQUE INDEX velan_live_rows_pkey ON public.velan_live_rows USING btree (id)"
+    },
+    {
+      "tablename": "velan_live_rows",
+      "indexname": "velan_live_rows_row_key_key",
+      "indexdef": "CREATE UNIQUE INDEX velan_live_rows_row_key_key ON public.velan_live_rows USING btree (row_key)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_sc",
+      "indexdef": "CREATE INDEX idx_velan_rows_sc ON public.velan_rows USING gin (((data ->> 'sc'::text)) gin_trgm_ops)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_po",
+      "indexdef": "CREATE INDEX idx_velan_rows_po ON public.velan_rows USING gin (((data ->> 'po'::text)) gin_trgm_ops)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_prod",
+      "indexdef": "CREATE INDEX idx_velan_rows_prod ON public.velan_rows USING gin (((data ->> 'product'::text)) gin_trgm_ops)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_stage",
+      "indexdef": "CREATE INDEX idx_velan_rows_stage ON public.velan_rows USING gin (((data ->> 'currentStage'::text)) gin_trgm_ops)"
+    },
+    {
+      "tablename": "sync_logs",
+      "indexname": "sync_logs_pkey",
+      "indexdef": "CREATE UNIQUE INDEX sync_logs_pkey ON public.sync_logs USING btree (id)"
+    },
+    {
+      "tablename": "alert_rules",
+      "indexname": "alert_rules_pkey",
+      "indexdef": "CREATE UNIQUE INDEX alert_rules_pkey ON public.alert_rules USING btree (id)"
+    },
+    {
+      "tablename": "alert_rules",
+      "indexname": "alert_rules_rule_key_key",
+      "indexdef": "CREATE UNIQUE INDEX alert_rules_rule_key_key ON public.alert_rules USING btree (rule_key)"
+    },
+    {
+      "tablename": "alerts",
+      "indexname": "alerts_pkey",
+      "indexdef": "CREATE UNIQUE INDEX alerts_pkey ON public.alerts USING btree (id)"
+    },
+    {
+      "tablename": "operational_timeline",
+      "indexname": "operational_timeline_pkey",
+      "indexdef": "CREATE UNIQUE INDEX operational_timeline_pkey ON public.operational_timeline USING btree (id)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_key",
+      "indexdef": "CREATE INDEX idx_velan_rows_key ON public.velan_rows USING btree (row_key)"
+    },
+    {
+      "tablename": "velan_live_rows",
+      "indexname": "idx_velan_live_rows_key",
+      "indexdef": "CREATE INDEX idx_velan_live_rows_key ON public.velan_live_rows USING btree (row_key)"
+    },
+    {
+      "tablename": "alerts",
+      "indexname": "idx_alerts_status",
+      "indexdef": "CREATE INDEX idx_alerts_status ON public.alerts USING btree (status)"
+    },
+    {
+      "tablename": "alerts",
+      "indexname": "idx_alerts_created_at",
+      "indexdef": "CREATE INDEX idx_alerts_created_at ON public.alerts USING btree (created_at DESC)"
+    },
+    {
+      "tablename": "operational_timeline",
+      "indexname": "idx_timeline_created_at",
+      "indexdef": "CREATE INDEX idx_timeline_created_at ON public.operational_timeline USING btree (created_at DESC)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_product",
+      "indexdef": "CREATE INDEX idx_velan_rows_product ON public.velan_rows USING btree (((data ->> 'product'::text)))"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_added_at",
+      "indexdef": "CREATE INDEX idx_velan_rows_added_at ON public.velan_rows USING btree (added_at DESC)"
+    },
+    {
+      "tablename": "velan_rows",
+      "indexname": "idx_velan_rows_data_gin",
+      "indexdef": "CREATE INDEX idx_velan_rows_data_gin ON public.velan_rows USING gin (data)"
+    },
+    {
+      "tablename": "long_bars",
+      "indexname": "long_bars_pkey",
+      "indexdef": "CREATE UNIQUE INDEX long_bars_pkey ON public.long_bars USING btree (id)"
+    },
+    {
+      "tablename": "cut_pieces",
+      "indexname": "cut_pieces_pkey",
+      "indexdef": "CREATE UNIQUE INDEX cut_pieces_pkey ON public.cut_pieces USING btree (id)"
+    },
+    {
+      "tablename": "cut_pieces",
+      "indexname": "cut_pieces_cut_piece_name_key",
+      "indexdef": "CREATE UNIQUE INDEX cut_pieces_cut_piece_name_key ON public.cut_pieces USING btree (cut_piece_name)"
+    },
+    {
+      "tablename": "cut_piece_inventory",
+      "indexname": "cut_piece_inventory_pkey",
+      "indexdef": "CREATE UNIQUE INDEX cut_piece_inventory_pkey ON public.cut_piece_inventory USING btree (id)"
+    },
+    {
+      "tablename": "cut_piece_inventory",
+      "indexname": "cut_piece_inventory_cut_piece_id_key",
+      "indexdef": "CREATE UNIQUE INDEX cut_piece_inventory_cut_piece_id_key ON public.cut_piece_inventory USING btree (cut_piece_id)"
+    },
+    {
+      "tablename": "production_log",
+      "indexname": "production_log_pkey",
+      "indexdef": "CREATE UNIQUE INDEX production_log_pkey ON public.production_log USING btree (id)"
+    },
+    {
+      "tablename": "fine_blanks",
+      "indexname": "fine_blanks_pkey",
+      "indexdef": "CREATE UNIQUE INDEX fine_blanks_pkey ON public.fine_blanks USING btree (id)"
+    },
+    {
+      "tablename": "fine_blanks",
+      "indexname": "fine_blanks_fine_blank_name_key",
+      "indexdef": "CREATE UNIQUE INDEX fine_blanks_fine_blank_name_key ON public.fine_blanks USING btree (fine_blank_name)"
+    },
+    {
+      "tablename": "fine_blank_inventory",
+      "indexname": "fine_blank_inventory_pkey",
+      "indexdef": "CREATE UNIQUE INDEX fine_blank_inventory_pkey ON public.fine_blank_inventory USING btree (id)"
+    },
+    {
+      "tablename": "fine_blank_inventory",
+      "indexname": "fine_blank_inventory_fine_blank_id_key",
+      "indexdef": "CREATE UNIQUE INDEX fine_blank_inventory_fine_blank_id_key ON public.fine_blank_inventory USING btree (fine_blank_id)"
+    },
+    {
+      "tablename": "fine_blank_production_log",
+      "indexname": "fine_blank_production_log_pkey",
+      "indexdef": "CREATE UNIQUE INDEX fine_blank_production_log_pkey ON public.fine_blank_production_log USING btree (id)"
+    },
+    {
+      "tablename": "playing_with_neon",
+      "indexname": "playing_with_neon_pkey",
+      "indexdef": "CREATE UNIQUE INDEX playing_with_neon_pkey ON public.playing_with_neon USING btree (id)"
+    },
+    {
+      "tablename": "migrations",
+      "indexname": "PK_8c82d7f526340ab734260ea46be",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_8c82d7f526340ab734260ea46be\" ON public.migrations USING btree (id)"
+    },
+    {
+      "tablename": "notification_preferences",
+      "indexname": "PK_e94e2b543f2f218ee68e4f4fad2",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_e94e2b543f2f218ee68e4f4fad2\" ON public.notification_preferences USING btree (id)"
+    },
+    {
+      "tablename": "notification_preferences",
+      "indexname": "REL_64c90edc7310c6be7c10c96f67",
+      "indexdef": "CREATE UNIQUE INDEX \"REL_64c90edc7310c6be7c10c96f67\" ON public.notification_preferences USING btree (user_id)"
+    },
+    {
+      "tablename": "inspection_details",
+      "indexname": "PK_a897b2d447fa7fe552527ffed7b",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_a897b2d447fa7fe552527ffed7b\" ON public.inspection_details USING btree (id)"
+    },
+    {
+      "tablename": "inspection_details",
+      "indexname": "REL_76631cab38e360c3fc78518be0",
+      "indexdef": "CREATE UNIQUE INDEX \"REL_76631cab38e360c3fc78518be0\" ON public.inspection_details USING btree (report_id)"
+    },
+    {
+      "tablename": "sm_review",
+      "indexname": "PK_c84144e69d7081a01bb02a57958",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_c84144e69d7081a01bb02a57958\" ON public.sm_review USING btree (id)"
+    },
+    {
+      "tablename": "sm_review",
+      "indexname": "REL_a2ca31ec6e7928c90e1154f49e",
+      "indexdef": "CREATE UNIQUE INDEX \"REL_a2ca31ec6e7928c90e1154f49e\" ON public.sm_review USING btree (report_id)"
+    },
+    {
+      "tablename": "gm_approval",
+      "indexname": "PK_00622239b97d24133df34f5a380",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_00622239b97d24133df34f5a380\" ON public.gm_approval USING btree (id)"
+    },
+    {
+      "tablename": "gm_approval",
+      "indexname": "REL_1ee3dc9a6a2a4b827efbce8234",
+      "indexdef": "CREATE UNIQUE INDEX \"REL_1ee3dc9a6a2a4b827efbce8234\" ON public.gm_approval USING btree (report_id)"
+    },
+    {
+      "tablename": "component_issue",
+      "indexname": "PK_157e652405efbc7bd866c30f3e3",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_157e652405efbc7bd866c30f3e3\" ON public.component_issue USING btree (id)"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "PK_19a35811e4d88f0cfcb2058ec76",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_19a35811e4d88f0cfcb2058ec76\" ON public.defect_reports USING btree (id)"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "UQ_ac52e87ad76c918ff4c14bd6895",
+      "indexdef": "CREATE UNIQUE INDEX \"UQ_ac52e87ad76c918ff4c14bd6895\" ON public.defect_reports USING btree (\"reportNumber\")"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "IDX_2164d889c45a1b3d188d5334d5",
+      "indexdef": "CREATE INDEX \"IDX_2164d889c45a1b3d188d5334d5\" ON public.defect_reports USING btree (raised_by_id)"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "IDX_39b6377cf76cfa13342df6a25a",
+      "indexdef": "CREATE INDEX \"IDX_39b6377cf76cfa13342df6a25a\" ON public.defect_reports USING btree (\"scOrPoNo\")"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "IDX_0b4ae3c8725a8d7358c96a1316",
+      "indexdef": "CREATE INDEX \"IDX_0b4ae3c8725a8d7358c96a1316\" ON public.defect_reports USING btree (status)"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "IDX_be5c084504922d0fcb83e9f0b5",
+      "indexdef": "CREATE INDEX \"IDX_be5c084504922d0fcb83e9f0b5\" ON public.defect_reports USING btree (\"createdAt\")"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "IDX_fe4a92413a52426c61a2fc8925",
+      "indexdef": "CREATE INDEX \"IDX_fe4a92413a52426c61a2fc8925\" ON public.defect_reports USING btree (\"updatedAt\")"
+    },
+    {
+      "tablename": "vendors",
+      "indexname": "PK_9c956c9797edfae5c6ddacc4e6e",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_9c956c9797edfae5c6ddacc4e6e\" ON public.vendors USING btree (id)"
+    },
+    {
+      "tablename": "vendor_fault_log",
+      "indexname": "PK_86d36e6d49170cd5d8982c4133f",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_86d36e6d49170cd5d8982c4133f\" ON public.vendor_fault_log USING btree (id)"
+    },
+    {
+      "tablename": "vendor_fault_log",
+      "indexname": "IDX_624041244667d71b0325319f29",
+      "indexdef": "CREATE INDEX \"IDX_624041244667d71b0325319f29\" ON public.vendor_fault_log USING btree (report_id)"
+    },
+    {
+      "tablename": "vendor_fault_log",
+      "indexname": "IDX_01036d0683e89a07473b7fd230",
+      "indexdef": "CREATE INDEX \"IDX_01036d0683e89a07473b7fd230\" ON public.vendor_fault_log USING btree (vendor_id)"
+    },
+    {
+      "tablename": "vendor_fault_log",
+      "indexname": "IDX_127452ba0f650fabf4399c2c98",
+      "indexdef": "CREATE INDEX \"IDX_127452ba0f650fabf4399c2c98\" ON public.vendor_fault_log USING btree (\"recoveryStatus\")"
+    },
+    {
+      "tablename": "salary_deduction",
+      "indexname": "PK_8750712923c742fce20b33a491d",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_8750712923c742fce20b33a491d\" ON public.salary_deduction USING btree (id)"
+    },
+    {
+      "tablename": "notifications",
+      "indexname": "PK_6a72c3c0f683f6462415e653c3a",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_6a72c3c0f683f6462415e653c3a\" ON public.notifications USING btree (id)"
+    },
+    {
+      "tablename": "report_sequence",
+      "indexname": "PK_c3f3bd85d795d17be413e4ec9cc",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_c3f3bd85d795d17be413e4ec9cc\" ON public.report_sequence USING btree (id)"
+    },
+    {
+      "tablename": "error_types",
+      "indexname": "PK_7c9186012affd47388656f6dbdf",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_7c9186012affd47388656f6dbdf\" ON public.error_types USING btree (id)"
+    },
+    {
+      "tablename": "error_types",
+      "indexname": "UQ_e55020852b4fa050a3b907d8512",
+      "indexdef": "CREATE UNIQUE INDEX \"UQ_e55020852b4fa050a3b907d8512\" ON public.error_types USING btree (name)"
+    },
+    {
+      "tablename": "cost_rates",
+      "indexname": "PK_f61a7d60e1a51a3fd4a69cb14c9",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_f61a7d60e1a51a3fd4a69cb14c9\" ON public.cost_rates USING btree (id)"
+    },
+    {
+      "tablename": "components",
+      "indexname": "PK_0d742661c63926321b5f5eac1ad",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_0d742661c63926321b5f5eac1ad\" ON public.components USING btree (id)"
+    },
+    {
+      "tablename": "components",
+      "indexname": "UQ_5409124de81d8d24ef76b4a5315",
+      "indexdef": "CREATE UNIQUE INDEX \"UQ_5409124de81d8d24ef76b4a5315\" ON public.components USING btree (code)"
+    },
+    {
+      "tablename": "email_logs",
+      "indexname": "PK_999382218924e953a790d340571",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_999382218924e953a790d340571\" ON public.email_logs USING btree (id)"
+    },
+    {
+      "tablename": "users",
+      "indexname": "UQ_97672ac88f789774dd47f7c8be3",
+      "indexdef": "CREATE UNIQUE INDEX \"UQ_97672ac88f789774dd47f7c8be3\" ON public.users USING btree (email)"
+    },
+    {
+      "tablename": "users",
+      "indexname": "PK_a3ffb1c0c8416b9fc6f907b7433",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_a3ffb1c0c8416b9fc6f907b7433\" ON public.users USING btree (id)"
+    },
+    {
+      "tablename": "audit_log",
+      "indexname": "PK_07fefa57f7f5ab8fc3f52b3ed0b",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_07fefa57f7f5ab8fc3f52b3ed0b\" ON public.audit_log USING btree (id)"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "idx_defect_reports_reportnumber",
+      "indexdef": "CREATE INDEX idx_defect_reports_reportnumber ON public.defect_reports USING btree (\"reportNumber\")"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "idx_defect_reports_status",
+      "indexdef": "CREATE INDEX idx_defect_reports_status ON public.defect_reports USING btree (status)"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "idx_defect_reports_createdat",
+      "indexdef": "CREATE INDEX idx_defect_reports_createdat ON public.defect_reports USING btree (\"createdAt\")"
+    },
+    {
+      "tablename": "defect_reports",
+      "indexname": "idx_defect_reports_updatedat",
+      "indexdef": "CREATE INDEX idx_defect_reports_updatedat ON public.defect_reports USING btree (\"updatedAt\")"
+    },
+    {
+      "tablename": "users",
+      "indexname": "idx_users_email",
+      "indexdef": "CREATE INDEX idx_users_email ON public.users USING btree (email)"
+    },
+    {
+      "tablename": "audit_log",
+      "indexname": "idx_audit_log_report_id",
+      "indexdef": "CREATE INDEX idx_audit_log_report_id ON public.audit_log USING btree (report_id)"
+    },
+    {
+      "tablename": "audit_log",
+      "indexname": "idx_audit_log_actor_id",
+      "indexdef": "CREATE INDEX idx_audit_log_actor_id ON public.audit_log USING btree (actor_id)"
+    },
+    {
+      "tablename": "email_logs",
+      "indexname": "idx_email_logs_status",
+      "indexdef": "CREATE INDEX idx_email_logs_status ON public.email_logs USING btree (status)"
+    },
+    {
+      "tablename": "email_logs",
+      "indexname": "idx_email_logs_recipient",
+      "indexdef": "CREATE INDEX idx_email_logs_recipient ON public.email_logs USING btree (recipient)"
+    },
+    {
+      "tablename": "notifications",
+      "indexname": "idx_notifications_user_id",
+      "indexdef": "CREATE INDEX idx_notifications_user_id ON public.notifications USING btree (user_id)"
+    }
+  ],
+  "integrity": {
+    "duplicateReportNumbers": 0,
+    "duplicateEmails": 0,
+    "orphanInspections": "0"
+  }
+}

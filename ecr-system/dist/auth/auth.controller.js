@@ -20,8 +20,8 @@ let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    login(body, res) {
-        return this.authService.login(body.username, body.password, res);
+    login(body, res, req) {
+        return this.authService.login(body.username, body.password, res, req.ip, req.headers['user-agent']);
     }
     getMe(req) {
         return this.authService.getMe(req.user.sub);
@@ -36,8 +36,9 @@ __decorate([
     (0, common_1.HttpCode)(200),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Res)({ passthrough: true })),
+    __param(2, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "login", null);
 __decorate([
