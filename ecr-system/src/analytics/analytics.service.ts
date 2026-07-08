@@ -66,9 +66,9 @@ export class AnalyticsService {
   }
 
   async getTrends() {
-    // defects grouped by month (SQLite compatible query)
+    // defects grouped by month (PostgreSQL query)
     const trends = await this.reportsRepo.createQueryBuilder('r')
-      .select("strftime('%Y-%m', r.createdAt)", 'month')
+      .select("to_char(r.createdAt, 'YYYY-MM')", 'month')
       .addSelect('COUNT(r.id)', 'count')
       .groupBy('month')
       .orderBy('month', 'ASC')
@@ -141,9 +141,9 @@ export class AnalyticsService {
   }
 
   async getSlaMetrics() {
-    // Average resolution time in days (SQLite syntax)
+    // Average resolution time in days (PostgreSQL syntax)
     const result = await this.reportsRepo.createQueryBuilder('r')
-      .select('AVG(julianday(r.updatedAt) - julianday(r.createdAt))', 'avgResolutionDays')
+      .select('AVG(EXTRACT(EPOCH FROM (r.updatedAt - r.createdAt)) / 86400.0)', 'avgResolutionDays')
       .where('r.status = :status', { status: ReportStatus.CLOSED })
       .getRawOne();
 
