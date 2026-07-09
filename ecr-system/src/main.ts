@@ -14,8 +14,21 @@ async function bootstrap() {
   // Enable cookie parsing for HttpOnly JWT cookie auth
   app.use(cookieParser());
 
-  // Security Headers
-  app.use(helmet());
+  // Security Headers — configure CSP to allow WebSocket connections and inline scripts
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          connectSrc: ["'self'", 'wss:', 'ws:'],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+        },
+      },
+    }),
+  );
 
   // Performance
   app.use(compression());

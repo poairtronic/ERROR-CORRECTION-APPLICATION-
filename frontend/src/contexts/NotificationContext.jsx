@@ -42,10 +42,11 @@ export function NotificationProvider({ children }) {
     const token = localStorage.getItem('ecr_token');
     
     // Socket.IO connects to the server origin (root), not the /api path.
-    // The WebSocket gateway lives at / (path: /socket.io/), not under /api.
-    const socketUrl = import.meta.env.PROD
-      ? window.location.origin   // production: same-origin monolithic deploy
-      : 'http://localhost:3000';  // dev: backend runs on port 3000
+    // In production (Render): same-origin monolithic deploy → window.location.origin
+    // In local dev: Vite runs on 5173 but backend is on 3000, so use localhost:3000
+    const socketUrl = window.location.port === '5173'
+      ? 'http://localhost:3000'
+      : window.location.origin;
 
     // Connect with Auth payload
     const socket = io(socketUrl, {
