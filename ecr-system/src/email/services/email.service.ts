@@ -29,10 +29,11 @@ export class EmailService implements OnModuleInit {
     private configService: ConfigService,
     private templateService: EmailTemplateService,
   ) {
+    const smtpPort = Number(this.configService.get('SMTP_PORT') || 587);
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT'),
-      secure: this.configService.get<number>('SMTP_PORT') === 465, // true for 465, false for other ports
+      port: smtpPort,
+      secure: smtpPort === 465, // true for 465, false for other ports
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
