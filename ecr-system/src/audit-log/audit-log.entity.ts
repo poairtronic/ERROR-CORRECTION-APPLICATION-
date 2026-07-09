@@ -31,11 +31,11 @@ export class AuditLog {
   @Column({ name: 'report_id' })
   reportId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'actor_id' })
   actor: User;
 
-  @Column({ name: 'actor_id' })
+  @Column({ name: 'actor_id', nullable: true })
   actorId: string;
 
   @Column()

@@ -23,11 +23,11 @@ export class InspectionDetail {
   @Column({ name: 'report_id' })
   reportId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'inspector_id' })
   inspector: User;
 
-  @Column({ name: 'inspector_id' })
+  @Column({ name: 'inspector_id', nullable: true })
   inspectorId: string;
 
   @Column()

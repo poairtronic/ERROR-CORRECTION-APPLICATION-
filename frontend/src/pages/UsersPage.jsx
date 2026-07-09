@@ -64,13 +64,15 @@ export default function UsersPage() {
   const deactivateMutation = useMutation({
     mutationFn: (id) => api.delete(`/admin/users/${id}`),
     onSuccess: () => {
-      toast.success('User deactivated');
+      toast.success('User deleted permanently');
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     }
   });
 
   const deactivate = (id) => {
-    if (confirm('Deactivate this user?')) deactivateMutation.mutate(id);
+    if (confirm('Are you sure you want to delete this user? The user account, notifications, and login history will be permanently deleted, but all defect reports and logs created by them will be preserved.')) {
+      deactivateMutation.mutate(id);
+    }
   };
 
   const columns = [

@@ -21,11 +21,11 @@ export class SalaryDeduction {
   @Column({ name: 'report_id' })
   reportId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'operator_id' })
   operator: User;
 
-  @Column({ name: 'operator_id' })
+  @Column({ name: 'operator_id', nullable: true })
   operatorId: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })

@@ -22,11 +22,11 @@ export class SmReview {
   @Column({ name: 'report_id' })
   reportId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'sm_id' })
   seniorManager: User;
 
-  @Column({ name: 'sm_id' })
+  @Column({ name: 'sm_id', nullable: true })
   smId: string;
 
   @Column({ type: 'text' })

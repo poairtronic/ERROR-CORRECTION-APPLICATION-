@@ -27,21 +27,21 @@ export class ComponentIssue {
   @Column({ name: 'report_id' })
   reportId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'store_manager_id' })
   storeManager: User;
 
-  @Column({ name: 'store_manager_id' })
+  @Column({ name: 'store_manager_id', nullable: true })
   storeManagerId: string;
 
   @Column({ type: 'simple-json' })
   components: IssuedComponent[];
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'issued_to_id' })
   issuedTo: User;
 
-  @Column({ name: 'issued_to_id' })
+  @Column({ name: 'issued_to_id', nullable: true })
   issuedToId: string;
 
   @Column({ type: 'text', nullable: true })

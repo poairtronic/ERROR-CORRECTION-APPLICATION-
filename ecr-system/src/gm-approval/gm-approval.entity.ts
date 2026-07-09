@@ -22,11 +22,11 @@ export class GmApproval {
   @Column({ name: 'report_id' })
   reportId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'gm_id' })
   generalManager: User;
 
-  @Column({ name: 'gm_id' })
+  @Column({ name: 'gm_id', nullable: true })
   gmId: string;
 
   @Column()

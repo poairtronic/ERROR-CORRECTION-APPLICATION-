@@ -30,7 +30,17 @@ export class UsersService {
   async create(dto: CreateUserDto) {
     const existing = await this.findByEmail(dto.email);
     if (existing) {
-      throw new ConflictException('A user with this email already exists.');
+      if (!existing.isActive) {
+        // Free up the email address by hard-deleting the inactive record or renaming its email
+        try {
+          await this.repo.remove(existing);
+        } catch (err) {
+          existing.email = `${existing.email}_deleted_${Date.now()}`;
+          await this.repo.save(existing);
+        }
+      } else {
+        throw new ConflictException('A user with this email already exists.');
+      }
     }
 
     const passwordHash = await bcrypt.hash(dto.tempPassword, 10);
@@ -58,6 +68,10 @@ export class UsersService {
       return await this.repo.remove(user);
     } catch (err) {
       user.isActive = false;
+      // Free the email address by renaming it
+      if (!user.email.includes('_deleted_')) {
+        user.email = `${user.email}_deleted_${Date.now()}`;
+      }
       return this.repo.save(user);
     }
   }

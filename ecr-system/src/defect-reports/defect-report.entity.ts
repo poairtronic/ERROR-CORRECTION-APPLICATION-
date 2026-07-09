@@ -27,12 +27,12 @@ export class DefectReport {
   @Column({ unique: true, nullable: true })
   reportNumber: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'raised_by_id' })
   raisedBy: User;
 
   @Index()
-  @Column({ name: 'raised_by_id' })
+  @Column({ name: 'raised_by_id', nullable: true })
   raisedById: string;
 
   @Column({ type: 'simple-enum', enum: RaisedByRole })
