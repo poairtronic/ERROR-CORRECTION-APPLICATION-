@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{subject}}</title>
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333333; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    .header { background-color: #0f172a; padding: 24px; text-align: center; color: #ffffff; }
+    .header img { max-height: 40px; margin-bottom: 8px; }
+    .header h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+    .content { padding: 32px 24px; }
+    .footer { background-color: #f1f5f9; padding: 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+    .footer p { margin: 4px 0; }
+    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 4px; text-transform: uppercase; margin-bottom: 16px; }
+    .badge-pending { background-color: #fef3c7; color: #d97706; }
+    .badge-approved { background-color: #dcfce7; color: #15803d; }
+    .badge-rejected { background-color: #fee2e2; color: #b91c1c; }
+    .badge-returned { background-color: #e0f2fe; color: #0369a1; }
+    .badge-completed { background-color: #f3e8ff; color: #6b21a8; }
+    .badge-alert { background-color: #ffedd5; color: #c2410c; }
+    .btn { display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: bold; color: #ffffff !important; background-color: #2563eb; text-decoration: none; border-radius: 6px; text-align: center; margin: 24px 0; }
+    .table-details { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+    .table-details td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+    .table-details tr:nth-child(even) { background-color: #f8fafc; }
+    .label { font-weight: 600; color: #475569; width: 35%; }
+    .value { color: #1e293b; }
+    .comments-box { background-color: #f8fafc; border-left: 4px solid #cbd5e1; padding: 16px; margin: 20px 0; font-style: italic; border-radius: 0 4px 4px 0; }
+    @media (prefers-color-scheme: dark) {
+      body { background-color: #0f172a; }
+      .wrapper { background-color: #1e293b; border-color: #334155; }
+      .content { color: #cbd5e1; }
+      .table-details td { border-color: #334155; }
+      .table-details tr:nth-child(even) { background-color: #1e293b; }
+      .value { color: #e2e8f0; }
+      .label { color: #94a3b8; }
+      .comments-box { background-color: #1e293b; border-color: #475569; color: #cbd5e1; }
+      .footer { background-color: #0f172a; color: #64748b; border-color: #334155; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    {{> header}}
+    <div class="content">
+      {{{body}}}
+    </div>
+    {{> footer}}
+  </div>
+</body>
+</html>

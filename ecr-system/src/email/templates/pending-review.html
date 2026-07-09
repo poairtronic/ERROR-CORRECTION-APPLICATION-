@@ -1,0 +1,34 @@
+<span class="badge badge-pending">Awaiting Review</span>
+<h3>Hello {{employeeName}},</h3>
+<p>A new Error Correction Report has been created and is awaiting your review.</p>
+
+<table class="table-details">
+  <tr>
+    <td class="label">Report Number</td>
+    <td class="value"><strong>{{reportId}}</strong></td>
+  </tr>
+  <tr>
+    <td class="label">Component</td>
+    <td class="value">{{component}}</td>
+  </tr>
+  <tr>
+    <td class="label">Error Type</td>
+    <td class="value">{{errorType}}</td>
+  </tr>
+  <tr>
+    <td class="label">Priority</td>
+    <td class="value">{{priority}}</td>
+  </tr>
+  <tr>
+    <td class="label">Created By</td>
+    <td class="value">{{reviewer}}</td>
+  </tr>
+  <tr>
+    <td class="label">Created Date</td>
+    <td class="value">{{createdDate}}</td>
+  </tr>
+</table>
+
+<div style="text-align: center;">
+  <a href="{{applicationUrl}}" class="btn">Review Report</a>
+</div>

@@ -1,0 +1,25 @@
+<span class="badge badge-returned">Returned for Correction</span>
+<h3>Hello {{employeeName}},</h3>
+<p>The Error Correction Report has been returned for modifications.</p>
+
+<table class="table-details">
+  <tr>
+    <td class="label">Report Number</td>
+    <td class="value"><strong>{{reportId}}</strong></td>
+  </tr>
+  <tr>
+    <td class="label">Returned By</td>
+    <td class="value">{{reviewer}}</td>
+  </tr>
+</table>
+
+{{#if comments}}
+<div class="comments-box">
+  <strong>Comments / Required Changes:</strong><br/>
+  {{comments}}
+</div>
+{{/if}}
+
+<div style="text-align: center;">
+  <a href="{{applicationUrl}}" class="btn">Correct Report</a>
+</div>

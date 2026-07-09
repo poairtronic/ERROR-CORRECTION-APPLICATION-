@@ -1,0 +1,28 @@
+<span class="badge badge-approved">Approved</span>
+<h3>Hello {{employeeName}},</h3>
+<p>The Error Correction Report has been approved successfully.</p>
+
+<table class="table-details">
+  <tr>
+    <td class="label">Report Number</td>
+    <td class="value"><strong>{{reportId}}</strong></td>
+  </tr>
+  <tr>
+    <td class="label">Status</td>
+    <td class="value" style="color: #15803d; font-weight: bold;">{{status}}</td>
+  </tr>
+  <tr>
+    <td class="label">Approved By</td>
+    <td class="value">{{reviewer}}</td>
+  </tr>
+  {{#if comments}}
+  <tr>
+    <td class="label">Comments</td>
+    <td class="value">{{comments}}</td>
+  </tr>
+  {{/if}}
+</table>
+
+<div style="text-align: center;">
+  <a href="{{applicationUrl}}" class="btn">View Report</a>
+</div>

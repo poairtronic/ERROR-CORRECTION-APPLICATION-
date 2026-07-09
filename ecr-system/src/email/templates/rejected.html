@@ -1,0 +1,29 @@
+<span class="badge badge-rejected">Rejected</span>
+<h3>Hello {{employeeName}},</h3>
+<p>The Error Correction Report has been rejected.</p>
+
+<table class="table-details">
+  <tr>
+    <td class="label">Report Number</td>
+    <td class="value"><strong>{{reportId}}</strong></td>
+  </tr>
+  <tr>
+    <td class="label">Status</td>
+    <td class="value" style="color: #b91c1c; font-weight: bold;">{{status}}</td>
+  </tr>
+  <tr>
+    <td class="label">Rejected By</td>
+    <td class="value">{{reviewer}}</td>
+  </tr>
+</table>
+
+{{#if comments}}
+<div class="comments-box">
+  <strong>Reason for Rejection:</strong><br/>
+  {{comments}}
+</div>
+{{/if}}
+
+<div style="text-align: center;">
+  <a href="{{applicationUrl}}" class="btn">Correct Report</a>
+</div>

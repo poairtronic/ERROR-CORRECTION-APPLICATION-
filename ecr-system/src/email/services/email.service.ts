@@ -140,13 +140,46 @@ export class EmailService implements OnModuleInit {
     
     let savedLog: EmailLog;
     try {
-      const htmlContent = this.templateService.renderHtml(options.templateData);
+      let templateName = 'system-alert';
+      const event = options.event;
+
+      if (event === NotificationEvent.REPORT_CREATED) {
+        templateName = 'pending-review';
+      } else if (event === NotificationEvent.REPORT_APPROVED) {
+        templateName = 'approved';
+      } else if (event === NotificationEvent.REPORT_REJECTED) {
+        templateName = 'rejected';
+      } else if (event === NotificationEvent.REPORT_UPDATED) {
+        const status = (options.templateData.status || '').toLowerCase();
+        if (status.includes('approved')) {
+          templateName = 'approved';
+        } else if (status.includes('rejected')) {
+          templateName = 'rejected';
+        } else if (status.includes('correction') || status.includes('returned')) {
+          templateName = 'returned-for-correction';
+        } else if (status.includes('completed') || status.includes('closed')) {
+          templateName = 'completed';
+        } else {
+          templateName = 'system-alert';
+        }
+      } else if (event === NotificationEvent.DAILY_SUMMARY) {
+        templateName = 'daily-summary';
+      } else if (event === NotificationEvent.WEEKLY_SUMMARY) {
+        templateName = 'weekly-summary';
+      }
+
+      let subject = options.subject;
+      if (!subject.startsWith('[ECR]')) {
+        subject = `[ECR] ${subject}`;
+      }
+
+      const htmlContent = this.templateService.renderHtml(templateName, options.templateData, subject);
 
       const emailLog = this.emailLogRepo.create({
         recipient: options.recipient,
         cc: options.cc,
         bcc: options.bcc,
-        subject: options.subject,
+        subject: subject,
         content: htmlContent,
         isHtml: true,
         event: options.event,
@@ -157,7 +190,8 @@ export class EmailService implements OnModuleInit {
 
       console.log("===== EMAIL QUEUE DEBUG =====");
       console.log("Recipient:", options.recipient);
-      console.log("Subject:", options.subject);
+      console.log("Subject:", subject);
+      console.log("Template:", templateName);
       console.log("Related Report:", options.relatedReportId);
 
       savedLog = await this.emailLogRepo.save(emailLog);
@@ -168,7 +202,7 @@ export class EmailService implements OnModuleInit {
 
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 4] Queue Created: Email log queued in database as PENDING (Log ID: ${savedLog.id})`);
     } catch (error) {
-      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to queue email record in database.\nReason: ${error.message}\nFile: email.service.ts\nMethod: queueEmail\nStack: ${error.stack}\nConfig: host=${this.configService.get('SMTP_HOST')}, port=${this.configService.get('SMTP_PORT')}, user=${this.configService.get('SMTP_USER')}`);
+      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to queue email record in database.\nReason: ${error.message}\nFile: email.service.ts\nMethod: queueEmail\nStack: ${error.stack}`);
       throw error;
     }
 
@@ -184,6 +218,10 @@ export class EmailService implements OnModuleInit {
     email.retryCount = 0;
     email.failureReason = null as any;
     return this.emailLogRepo.save(email);
+  }
+
+  getTemplateService() {
+    return this.templateService;
   }
 
   findAll() {
