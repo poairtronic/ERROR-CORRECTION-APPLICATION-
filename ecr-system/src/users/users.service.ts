@@ -11,7 +11,7 @@ export class UsersService {
   constructor(@InjectRepository(User) private repo: Repository<User>) {}
 
   findAll(role?: string, department?: string) {
-    const where: any = {};
+    const where: any = { isActive: true }; // Only show active users in the admin list
     if (role) where.role = role;
     if (department) where.department = department;
     return this.repo.find({ where, order: { name: 'ASC' } });
@@ -51,10 +51,14 @@ export class UsersService {
     return this.repo.save(user);
   }
 
-  // soft delete only - history must stay linked to the user record
+  // Attempt hard delete first. Fall back to soft delete (isActive = false) if foreign keys (e.g. raised reports) exist
   async deactivate(id: string) {
     const user = await this.findOne(id);
-    user.isActive = false;
-    return this.repo.save(user);
+    try {
+      return await this.repo.remove(user);
+    } catch (err) {
+      user.isActive = false;
+      return this.repo.save(user);
+    }
   }
 }
