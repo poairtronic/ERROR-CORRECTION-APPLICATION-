@@ -22,7 +22,10 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({

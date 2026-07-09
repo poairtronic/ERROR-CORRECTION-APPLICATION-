@@ -24,9 +24,6 @@ export class BrevoClientService implements OnModuleInit {
     if (!emailFromName) {
       throw new Error('Email startup validation failed: Missing required environment variable [EMAIL_FROM_NAME]');
     }
-    if (!frontendUrl) {
-      throw new Error('Email startup validation failed: Missing required environment variable [FRONTEND_URL]');
-    }
 
     this.client = new BrevoClient({ apiKey });
     this.logger.log('Brevo Transactional SDK client initialized successfully.');
