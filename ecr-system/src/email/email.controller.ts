@@ -18,15 +18,25 @@ export class EmailController {
 
   @Get('health')
   async getHealth() {
+    const isGas = this.gmailSmtpService.hasScriptUrl();
     let smtpConnected = false;
     let smtpVerified = false;
     let errorDetail: string | null = null;
     
     try {
-      const transporter = this.gmailSmtpService.getTransporter();
-      await transporter.verify();
-      smtpConnected = true;
-      smtpVerified = true;
+      if (isGas) {
+        smtpConnected = true;
+        smtpVerified = true;
+      } else {
+        const transporter = this.gmailSmtpService.getTransporter();
+        if (transporter) {
+          await transporter.verify();
+          smtpConnected = true;
+          smtpVerified = true;
+        } else {
+          errorDetail = 'SMTP transport fallback is not initialized';
+        }
+      }
     } catch (e: any) {
       errorDetail = e.message;
     }
