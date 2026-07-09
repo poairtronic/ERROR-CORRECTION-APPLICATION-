@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "start": "npm run start:prod --workspace=ecr-system"
+    "start": "npm run start:prod --workspace=ecr-system",
+    "render-build": "npm install --include=dev && npm run build"
   }
 }
