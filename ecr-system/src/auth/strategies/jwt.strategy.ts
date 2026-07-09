@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../../users/user.entity';
 import { Request } from 'express';
 
 export interface JwtPayload {
@@ -12,7 +15,10 @@ export interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    @InjectRepository(User) private usersRepo: Repository<User>,
+  ) {
     super({
       // Extract JWT from cookie first, then fall back to Authorization header
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -26,10 +32,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    // returned object becomes request.user
-    // Normalize role to uppercase to match Role enum values (e.g., 'INSPECTOR', 'OPERATOR')
-    // This prevents 403 errors when the DB/JWT stores mixed-case roles like 'Inspector'
-    const normalizedRole = payload.role ? payload.role.toUpperCase() : payload.role;
-    return { sub: payload.sub, id: payload.sub, email: payload.email, role: normalizedRole };
+    // Fetch the user from the DB to ensure they are still active and get their latest role
+    const user = await this.usersRepo.findOne({ where: { id: payload.sub } }).catch(() => null);
+    if (!user || !user.isActive) {
+      return null; // Triggers 401 Unauthorized if user doesn't exist or is deactivated
+    }
+    return { sub: user.id, id: user.id, email: user.email, role: user.role.toUpperCase() };
   }
 }
