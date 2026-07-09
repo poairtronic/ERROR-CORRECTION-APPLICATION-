@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, HttpCode, HttpStatus, Param } from '@nestjs/common';
 import { EmailService } from './services/email.service';
-import { BrevoClientService } from './services/brevo-client.service';
+import { GmailSmtpService } from './services/gmail-smtp.service';
 import { NotificationEvent } from './enums/notification-event.enum';
 import { EmailStatus } from './enums/email-status.enum';
 
@@ -8,7 +8,7 @@ import { EmailStatus } from './enums/email-status.enum';
 export class EmailController {
   constructor(
     private readonly emailService: EmailService,
-    private readonly brevoClientService: BrevoClientService,
+    private readonly gmailSmtpService: GmailSmtpService,
   ) {}
 
   @Get('logs')
@@ -18,17 +18,15 @@ export class EmailController {
 
   @Get('health')
   async getHealth() {
-    let brevoConnected = false;
-    let apiKeyValid = false;
-    let senderVerified = false;
+    let smtpConnected = false;
+    let smtpVerified = false;
     let errorDetail: string | null = null;
     
     try {
-      const client = this.brevoClientService.getClient();
-      const accountInfo = await client.account.getAccount();
-      brevoConnected = true;
-      apiKeyValid = true;
-      senderVerified = accountInfo.email ? true : false;
+      const transporter = this.gmailSmtpService.getTransporter();
+      await transporter.verify();
+      smtpConnected = true;
+      smtpVerified = true;
     } catch (e: any) {
       errorDetail = e.message;
     }
@@ -55,9 +53,9 @@ export class EmailController {
     const lastEmail = logs[0] ? { id: logs[0].id, status: logs[0].status, recipient: logs[0].recipient } : null;
 
     return {
-      brevoConnected,
-      apiKeyValid,
-      senderVerified,
+      smtpConnected,
+      smtpVerified,
+      provider: 'Gmail SMTP',
       queueWorking: true,
       lastEmail,
       successRate,

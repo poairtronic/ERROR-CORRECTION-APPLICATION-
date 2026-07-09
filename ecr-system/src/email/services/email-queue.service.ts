@@ -104,7 +104,7 @@ export class EmailQueueService {
           email.sentTime = new Date();
           email.providerMessageId = apiResult.messageId;
           email.failureReason = JSON.stringify({
-            providerName: 'Brevo',
+            providerName: 'Gmail SMTP',
             responseCode: apiResult.responseCode,
             responseBody: apiResult.responseBody,
             deliveryTime: email.sentTime.toISOString(),
@@ -137,7 +137,7 @@ export class EmailQueueService {
         
         const statusCode = lastError.status || 'N/A';
         email.failureReason = JSON.stringify({
-          providerName: 'Brevo',
+          providerName: 'Gmail SMTP',
           error: lastError.message,
           responseCode: statusCode,
           responseBody: lastError.message,

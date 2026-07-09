@@ -185,7 +185,7 @@ export class EmailMonitoringService {
         ...item,
         recipientRole: user ? user.role : 'N/A',
         reportNumber: report ? report.reportNumber : 'N/A',
-        providerName: parsedProviderRes ? parsedProviderRes.providerName : 'Brevo',
+        providerName: parsedProviderRes ? parsedProviderRes.providerName : 'Gmail SMTP',
         deliveryTimeSeconds: item.sentTime 
           ? Math.round((item.sentTime.getTime() - item.createdAt.getTime()) / 1000) 
           : null,

@@ -5,7 +5,7 @@ import { NotificationPreference } from './entities/notification-preference.entit
 import { EmailTemplateService } from './services/email-template.service';
 import { EmailService } from './services/email.service';
 import { EmailQueueService } from './services/email-queue.service';
-import { BrevoClientService } from './services/brevo-client.service';
+import { GmailSmtpService } from './services/gmail-smtp.service';
 import { EmailController } from './email.controller';
 import { NotificationsModule } from '../notifications/notifications.module'; // for NotificationsGateway
 
@@ -14,8 +14,8 @@ import { NotificationsModule } from '../notifications/notifications.module'; // 
     TypeOrmModule.forFeature([EmailLog, NotificationPreference]),
     forwardRef(() => NotificationsModule),
   ],
-  providers: [EmailTemplateService, EmailService, EmailQueueService, BrevoClientService],
+  providers: [EmailTemplateService, EmailService, EmailQueueService, GmailSmtpService],
   controllers: [EmailController],
-  exports: [EmailService, BrevoClientService],
+  exports: [EmailService, GmailSmtpService],
 })
 export class EmailModule {}

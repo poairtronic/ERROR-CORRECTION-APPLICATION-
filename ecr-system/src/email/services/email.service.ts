@@ -7,7 +7,7 @@ import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
 import { EmailTemplateService, TemplateData } from './email-template.service';
-import { BrevoClientService } from './brevo-client.service';
+import { GmailSmtpService } from './gmail-smtp.service';
 
 export interface SendEmailOptions {
   notificationId?: string;
@@ -29,11 +29,11 @@ export class EmailService implements OnModuleInit {
     private configService: ConfigService,
     private templateService: EmailTemplateService,
     private eventEmitter: EventEmitter2,
-    private brevoClientService: BrevoClientService,
+    private gmailSmtpService: GmailSmtpService,
   ) {}
 
   async onModuleInit() {
-    this.logger.log("Brevo API client verified on EmailService init");
+    this.logger.log("Gmail SMTP client verified on EmailService init");
   }
 
   async sendEmailViaApi(emailLog: EmailLog): Promise<{ messageId: string; responseCode: number; responseBody: string }> {
@@ -55,58 +55,55 @@ export class EmailService implements OnModuleInit {
       throw new Error('Email body is empty');
     }
 
-    const payload = {
-      sender: {
-        name: emailFromName,
-        email: emailFrom,
-      },
-      to: [
-        {
-          email: emailLog.recipient,
-        },
-      ],
+    const mailOptions: any = {
+      from: `"${emailFromName}" <${emailFrom}>`,
+      to: emailLog.recipient,
       subject: emailLog.subject,
-      htmlContent: emailLog.isHtml ? emailLog.content : undefined,
-      textContent: !emailLog.isHtml ? emailLog.content : undefined,
     };
+
+    if (emailLog.isHtml) {
+      mailOptions.html = emailLog.content;
+    } else {
+      mailOptions.text = emailLog.content;
+    }
 
     const startTime = Date.now();
     
     console.log(
-      `[EMAIL] [API SDK Request] [${new Date().toISOString()}] ` +
+      `[EMAIL] [SMTP Request] [${new Date().toISOString()}] ` +
       `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-      `Recipient: ${emailLog.recipient} | Provider: Brevo`
+      `Recipient: ${emailLog.recipient} | Provider: Gmail SMTP`
     );
 
     try {
-      const client = this.brevoClientService.getClient();
-      const response = await client.transactionalEmails.sendTransacEmail(payload);
+      const transporter = this.gmailSmtpService.getTransporter();
+      const info = await transporter.sendMail(mailOptions);
       
       const duration = Date.now() - startTime;
-      const messageId = response.messageId || '';
+      const messageId = info.messageId || '';
 
       console.log(
-        `[EMAIL] [API SDK Response] [${new Date().toISOString()}] ` +
+        `[EMAIL] [SMTP Response] [${new Date().toISOString()}] ` +
         `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-        `Recipient: ${emailLog.recipient} | Response Code: 201 | ` +
-        `Response Time: ${duration}ms | Provider: Brevo | Message ID: ${messageId}`
+        `Recipient: ${emailLog.recipient} | Response Code: 250 | ` +
+        `Response Time: ${duration}ms | Provider: Gmail SMTP | Message ID: ${messageId}`
       );
 
       return {
         messageId,
-        responseCode: 201,
-        responseBody: JSON.stringify(response),
+        responseCode: 250,
+        responseBody: JSON.stringify({ accepted: info.accepted, response: info.response }),
       };
     } catch (error: any) {
       const duration = Date.now() - startTime;
       console.error(
-        `[EMAIL] [API SDK Error] [${new Date().toISOString()}] ` +
+        `[EMAIL] [SMTP Error] [${new Date().toISOString()}] ` +
         `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
         `Duration: ${duration}ms | Error: ${error.message}`
       );
       
-      const statusCode = error.status || error.statusCode || 500;
-      const cleanError = new Error(`Brevo SDK returned error: ${error.message}`);
+      const statusCode = error.responseCode || 500;
+      const cleanError = new Error(`Gmail SMTP error: ${error.message}`);
       (cleanError as any).status = statusCode;
       throw cleanError;
     }
