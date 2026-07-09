@@ -87,7 +87,17 @@ export class EmailService implements OnModuleInit {
         notificationId: options.notificationId,
       });
 
+      console.log("===== EMAIL QUEUE DEBUG =====");
+      console.log("Recipient:", options.recipient);
+      console.log("Subject:", options.subject);
+      console.log("Related Report:", options.relatedReportId);
+
       savedLog = await this.emailLogRepo.save(emailLog);
+
+      console.log("EmailLog ID:", savedLog.id);
+      console.log("Status:", savedLog.status);
+      console.log("============================");
+
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 4] Queue Created: Email log queued in database as PENDING (Log ID: ${savedLog.id})`);
     } catch (error) {
       console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to queue email record in database.\nReason: ${error.message}\nFile: email.service.ts\nMethod: queueEmail\nStack: ${error.stack}\nConfig: host=${this.configService.get('SMTP_HOST')}, port=${this.configService.get('SMTP_PORT')}, user=${this.configService.get('SMTP_USER')}`);

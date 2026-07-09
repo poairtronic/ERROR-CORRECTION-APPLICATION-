@@ -40,6 +40,17 @@ export class EmailQueueService {
       throw error;
     }
 
+    console.log("Emails fetched from DB:", emailsToProcess.length);
+
+    emailsToProcess.forEach(e => {
+      console.log(
+        e.id,
+        e.status,
+        e.retryCount,
+        e.recipient
+      );
+    });
+
     const validEmails = emailsToProcess.filter(e => e.retryCount < this.maxRetries);
     if (validEmails.length === 0) return;
 
