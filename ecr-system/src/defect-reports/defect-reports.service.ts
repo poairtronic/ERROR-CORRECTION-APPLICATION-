@@ -277,9 +277,10 @@ export class DefectReportsService implements OnModuleInit {
     if (report.inspectionDetail) {
       const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
       let changed = false;
+      const newLogs: AuditLog[] = [];
       for (const field of inspectFields) {
         if (dto[field] !== (report.inspectionDetail as any)[field] && dto[field] !== undefined) {
-          await this.auditRepo.save(
+          const log = await this.auditRepo.save(
             this.auditRepo.create({
               reportId: report.id,
               actorId: actor.id,
@@ -291,12 +292,16 @@ export class DefectReportsService implements OnModuleInit {
               note: `Senior Manager edited ${field} during review`,
             })
           );
+          newLogs.push(log);
           (report.inspectionDetail as any)[field] = dto[field];
           changed = true;
         }
       }
       if (changed) {
         await this.inspectionRepo.save(report.inspectionDetail);
+      }
+      if (report.auditLogs) {
+        report.auditLogs.push(...newLogs);
       }
     }
 
