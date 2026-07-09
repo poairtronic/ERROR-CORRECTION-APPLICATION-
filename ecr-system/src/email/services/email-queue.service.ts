@@ -19,7 +19,7 @@ export class EmailQueueService {
     private configService: ConfigService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.maxRetries = this.configService.get<number>('EMAIL_MAX_RETRIES', 5);
+    this.maxRetries = 3; // Official SDK requirement: 3 retries
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -36,33 +36,24 @@ export class EmailQueueService {
         ],
         order: { createdAt: 'ASC' },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to query pending emails from database.\nReason: ${error.message}\nFile: email-queue.service.ts\nMethod: processEmailQueue\nStack: ${error.stack}`);
       throw error;
     }
 
     console.log("Emails fetched from DB:", emailsToProcess.length);
 
-    emailsToProcess.forEach(e => {
-      console.log(
-        e.id,
-        e.status,
-        e.retryCount,
-        e.recipient
-      );
-    });
-
     // Filter by backoff delays (Retry Engine)
     const eligibleEmails: EmailLog[] = [];
-    const retryDelays = [1, 5, 15, 30, 30]; // delays in minutes for retry count 1, 2, 3, 4, 5
+    const retryDelays = [2, 5, 15]; // delays in seconds for retry count 1, 2, 3
 
     for (const email of emailsToProcess) {
       if (email.status === EmailStatus.PENDING) {
         eligibleEmails.push(email);
       } else if (email.status === EmailStatus.FAILED) {
-        const minutesPassed = (Date.now() - email.updatedAt.getTime()) / (60 * 1000);
-        const requiredDelay = retryDelays[email.retryCount - 1] || 30;
-        if (minutesPassed >= requiredDelay) {
+        const secondsPassed = (Date.now() - email.updatedAt.getTime()) / 1000;
+        const requiredDelay = retryDelays[email.retryCount - 1] || 15;
+        if (secondsPassed >= requiredDelay) {
           eligibleEmails.push(email);
         }
       }

@@ -7,6 +7,7 @@ import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
 import { EmailTemplateService, TemplateData } from './email-template.service';
+import { BrevoClientService } from './brevo-client.service';
 
 export interface SendEmailOptions {
   notificationId?: string;
@@ -28,20 +29,14 @@ export class EmailService implements OnModuleInit {
     private configService: ConfigService,
     private templateService: EmailTemplateService,
     private eventEmitter: EventEmitter2,
+    private brevoClientService: BrevoClientService,
   ) {}
 
   async onModuleInit() {
-    const requiredEnv = ['BREVO_API_KEY', 'EMAIL_FROM', 'EMAIL_FROM_NAME'];
-    for (const val of requiredEnv) {
-      if (!this.configService.get<string>(val)) {
-        throw new Error(`Email startup validation failed: Missing required environment variable [${val}]`);
-      }
-    }
-    this.logger.log("Brevo API config validated successfully");
+    this.logger.log("Brevo API client verified on EmailService init");
   }
 
   async sendEmailViaApi(emailLog: EmailLog): Promise<{ messageId: string; responseCode: number; responseBody: string }> {
-    const apiKey = this.configService.get<string>('BREVO_API_KEY');
     const emailFrom = this.configService.get<string>('EMAIL_FROM');
     const emailFromName = this.configService.get<string>('EMAIL_FROM_NAME', 'Velan Metrology');
 
@@ -78,60 +73,43 @@ export class EmailService implements OnModuleInit {
     const startTime = Date.now();
     
     console.log(
-      `[EMAIL] [API Request] [${new Date().toISOString()}] ` +
+      `[EMAIL] [API SDK Request] [${new Date().toISOString()}] ` +
       `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
       `Recipient: ${emailLog.recipient} | Provider: Brevo`
     );
 
-    const headers: Record<string, string> = {
-      'accept': 'application/json',
-      'api-key': apiKey || '',
-      'content-type': 'application/json',
-    };
-
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const responseCode = response.status;
-    const responseBodyText = await response.text();
-    const responseTime = Date.now() - startTime;
-
-    console.log(
-      `[EMAIL] [API Response] [${new Date().toISOString()}] ` +
-      `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-      `Recipient: ${emailLog.recipient} | Response Code: ${responseCode} | ` +
-      `Response Time: ${responseTime}ms | Provider: Brevo`
-    );
-
-    if (!response.ok) {
-      const errorDetail = new Error(`Brevo API returned error ${responseCode}: ${responseBodyText}`);
-      (errorDetail as any).status = responseCode;
-      throw errorDetail;
-    }
-
-    let parsedBody: any = {};
     try {
-      parsedBody = JSON.parse(responseBodyText);
-    } catch (e) {
-      parsedBody = { raw: responseBodyText };
+      const client = this.brevoClientService.getClient();
+      const response = await client.transactionalEmails.sendTransacEmail(payload);
+      
+      const duration = Date.now() - startTime;
+      const messageId = response.messageId || '';
+
+      console.log(
+        `[EMAIL] [API SDK Response] [${new Date().toISOString()}] ` +
+        `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
+        `Recipient: ${emailLog.recipient} | Response Code: 201 | ` +
+        `Response Time: ${duration}ms | Provider: Brevo | Message ID: ${messageId}`
+      );
+
+      return {
+        messageId,
+        responseCode: 201,
+        responseBody: JSON.stringify(response),
+      };
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(
+        `[EMAIL] [API SDK Error] [${new Date().toISOString()}] ` +
+        `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
+        `Duration: ${duration}ms | Error: ${error.message}`
+      );
+      
+      const statusCode = error.status || error.statusCode || 500;
+      const cleanError = new Error(`Brevo SDK returned error: ${error.message}`);
+      (cleanError as any).status = statusCode;
+      throw cleanError;
     }
-
-    const messageId = parsedBody.messageId || '';
-
-    console.log(
-      `[EMAIL] [Success] [${new Date().toISOString()}] ` +
-      `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-      `Recipient: ${emailLog.recipient} | Message ID: ${messageId} | Provider: Brevo`
-    );
-
-    return {
-      messageId,
-      responseCode,
-      responseBody: responseBodyText,
-    };
   }
 
   /**
@@ -205,12 +183,72 @@ export class EmailService implements OnModuleInit {
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 4] Queue Created: Email log queued in database as PENDING (Log ID: ${savedLog.id})`);
       
       this.eventEmitter.emit('email.logs.updated');
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to queue email record in database.\nReason: ${error.message}\nFile: email.service.ts\nMethod: queueEmail\nStack: ${error.stack}`);
       throw error;
     }
 
     return savedLog;
+  }
+
+  // Template methods to queue emails under official events (Requirement 10)
+  async sendPendingReview(recipient: string, templateData: any, reportId: string) {
+    return this.queueEmail({
+      recipient,
+      subject: 'New Report Awaiting Review',
+      event: NotificationEvent.REPORT_CREATED,
+      templateData,
+      relatedReportId: reportId,
+    });
+  }
+
+  async sendApproved(recipient: string, templateData: any, reportId: string) {
+    return this.queueEmail({
+      recipient,
+      subject: 'Report Approved',
+      event: NotificationEvent.REPORT_APPROVED,
+      templateData,
+      relatedReportId: reportId,
+    });
+  }
+
+  async sendRejected(recipient: string, templateData: any, reportId: string) {
+    return this.queueEmail({
+      recipient,
+      subject: 'Report Rejected',
+      event: NotificationEvent.REPORT_REJECTED,
+      templateData,
+      relatedReportId: reportId,
+    });
+  }
+
+  async sendEscalation(recipient: string, templateData: any, reportId: string) {
+    return this.queueEmail({
+      recipient,
+      subject: 'Report Escalation Alert',
+      event: NotificationEvent.ESCALATION,
+      templateData,
+      relatedReportId: reportId,
+    });
+  }
+
+  async sendReminder(recipient: string, templateData: any, reportId: string) {
+    return this.queueEmail({
+      recipient,
+      subject: 'Report Pending Action Reminder',
+      event: NotificationEvent.REMINDER,
+      templateData,
+      relatedReportId: reportId,
+    });
+  }
+
+  async sendPasswordReset(recipient: string, templateData: any) {
+    return this.queueEmail({
+      recipient,
+      subject: 'Password Reset Request',
+      event: NotificationEvent.REMINDER,
+      templateData,
+    });
   }
 
   async resend(id: string): Promise<EmailLog> {

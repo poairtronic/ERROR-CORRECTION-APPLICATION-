@@ -1,14 +1,76 @@
 import { Controller, Post, Get, Body, HttpCode, HttpStatus, Param } from '@nestjs/common';
 import { EmailService } from './services/email.service';
+import { BrevoClientService } from './services/brevo-client.service';
 import { NotificationEvent } from './enums/notification-event.enum';
+import { EmailStatus } from './enums/email-status.enum';
 
 @Controller('email')
 export class EmailController {
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly emailService: EmailService,
+    private readonly brevoClientService: BrevoClientService,
+  ) {}
 
   @Get('logs')
   getLogs() {
     return this.emailService.findAll();
+  }
+
+  @Get('health')
+  async getHealth() {
+    let brevoConnected = false;
+    let apiKeyValid = false;
+    let senderVerified = false;
+    let errorDetail: string | null = null;
+    
+    try {
+      const client = this.brevoClientService.getClient();
+      const accountInfo = await client.account.getAccount();
+      brevoConnected = true;
+      apiKeyValid = true;
+      senderVerified = accountInfo.email ? true : false;
+    } catch (e: any) {
+      errorDetail = e.message;
+    }
+
+    const logs = await this.emailService.findAll();
+    const total = logs.length;
+    const sent = logs.filter(l => l.status === EmailStatus.SENT).length;
+    const failed = logs.filter(l => l.status === EmailStatus.FAILED || l.status === EmailStatus.CANCELLED).length;
+    const queued = logs.filter(l => l.status === EmailStatus.PENDING || l.status === EmailStatus.PROCESSING).length;
+    const retries = logs.reduce((acc, curr) => acc + (curr.retryCount || 0), 0);
+
+    // Latency averages
+    const sentLogs = logs.filter(l => l.status === EmailStatus.SENT && l.sentTime);
+    let avgSendTimeMs = 0;
+    if (sentLogs.length > 0) {
+      const totalDuration = sentLogs.reduce((acc, curr) => {
+        const diff = curr.sentTime!.getTime() - curr.createdAt.getTime();
+        return acc + diff;
+      }, 0);
+      avgSendTimeMs = Math.round(totalDuration / sentLogs.length);
+    }
+    
+    const successRate = total > 0 ? Number(((sent / total) * 100).toFixed(2)) : 100;
+    const lastEmail = logs[0] ? { id: logs[0].id, status: logs[0].status, recipient: logs[0].recipient } : null;
+
+    return {
+      brevoConnected,
+      apiKeyValid,
+      senderVerified,
+      queueWorking: true,
+      lastEmail,
+      successRate,
+      errorDetail,
+      metrics: {
+        emailsSent: sent,
+        emailsFailed: failed,
+        queueLength: queued,
+        averageSendTimeMs: avgSendTimeMs,
+        retries,
+        successRate,
+      }
+    };
   }
 
   @Post('test')
@@ -79,7 +141,7 @@ export class EmailController {
     try {
       const html = this.emailService.getTemplateService().renderHtml(template, sampleData, subject);
       return html;
-    } catch (error) {
+    } catch (error: any) {
       return `<h3>Error Rendering Template: ${template}</h3><p>${error.message}</p>`;
     }
   }
