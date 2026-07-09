@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
@@ -26,6 +27,7 @@ export class EmailService implements OnModuleInit {
     @InjectRepository(EmailLog) private emailLogRepo: Repository<EmailLog>,
     private configService: ConfigService,
     private templateService: EmailTemplateService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async onModuleInit() {
@@ -201,6 +203,8 @@ export class EmailService implements OnModuleInit {
       console.log("============================");
 
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 4] Queue Created: Email log queued in database as PENDING (Log ID: ${savedLog.id})`);
+      
+      this.eventEmitter.emit('email.logs.updated');
     } catch (error) {
       console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to queue email record in database.\nReason: ${error.message}\nFile: email.service.ts\nMethod: queueEmail\nStack: ${error.stack}`);
       throw error;
@@ -217,7 +221,9 @@ export class EmailService implements OnModuleInit {
     email.status = EmailStatus.PENDING;
     email.retryCount = 0;
     email.failureReason = null as any;
-    return this.emailLogRepo.save(email);
+    const saved = await this.emailLogRepo.save(email);
+    this.eventEmitter.emit('email.logs.updated');
+    return saved;
   }
 
   getTemplateService() {

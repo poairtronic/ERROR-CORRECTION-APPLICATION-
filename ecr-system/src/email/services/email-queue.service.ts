@@ -6,6 +6,7 @@ import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { EmailService } from './email.service';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class EmailQueueService {
@@ -16,6 +17,7 @@ export class EmailQueueService {
     @InjectRepository(EmailLog) private emailLogRepo: Repository<EmailLog>,
     private emailService: EmailService,
     private configService: ConfigService,
+    private eventEmitter: EventEmitter2,
   ) {
     this.maxRetries = this.configService.get<number>('EMAIL_MAX_RETRIES', 5);
   }
@@ -93,6 +95,7 @@ export class EmailQueueService {
     for (const email of validEmails) {
       email.status = EmailStatus.PROCESSING;
       await this.emailLogRepo.save(email);
+      this.eventEmitter.emit('email.logs.updated');
       console.log(`[EMAIL] [Queue Picked] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | Status: PROCESSING`);
 
       let attempt = 0;
@@ -169,6 +172,7 @@ export class EmailQueueService {
       // [STEP 12] Database Updated
       await this.emailLogRepo.save(email);
       console.log(`[EMAIL] [Database Updated] [${new Date().toISOString()}] Email ID: ${email.id} | Status: ${email.status}`);
+      this.eventEmitter.emit('email.logs.updated');
     }
   }
 }

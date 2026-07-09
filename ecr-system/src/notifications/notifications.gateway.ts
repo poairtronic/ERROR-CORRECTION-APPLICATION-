@@ -14,6 +14,8 @@ import { SocketRegistryService } from './socket-registry.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationStatus } from '../common/enums/report-status.enum';
 
+import { OnEvent } from '@nestjs/event-emitter';
+
 @WebSocketGateway({ cors: { origin: '*' } })
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -25,6 +27,14 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     private readonly registry: SocketRegistryService,
     @Inject(forwardRef(() => NotificationsService)) private readonly notificationsService: NotificationsService,
   ) {}
+
+  @OnEvent('email.logs.updated')
+  handleEmailLogsUpdated() {
+    this.logger.debug('Email logs updated, broadcasting to clients...');
+    if (this.server) {
+      this.server.emit('email_logs_updated');
+    }
+  }
 
   async handleConnection(client: Socket) {
     try {

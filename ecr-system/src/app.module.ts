@@ -18,6 +18,7 @@ import { ImageUploadModule } from './image-upload/image-upload.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 
 import { EmailModule } from './email/email.module';
+import { EmailMonitoringModule } from './email-monitoring/email-monitoring.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { EmailModule } from './email/email.module';
     ImageUploadModule,
     AnalyticsModule,
     EmailModule,
+    EmailMonitoringModule,
   ],
 })
 export class AppModule {}

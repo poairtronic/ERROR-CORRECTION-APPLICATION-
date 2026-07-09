@@ -94,7 +94,7 @@ export function NotificationProvider({ children }) {
   }, [isAuthenticated, user]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, setUnreadCount, notifications, isConnected }}>
+    <NotificationContext.Provider value={{ unreadCount, setUnreadCount, notifications, isConnected, socket: socketRef.current }}>
       {children}
     </NotificationContext.Provider>
   );
