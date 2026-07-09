@@ -57,7 +57,7 @@ export class EmailQueueService {
     console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Processing: Found ${validEmails.length} pending emails to send.`);
 
     const transporter = this.emailService.getTransporter();
-    const fromAddress = this.configService.get<string>('EMAIL_FROM', 'noreply@example.com');
+    const fromAddress = this.configService.get<string>('EMAIL_FROM');
     const smtpHost = this.configService.get('SMTP_HOST');
     const smtpPort = this.configService.get('SMTP_PORT');
     const smtpUser = this.configService.get('SMTP_USER');
@@ -91,8 +91,14 @@ export class EmailQueueService {
       while (attempt < maxAttempts) {
         attempt++;
         try {
-          // [STEP 9] sendMail Started
-          console.log(`[EMAIL_DIAGNOSTICS] [STEP 9] sendMail Started: Sending Email ID ${email.id} (Recipient: ${email.recipient}, From: ${fromAddress}, Attempt: ${attempt}/${maxAttempts})`);
+          // [STEP 9] sendMail Started & TASK 7 Diagnostics (Before sendMail)
+          console.log(`[EMAIL_DIAGNOSTICS] [STEP 9] sendMail Started: Sending Email ID ${email.id} (Attempt: ${attempt}/${maxAttempts})`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] Recipient: ${email.recipient}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] Subject: ${email.subject}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] EMAIL_FROM: ${fromAddress}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] SMTP_USER: ${smtpUser}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] SMTP_HOST: ${smtpHost}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] SMTP_PORT: ${smtpPort}`);
           
           const info = await transporter.sendMail({
             from: fromAddress,
@@ -112,16 +118,11 @@ export class EmailQueueService {
           console.log(`[EMAIL_DIAGNOSTICS] [STEP 11] Message ID: ${info.messageId}`);
           console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Email Delivered: Status set to SENT for Email ID ${email.id}`);
 
-          // Diagnostics requirements:
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Host: ${smtpHost}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Port: ${smtpPort}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP User: ${smtpUser}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Connection Time: ${connectionTime}ms`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Queue Size: ${validEmails.length}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Recipient: ${email.recipient}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Subject: ${email.subject}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Brevo Response: ${info.response}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Message ID: ${info.messageId}`);
+          // TASK 7 Diagnostics (After sendMail)
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] Message ID: ${info.messageId}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] SMTP Response: ${info.response}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] Accepted: ${JSON.stringify(info.accepted)}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] Rejected: ${JSON.stringify(info.rejected)}`);
 
           email.status = EmailStatus.SENT;
           email.sentTime = new Date();
@@ -133,15 +134,16 @@ export class EmailQueueService {
           const endTime = Date.now();
           const connectionTime = endTime - startTime;
 
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Host: ${smtpHost}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Port: ${smtpPort}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP User: ${smtpUser}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Connection Time: ${connectionTime}ms`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Queue Size: ${validEmails.length}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Recipient: ${email.recipient}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Subject: ${email.subject}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Error Code: ${error.code || 'N/A'}`);
-          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Response Code: ${error.responseCode || 'N/A'}`);
+          // TASK 7 Diagnostics (On failure)
+          console.error(
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] SMTP Error Code: ${error.code || 'N/A'}\n` +
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] SMTP Response Code: ${error.responseCode || 'N/A'}\n` +
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Full Error Message: ${error.message}\n` +
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Stack Trace: ${error.stack}\n` +
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] EmailLog ID: ${email.id}\n` +
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Recipient: ${email.recipient}\n` +
+            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Subject: ${email.subject}`
+          );
 
           const retryable =
             error.code === 'ECONNRESET' ||

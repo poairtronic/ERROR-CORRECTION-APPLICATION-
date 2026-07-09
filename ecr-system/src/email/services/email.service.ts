@@ -52,6 +52,13 @@ export class EmailService implements OnModuleInit {
   }
 
   async onModuleInit() {
+    const requiredEnv = ['EMAIL_FROM', 'SMTP_USER', 'SMTP_PASS', 'SMTP_HOST', 'SMTP_PORT'];
+    for (const val of requiredEnv) {
+      if (!process.env[val]) {
+        throw new Error(`Email startup validation failed: Missing required environment variable [${val}]`);
+      }
+    }
+
     try {
       await this.transporter.verify();
       this.logger.log("SMTP verified");
