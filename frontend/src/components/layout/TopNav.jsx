@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiUser, FiX } from 'react-icons/fi';
 import { useState } from 'react';
 
 export function TopNav() {
@@ -8,6 +8,7 @@ export function TopNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -46,10 +47,55 @@ export function TopNav() {
             style={{ paddingLeft: 36, width: '100%', height: 36 }}
           />
         </form>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
-          {user?.username} <span style={{ color: 'var(--text-dim)', fontWeight: 500 }}>({user?.role})</span>
-        </span>
+        <button 
+          className="profile-trigger-btn" 
+          onClick={() => setIsDrawerOpen(true)}
+          title="View Profile"
+          type="button"
+        >
+          <FiUser />
+        </button>
+      </div>
+
+      {/* Profile Drawer Backdrop */}
+      <div 
+        className={`profile-drawer-backdrop ${isDrawerOpen ? 'open' : ''}`}
+        onClick={() => setIsDrawerOpen(false)}
+      />
+
+      {/* Profile Drawer */}
+      <div className={`profile-drawer ${isDrawerOpen ? 'open' : ''}`}>
+        <div className="profile-drawer-header">
+          <h3>User Profile</h3>
+          <button className="profile-drawer-close" onClick={() => setIsDrawerOpen(false)} type="button">
+            <FiX />
+          </button>
+        </div>
+        
+        <div className="profile-avatar-large">
+          {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+        </div>
+
+        <div className="profile-info-section">
+          <div className="profile-info-item">
+            <span className="profile-info-label">Name</span>
+            <span className="profile-info-value">{user?.username || 'N/A'}</span>
+          </div>
+
+          <div className="profile-info-item">
+            <span className="profile-info-label">Position / Role</span>
+            <span className="profile-info-value" style={{ textTransform: 'capitalize' }}>
+              {user?.role ? user.role.replace('_', ' ').toLowerCase() : 'N/A'}
+            </span>
+          </div>
+
+          <div className="profile-info-item">
+            <span className="profile-info-label">Email ID</span>
+            <span className="profile-info-value">{user?.email || 'N/A'}</span>
+          </div>
+        </div>
       </div>
     </header>
   );
 }
+

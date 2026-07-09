@@ -49,6 +49,7 @@ export class AuthService {
     return {
       id: user.id,
       username: user.name,
+      email: user.email,
       role: user.role.toLowerCase(),
       accessToken: token,
     };
@@ -60,6 +61,7 @@ export class AuthService {
     return {
       id: user.id,
       username: user.name,
+      email: user.email,
       role: user.role.toLowerCase(),
     };
   }
