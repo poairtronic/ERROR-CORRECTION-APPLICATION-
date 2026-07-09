@@ -1,7 +1,7 @@
 import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from '../users/user.entity';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { Role } from '../common/enums/role.enum';
@@ -63,7 +63,7 @@ export class NotificationListener {
   }
 
   private async handlePendingInspection(report: DefectReport) {
-    const inspectors = await this.usersRepo.find({ where: { role: Role.INSPECTOR, isActive: true } });
+    const inspectors = await this.usersRepo.find({ where: { role: In([Role.INSPECTOR, Role.INSPECTOR.toLowerCase()]), isActive: true } });
 
     const summaryTable = {
       'Report Number': report.reportNumber,
@@ -98,7 +98,7 @@ export class NotificationListener {
   }
 
   private async handlePendingSmReview(report: DefectReport) {
-    const smUsers = await this.usersRepo.find({ where: { role: Role.SENIOR_MANAGER, isActive: true } });
+    const smUsers = await this.usersRepo.find({ where: { role: In([Role.SENIOR_MANAGER, Role.SENIOR_MANAGER.toLowerCase()]), isActive: true } });
     const inspector = report.inspectionDetail?.inspectorId 
       ? await this.usersRepo.findOne({ where: { id: report.inspectionDetail.inspectorId } })
       : report.raisedBy;
@@ -139,7 +139,7 @@ export class NotificationListener {
   }
 
   private async handlePendingGmApproval(report: DefectReport) {
-    const gmUsers = await this.usersRepo.find({ where: { role: Role.GENERAL_MANAGER, isActive: true } });
+    const gmUsers = await this.usersRepo.find({ where: { role: In([Role.GENERAL_MANAGER, Role.GENERAL_MANAGER.toLowerCase()]), isActive: true } });
     
     const summaryTable = {
       'Report Number': report.reportNumber,
@@ -174,8 +174,8 @@ export class NotificationListener {
   }
 
   private async handleApproved(report: DefectReport) {
-    const salesUsers = await this.usersRepo.find({ where: { role: Role.SALES, isActive: true } });
-    const storeUsers = await this.usersRepo.find({ where: { role: Role.STORE_MANAGER, isActive: true } });
+    const salesUsers = await this.usersRepo.find({ where: { role: In([Role.SALES, Role.SALES.toLowerCase()]), isActive: true } });
+    const storeUsers = await this.usersRepo.find({ where: { role: In([Role.STORE_MANAGER, Role.STORE_MANAGER.toLowerCase()]), isActive: true } });
 
     const salesSummary = {
       'Report Number': report.reportNumber,
@@ -240,7 +240,7 @@ export class NotificationListener {
     const notifyIds = new Set<string>();
     
     // Notify Sales
-    const salesUsers = await this.usersRepo.find({ where: { role: Role.SALES, isActive: true } });
+    const salesUsers = await this.usersRepo.find({ where: { role: In([Role.SALES, Role.SALES.toLowerCase()]), isActive: true } });
     salesUsers.forEach(u => notifyIds.add(u.id));
 
     // Notify Inspector who raised/inspected it
@@ -389,7 +389,7 @@ export class NotificationListener {
 
   @OnEvent('salary.deduction.created')
   async handleSalaryDeductionCreated(payload: { deductionId: string, operatorId: string, amount: number }) {
-    const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
+    const adminUsers = await this.usersRepo.find({ where: { role: In([Role.ADMIN, Role.ADMIN.toLowerCase()]), isActive: true } });
 
     for (const admin of adminUsers) {
       await this.notificationsService.create({
@@ -416,7 +416,7 @@ export class NotificationListener {
 
   @OnEvent('vendor.fault.created')
   async handleVendorFaultCreated(payload: { faultId: string, vendorId: string, reportId: string }) {
-    const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
+    const adminUsers = await this.usersRepo.find({ where: { role: In([Role.ADMIN, Role.ADMIN.toLowerCase()]), isActive: true } });
     const report = await this.fetchReportWithRelations(payload.reportId);
     
     for (const admin of adminUsers) {
