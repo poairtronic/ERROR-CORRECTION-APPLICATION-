@@ -22,30 +22,59 @@ export class EmailQueueService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processEmailQueue() {
-    this.logger.debug('Polling email queue...');
+    // [STEP 5] Queue Processing
+    console.log('[EMAIL_DIAGNOSTICS] [STEP 5] Queue Processing: Polling email queue...');
     
-    // Fetch pending and failed emails (up to max retries)
-    const emailsToProcess = await this.emailLogRepo.find({
-      where: [
-        { status: EmailStatus.PENDING },
-        { status: EmailStatus.FAILED },
-      ],
-      take: 50, // process in batches
-      order: { createdAt: 'ASC' },
-    });
+    let emailsToProcess: EmailLog[];
+    try {
+      emailsToProcess = await this.emailLogRepo.find({
+        where: [
+          { status: EmailStatus.PENDING },
+          { status: EmailStatus.FAILED },
+        ],
+        take: 50,
+        order: { createdAt: 'ASC' },
+      });
+    } catch (error) {
+      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to query pending emails from database.\nReason: ${error.message}\nFile: email-queue.service.ts\nMethod: processEmailQueue\nStack: ${error.stack}`);
+      throw error;
+    }
 
     const validEmails = emailsToProcess.filter(e => e.retryCount < this.maxRetries);
-
     if (validEmails.length === 0) return;
 
-    this.logger.log(`Processing ${validEmails.length} emails from queue.`);
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Processing: Found ${validEmails.length} pending emails to send.`);
 
     const transporter = this.emailService.getTransporter();
     const fromAddress = this.configService.get<string>('EMAIL_FROM', 'noreply@example.com');
+    const smtpHost = this.configService.get('SMTP_HOST');
+    const smtpPort = this.configService.get('SMTP_PORT');
+    const smtpUser = this.configService.get('SMTP_USER');
+
+    // [STEP 7] SMTP Verify
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 7] SMTP Verify: Checking connection to SMTP server (${smtpHost}:${smtpPort})...`);
+    try {
+      await transporter.verify();
+      // [STEP 8] SMTP Connected
+      console.log(`[EMAIL_DIAGNOSTICS] [STEP 8] SMTP Connected: Connection verified successfully (Authenticated as ${smtpUser}).`);
+    } catch (error) {
+      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] SMTP Connection Verification Failed.\nReason: ${error.message}\nFile: email-queue.service.ts\nMethod: processEmailQueue\nStack: ${error.stack}\nConfig: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}`);
+      // Update logs as failed
+      for (const email of validEmails) {
+        email.retryCount += 1;
+        email.failureReason = `SMTP Verification failed: ${error.message}`;
+        email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
+        await this.emailLogRepo.save(email);
+      }
+      return;
+    }
 
     for (const email of validEmails) {
       try {
-        await transporter.sendMail({
+        // [STEP 9] sendMail Started
+        console.log(`[EMAIL_DIAGNOSTICS] [STEP 9] sendMail Started: Sending Email ID ${email.id} (Recipient: ${email.recipient}, From: ${fromAddress})`);
+        
+        const info = await transporter.sendMail({
           from: fromAddress,
           to: email.recipient,
           cc: email.cc,
@@ -55,15 +84,19 @@ export class EmailQueueService {
           text: !email.isHtml ? email.content : undefined,
         });
 
+        // [STEP 10] Brevo Response & [STEP 11] Message ID & [STEP 12] Email Delivered
+        console.log(`[EMAIL_DIAGNOSTICS] [STEP 10] Brevo Response: ${info.response}`);
+        console.log(`[EMAIL_DIAGNOSTICS] [STEP 11] Message ID: ${info.messageId}`);
+        console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Email Delivered: Status set to SENT for Email ID ${email.id}`);
+
         email.status = EmailStatus.SENT;
         email.sentTime = new Date();
-        this.logger.log(`Email ${email.id} sent successfully.`);
       } catch (error) {
         email.retryCount += 1;
         email.failureReason = error.message;
         email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
         
-        this.logger.error(`Failed to send email ${email.id}. Attempt ${email.retryCount}/${this.maxRetries}`, error.stack);
+        console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] sendMail Failed for Email ID ${email.id}.\nReason: ${error.message}\nFile: email-queue.service.ts\nMethod: sendMail\nStack: ${error.stack}\nConfig: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, sender=${fromAddress}`);
       } finally {
         await this.emailLogRepo.save(email);
       }

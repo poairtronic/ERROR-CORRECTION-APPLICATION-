@@ -35,8 +35,19 @@ export class NotificationListener {
 
   @OnEvent('report.status.changed')
   async handleStatusChanged(event: StatusChangedEvent) {
-    const report = await this.fetchReportWithRelations(event.reportId);
-    if (!report) return;
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 3] Listener Triggered: report.status.changed (Report ID: ${event.reportId}, Status: ${event.status})`);
+    let report: DefectReport | null;
+    try {
+      report = await this.fetchReportWithRelations(event.reportId);
+    } catch (error) {
+      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to fetch report with relations.\nReason: ${error.message}\nFile: notification.listener.ts\nMethod: handleStatusChanged\nStack: ${error.stack}`);
+      throw error;
+    }
+
+    if (!report) {
+      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Report ID not found in database.\nReason: Report ID ${event.reportId} does not exist\nFile: notification.listener.ts\nMethod: handleStatusChanged`);
+      return;
+    }
 
     switch (event.status) {
       case ReportStatus.PENDING_INSPECTION:

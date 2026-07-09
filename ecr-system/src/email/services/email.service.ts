@@ -62,22 +62,31 @@ export class EmailService implements OnModuleInit {
    * Queue an email to be sent asynchronously.
    */
   async queueEmail(options: SendEmailOptions): Promise<EmailLog> {
-    const htmlContent = this.templateService.renderHtml(options.templateData);
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 6] EmailService Called: queueEmail (Recipient: ${options.recipient}, Subject: ${options.subject})`);
+    
+    let savedLog: EmailLog;
+    try {
+      const htmlContent = this.templateService.renderHtml(options.templateData);
 
-    const emailLog = this.emailLogRepo.create({
-      recipient: options.recipient,
-      cc: options.cc,
-      bcc: options.bcc,
-      subject: options.subject,
-      content: htmlContent,
-      isHtml: true,
-      event: options.event,
-      status: EmailStatus.PENDING,
-      relatedReportId: options.relatedReportId,
-      notificationId: options.notificationId,
-    });
+      const emailLog = this.emailLogRepo.create({
+        recipient: options.recipient,
+        cc: options.cc,
+        bcc: options.bcc,
+        subject: options.subject,
+        content: htmlContent,
+        isHtml: true,
+        event: options.event,
+        status: EmailStatus.PENDING,
+        relatedReportId: options.relatedReportId,
+        notificationId: options.notificationId,
+      });
 
-    const savedLog = await this.emailLogRepo.save(emailLog);
+      savedLog = await this.emailLogRepo.save(emailLog);
+      console.log(`[EMAIL_DIAGNOSTICS] [STEP 4] Queue Created: Email log queued in database as PENDING (Log ID: ${savedLog.id})`);
+    } catch (error) {
+      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to queue email record in database.\nReason: ${error.message}\nFile: email.service.ts\nMethod: queueEmail\nStack: ${error.stack}\nConfig: host=${this.configService.get('SMTP_HOST')}, port=${this.configService.get('SMTP_PORT')}, user=${this.configService.get('SMTP_USER')}`);
+      throw error;
+    }
 
     return savedLog;
   }

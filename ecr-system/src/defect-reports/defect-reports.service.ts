@@ -184,6 +184,8 @@ export class DefectReportsService implements OnModuleInit {
     }
 
     await this.logStatusChange(report.id, actor, ReportStatus.DRAFT, report.status, 'Report raised');
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 1] Report Created: ${report.reportNumber} (ID: ${report.id}, Status: ${report.status})`);
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Event Emitted: report.status.changed for status ${report.status}`);
     this.emitStatusChange(report);
     return report;
   }
