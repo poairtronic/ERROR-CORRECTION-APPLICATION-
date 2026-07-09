@@ -36,7 +36,7 @@ import { EmailModule } from './email/email.module';
         url: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
         autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') !== 'production', // dev only; use migrations in prod
+        synchronize: true, // true to auto-sync schema on Render during MVP phase
       }),
     }),
     AuthModule,
