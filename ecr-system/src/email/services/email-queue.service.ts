@@ -70,36 +70,101 @@ export class EmailQueueService {
     }
 
     for (const email of validEmails) {
-      try {
-        // [STEP 9] sendMail Started
-        console.log(`[EMAIL_DIAGNOSTICS] [STEP 9] sendMail Started: Sending Email ID ${email.id} (Recipient: ${email.recipient}, From: ${fromAddress})`);
-        
-        const info = await transporter.sendMail({
-          from: fromAddress,
-          to: email.recipient,
-          cc: email.cc,
-          bcc: email.bcc,
-          subject: email.subject,
-          html: email.isHtml ? email.content : undefined,
-          text: !email.isHtml ? email.content : undefined,
-        });
+      let attempt = 0;
+      const maxAttempts = 3;
+      let delay = 1000; // start with 1 second delay
+      let sentSuccess = false;
+      let lastError: any = null;
+      const startTime = Date.now();
 
-        // [STEP 10] Brevo Response & [STEP 11] Message ID & [STEP 12] Email Delivered
-        console.log(`[EMAIL_DIAGNOSTICS] [STEP 10] Brevo Response: ${info.response}`);
-        console.log(`[EMAIL_DIAGNOSTICS] [STEP 11] Message ID: ${info.messageId}`);
-        console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Email Delivered: Status set to SENT for Email ID ${email.id}`);
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          // [STEP 9] sendMail Started
+          console.log(`[EMAIL_DIAGNOSTICS] [STEP 9] sendMail Started: Sending Email ID ${email.id} (Recipient: ${email.recipient}, From: ${fromAddress}, Attempt: ${attempt}/${maxAttempts})`);
+          
+          const info = await transporter.sendMail({
+            from: fromAddress,
+            to: email.recipient,
+            cc: email.cc,
+            bcc: email.bcc,
+            subject: email.subject,
+            html: email.isHtml ? email.content : undefined,
+            text: !email.isHtml ? email.content : undefined,
+          });
 
-        email.status = EmailStatus.SENT;
-        email.sentTime = new Date();
-      } catch (error) {
-        email.retryCount += 1;
-        email.failureReason = error.message;
-        email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
-        
-        console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] sendMail Failed for Email ID ${email.id}.\nReason: ${error.message}\nFile: email-queue.service.ts\nMethod: sendMail\nStack: ${error.stack}\nConfig: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, sender=${fromAddress}`);
-      } finally {
-        await this.emailLogRepo.save(email);
+          const endTime = Date.now();
+          const connectionTime = endTime - startTime;
+
+          // [STEP 10] Brevo Response & [STEP 11] Message ID & [STEP 12] Email Delivered
+          console.log(`[EMAIL_DIAGNOSTICS] [STEP 10] Brevo Response: ${info.response}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [STEP 11] Message ID: ${info.messageId}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Email Delivered: Status set to SENT for Email ID ${email.id}`);
+
+          // Diagnostics requirements:
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Host: ${smtpHost}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Port: ${smtpPort}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP User: ${smtpUser}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Connection Time: ${connectionTime}ms`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Queue Size: ${validEmails.length}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Recipient: ${email.recipient}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Subject: ${email.subject}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Brevo Response: ${info.response}`);
+          console.log(`[EMAIL_DIAGNOSTICS] [DIAG] Message ID: ${info.messageId}`);
+
+          email.status = EmailStatus.SENT;
+          email.sentTime = new Date();
+          email.failureReason = null as any;
+          sentSuccess = true;
+          break; // break the retry loop
+        } catch (error) {
+          lastError = error;
+          const endTime = Date.now();
+          const connectionTime = endTime - startTime;
+
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Host: ${smtpHost}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Port: ${smtpPort}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP User: ${smtpUser}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Connection Time: ${connectionTime}ms`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Queue Size: ${validEmails.length}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Recipient: ${email.recipient}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] Subject: ${email.subject}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Error Code: ${error.code || 'N/A'}`);
+          console.error(`[EMAIL_DIAGNOSTICS] [DIAG] SMTP Response Code: ${error.responseCode || 'N/A'}`);
+
+          const retryable =
+            error.code === 'ECONNRESET' ||
+            error.code === 'ETIMEDOUT' ||
+            error.code === 'EPIPE' ||
+            error.code === 'TIMEOUT' ||
+            (error.message && error.message.toLowerCase().includes('timeout'));
+
+          if (retryable && attempt < maxAttempts) {
+            console.warn(`[EMAIL_DIAGNOSTICS] [RETRY] Retryable error encountered. Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // exponential backoff
+          } else {
+            break; // not retryable or max attempts reached
+          }
+        }
       }
+
+      if (!sentSuccess) {
+        email.retryCount += 1;
+        email.failureReason = lastError ? lastError.message : 'Unknown error';
+        email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
+
+        console.error(
+          `[EMAIL_DIAGNOSTICS] [FAILURE] sendMail Failed for Email ID ${email.id} after ${attempt} attempts.\n` +
+          `Reason: ${email.failureReason}\n` +
+          `File: email-queue.service.ts\n` +
+          `Method: sendMail\n` +
+          `Stack: ${lastError ? lastError.stack : ''}\n` +
+          `Config: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, sender=${fromAddress}`
+        );
+      }
+
+      await this.emailLogRepo.save(email);
     }
   }
 }

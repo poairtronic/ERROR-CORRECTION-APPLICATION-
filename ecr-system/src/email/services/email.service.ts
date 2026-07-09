@@ -29,28 +29,34 @@ export class EmailService implements OnModuleInit {
     private configService: ConfigService,
     private templateService: EmailTemplateService,
   ) {
-    const smtpPort = Number(this.configService.get('SMTP_PORT') || 587);
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
+      host: process.env.SMTP_HOST,
       port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
+      secure: false,
+      requireTLS: true,
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000,
+      tls: {
+        rejectUnauthorized: false
       },
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
     });
   }
 
   async onModuleInit() {
     try {
       await this.transporter.verify();
-      this.logger.log('SMTP Connection verified successfully');
+      this.logger.log("SMTP verified");
     } catch (error) {
-      this.logger.error(
-        `SMTP Connection failed on startup. Host: ${this.configService.get('SMTP_HOST')}, Port: ${this.configService.get('SMTP_PORT')}, User: ${this.configService.get('SMTP_USER')}`,
-        error.message,
-      );
-      // We don't throw here to ensure application starts even if SMTP is down
+      this.logger.error(error);
     }
   }
 
