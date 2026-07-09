@@ -24,23 +24,27 @@ export class GmailSmtpService implements OnModuleInit {
       throw new Error('Email startup validation failed: Missing required environment variable [GMAIL_APP_PASSWORD]');
     }
 
+    // Use 'as any' to set 'family: 4' which forces IPv4
+    // Render free tier cannot reach Gmail SMTP over IPv6 (ENETUNREACH)
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 587,
-      secure: false, // STARTTLS
+      secure: false,
+      family: 4,
       auth: {
         user: emailFrom,
         pass: gmailAppPassword,
       },
-    });
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+    } as any);
 
-    // Verify the connection on startup
+    // Verify the connection on startup (non-fatal — emails will retry via queue)
     try {
       await this.transporter.verify();
       this.logger.log('Gmail SMTP transporter verified and ready.');
     } catch (error: any) {
-      this.logger.error(`Gmail SMTP verification failed: ${error.message}`);
-      throw new Error(`Gmail SMTP connection failed: ${error.message}`);
+      this.logger.warn(`Gmail SMTP verification failed on startup (will retry on send): ${error.message}`);
     }
   }
 
