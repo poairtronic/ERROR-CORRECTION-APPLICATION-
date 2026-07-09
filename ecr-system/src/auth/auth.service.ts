@@ -29,7 +29,7 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = { sub: user.id, email: user.email, role: user.role.toUpperCase() };
     const token = this.jwtService.sign(payload);
 
     // Set JWT as HttpOnly cookie so frontend cookie-based auth works

@@ -37,7 +37,7 @@ export class UsersService {
     const user = this.repo.create({
       name: dto.name,
       email: dto.email,
-      role: dto.role,
+      role: dto.role?.toUpperCase() as any,
       department: dto.department,
       salaryRefId: dto.salaryRefId,
       passwordHash,

@@ -27,6 +27,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload) {
     // returned object becomes request.user
-    return { sub: payload.sub, id: payload.sub, email: payload.email, role: payload.role };
+    // Normalize role to uppercase to match Role enum values (e.g., 'INSPECTOR', 'OPERATOR')
+    // This prevents 403 errors when the DB/JWT stores mixed-case roles like 'Inspector'
+    const normalizedRole = payload.role ? payload.role.toUpperCase() : payload.role;
+    return { sub: payload.sub, id: payload.sub, email: payload.email, role: normalizedRole };
   }
 }
