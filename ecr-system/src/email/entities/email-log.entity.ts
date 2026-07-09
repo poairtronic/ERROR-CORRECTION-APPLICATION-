@@ -59,6 +59,9 @@ export class EmailLog {
   @Column({ nullable: true })
   notificationId: string;
 
+  @Column({ nullable: true })
+  providerMessageId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

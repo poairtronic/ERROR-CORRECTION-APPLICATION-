@@ -71,130 +71,104 @@ export class EmailQueueService {
     if (validEmails.length === 0) return;
 
     console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Processing: Found ${validEmails.length} eligible emails to process.`);
+    console.log(`[EMAIL] [Queue Started] [${new Date().toISOString()}] Processing batch of size ${validEmails.length}`);
 
-    const transporter = this.emailService.getTransporter();
-    const fromAddress = this.configService.get<string>('EMAIL_FROM');
-    const smtpHost = this.configService.get('SMTP_HOST');
-    const smtpPort = this.configService.get('SMTP_PORT');
-    const smtpUser = this.configService.get('SMTP_USER');
-
-    // [STEP 7] SMTP Verify
-    console.log(`[EMAIL_DIAGNOSTICS] [STEP 7] SMTP Verify: Checking connection to SMTP server (${smtpHost}:${smtpPort})...`);
-    try {
-      await transporter.verify();
-      // [STEP 8] SMTP Connected
-      console.log(`[EMAIL_DIAGNOSTICS] [STEP 8] SMTP Connected: Connection verified successfully (Authenticated as ${smtpUser}).`);
-    } catch (error) {
-      console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] SMTP Connection Verification Failed.\nReason: ${error.message}\nFile: email-queue.service.ts\nMethod: processEmailQueue\nStack: ${error.stack}\nConfig: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}`);
-      // Update logs as failed
-      for (const email of validEmails) {
-        email.retryCount += 1;
-        email.failureReason = `SMTP Verification failed: ${error.message}`;
-        email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
-        await this.emailLogRepo.save(email);
+    const isRetryableError = (error: any): boolean => {
+      if (error.status) {
+        const transientStatuses = [429, 500, 502, 503, 504];
+        return transientStatuses.includes(error.status);
       }
-      return;
-    }
+      const errorMessage = error.message ? error.message.toLowerCase() : '';
+      return (
+        error.code === 'ECONNRESET' ||
+        error.code === 'ETIMEDOUT' ||
+        error.code === 'EPIPE' ||
+        error.code === 'TIMEOUT' ||
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('fetch failed') ||
+        errorMessage.includes('network')
+      );
+    };
 
     for (const email of validEmails) {
-      // Set to PROCESSING status to avoid duplicate pick (Step 5 Email Status)
       email.status = EmailStatus.PROCESSING;
       await this.emailLogRepo.save(email);
-      console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Picked: Status updated to PROCESSING for Email ID ${email.id}`);
+      console.log(`[EMAIL] [Queue Picked] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | Status: PROCESSING`);
 
       let attempt = 0;
       const maxAttempts = 3;
       let delay = 1000; // start with 1 second delay
       let sentSuccess = false;
       let lastError: any = null;
-      const startTime = Date.now();
 
       while (attempt < maxAttempts) {
         attempt++;
         try {
-          // [STEP 9] sendMail Started & TASK 7 Diagnostics (Before sendMail)
-          console.log(`[EMAIL_DIAGNOSTICS] [STEP 9] sendMail Started: Sending Email ID ${email.id} (Attempt: ${attempt}/${maxAttempts})`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] Recipient: ${email.recipient}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] Subject: ${email.subject}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] EMAIL_FROM: ${fromAddress}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] SMTP_USER: ${smtpUser}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] SMTP_HOST: ${smtpHost}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SEND] SMTP_PORT: ${smtpPort}`);
-          
-          const info = await transporter.sendMail({
-            from: fromAddress,
-            to: email.recipient,
-            cc: email.cc,
-            bcc: email.bcc,
-            subject: email.subject,
-            html: email.isHtml ? email.content : undefined,
-            text: !email.isHtml ? email.content : undefined,
-          });
-
-          // [STEP 10] Brevo Response & [STEP 11] Message ID & [STEP 12] Email Delivered
-          console.log(`[EMAIL_DIAGNOSTICS] [STEP 10] Brevo Response: ${info.response}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [STEP 11] Message ID: ${info.messageId}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Email Delivered: Status set to SENT for Email ID ${email.id}`);
-
-          // TASK 7 Diagnostics (After sendMail)
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] Message ID: ${info.messageId}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] SMTP Response: ${info.response}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] Accepted: ${JSON.stringify(info.accepted)}`);
-          console.log(`[EMAIL_DIAGNOSTICS] [SMTP_SUCCESS] Rejected: ${JSON.stringify(info.rejected)}`);
+          const apiResult = await this.emailService.sendEmailViaApi(email);
 
           email.status = EmailStatus.SENT;
           email.sentTime = new Date();
-          email.failureReason = null as any;
+          email.providerMessageId = apiResult.messageId;
+          email.failureReason = JSON.stringify({
+            providerName: 'Brevo',
+            responseCode: apiResult.responseCode,
+            responseBody: apiResult.responseBody,
+            deliveryTime: email.sentTime.toISOString(),
+          });
+
           sentSuccess = true;
-          break; // break the retry loop
+          break;
         } catch (error) {
           lastError = error;
 
-          // TASK 7 Diagnostics (On failure)
+          const retryable = isRetryableError(error);
           console.error(
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] SMTP Error Code: ${error.code || 'N/A'}\n` +
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] SMTP Response Code: ${error.responseCode || 'N/A'}\n` +
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Full Error Message: ${error.message}\n` +
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Stack Trace: ${error.stack}\n` +
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] EmailLog ID: ${email.id}\n` +
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Recipient: ${email.recipient}\n` +
-            `[EMAIL_DIAGNOSTICS] [SMTP_ERROR] Subject: ${email.subject}`
+            `[EMAIL] [Failure] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | ` +
+            `Attempt: ${attempt}/${maxAttempts} | Error: ${error.message} | Retryable: ${retryable}`
           );
 
-          const retryable =
-            error.code === 'ECONNRESET' ||
-            error.code === 'ETIMEDOUT' ||
-            error.code === 'EPIPE' ||
-            error.code === 'TIMEOUT' ||
-            (error.message && error.message.toLowerCase().includes('timeout'));
-
           if (retryable && attempt < maxAttempts) {
-            console.warn(`[EMAIL_DIAGNOSTICS] [RETRY] Retryable error encountered. Retrying in ${delay}ms...`);
+            console.log(`[EMAIL] [Retry] [${new Date().toISOString()}] Email ID: ${email.id} | Waiting ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             delay *= 2; // exponential backoff
           } else {
-            break; // not retryable or max attempts reached
+            break;
           }
         }
       }
 
       if (!sentSuccess) {
+        const retryable = isRetryableError(lastError);
         email.retryCount += 1;
-        email.failureReason = `${lastError ? lastError.message : 'Unknown error'}\nStack: ${lastError ? lastError.stack : ''}`;
-        email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
+        
+        const statusCode = lastError.status || 'N/A';
+        email.failureReason = JSON.stringify({
+          providerName: 'Brevo',
+          error: lastError.message,
+          responseCode: statusCode,
+          responseBody: lastError.message,
+          stackTrace: lastError.stack || 'N/A',
+          deliveryTime: null,
+        });
 
-        console.error(
-          `[EMAIL_DIAGNOSTICS] [FAILURE] sendMail Failed for Email ID ${email.id} after ${attempt} attempts.\n` +
-          `Reason: ${email.failureReason}\n` +
-          `File: email-queue.service.ts\n` +
-          `Method: sendMail\n` +
-          `Config: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, sender=${fromAddress}`
-        );
+        if (!retryable || email.retryCount >= this.maxRetries) {
+          email.status = EmailStatus.CANCELLED;
+          console.error(
+            `[EMAIL] [Failure] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | ` +
+            `Action: CANCELLED | Reason: Non-retryable error or exceeded max attempts`
+          );
+        } else {
+          email.status = EmailStatus.FAILED;
+          console.log(
+            `[EMAIL] [Retry] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | ` +
+            `Action: RETRY_SCHEDULED | Attempt: ${email.retryCount}/${this.maxRetries}`
+          );
+        }
       }
 
       // [STEP 12] Database Updated
       await this.emailLogRepo.save(email);
-      console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Database Updated: Email ID ${email.id} status is now ${email.status}`);
+      console.log(`[EMAIL] [Database Updated] [${new Date().toISOString()}] Email ID: ${email.id} | Status: ${email.status}`);
     }
   }
 }

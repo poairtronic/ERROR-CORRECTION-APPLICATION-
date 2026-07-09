@@ -2,7 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
@@ -22,53 +21,115 @@ export interface SendEmailOptions {
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter;
 
   constructor(
     @InjectRepository(EmailLog) private emailLogRepo: Repository<EmailLog>,
     private configService: ConfigService,
     private templateService: EmailTemplateService,
-  ) {
-    const smtpPort = Number(process.env.SMTP_PORT || 587);
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: smtpPort,
-      secure: false,
-      requireTLS: true,
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      connectionTimeout: 30000,
-      greetingTimeout: 30000,
-      socketTimeout: 30000,
-      tls: {
-        rejectUnauthorized: false
-      },
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
-  }
+  ) {}
 
   async onModuleInit() {
-    const requiredEnv = ['EMAIL_FROM', 'SMTP_USER', 'SMTP_PASS', 'SMTP_HOST', 'SMTP_PORT'];
+    const requiredEnv = ['BREVO_API_KEY', 'EMAIL_FROM', 'EMAIL_FROM_NAME'];
     for (const val of requiredEnv) {
-      if (!process.env[val]) {
+      if (!this.configService.get<string>(val)) {
         throw new Error(`Email startup validation failed: Missing required environment variable [${val}]`);
       }
     }
-
-    try {
-      await this.transporter.verify();
-      this.logger.log("SMTP verified");
-    } catch (error) {
-      this.logger.error(error);
-    }
+    this.logger.log("Brevo API config validated successfully");
   }
 
-  getTransporter() {
-    return this.transporter;
+  async sendEmailViaApi(emailLog: EmailLog): Promise<{ messageId: string; responseCode: number; responseBody: string }> {
+    const apiKey = this.configService.get<string>('BREVO_API_KEY');
+    const emailFrom = this.configService.get<string>('EMAIL_FROM');
+    const emailFromName = this.configService.get<string>('EMAIL_FROM_NAME', 'Velan Metrology');
+
+    // Validation
+    if (!emailLog.recipient) {
+      throw new Error('Recipient email is missing');
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailLog.recipient)) {
+      throw new Error(`Recipient email address is invalid: [${emailLog.recipient}]`);
+    }
+    if (!emailLog.subject || emailLog.subject.trim() === '') {
+      throw new Error('Email subject is empty');
+    }
+    if (!emailLog.content || emailLog.content.trim() === '') {
+      throw new Error('Email body is empty');
+    }
+
+    const payload = {
+      sender: {
+        name: emailFromName,
+        email: emailFrom,
+      },
+      to: [
+        {
+          email: emailLog.recipient,
+        },
+      ],
+      subject: emailLog.subject,
+      htmlContent: emailLog.isHtml ? emailLog.content : undefined,
+      textContent: !emailLog.isHtml ? emailLog.content : undefined,
+    };
+
+    const startTime = Date.now();
+    
+    console.log(
+      `[EMAIL] [API Request] [${new Date().toISOString()}] ` +
+      `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
+      `Recipient: ${emailLog.recipient} | Provider: Brevo`
+    );
+
+    const headers: Record<string, string> = {
+      'accept': 'application/json',
+      'api-key': apiKey || '',
+      'content-type': 'application/json',
+    };
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const responseCode = response.status;
+    const responseBodyText = await response.text();
+    const responseTime = Date.now() - startTime;
+
+    console.log(
+      `[EMAIL] [API Response] [${new Date().toISOString()}] ` +
+      `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
+      `Recipient: ${emailLog.recipient} | Response Code: ${responseCode} | ` +
+      `Response Time: ${responseTime}ms | Provider: Brevo`
+    );
+
+    if (!response.ok) {
+      const errorDetail = new Error(`Brevo API returned error ${responseCode}: ${responseBodyText}`);
+      (errorDetail as any).status = responseCode;
+      throw errorDetail;
+    }
+
+    let parsedBody: any = {};
+    try {
+      parsedBody = JSON.parse(responseBodyText);
+    } catch (e) {
+      parsedBody = { raw: responseBodyText };
+    }
+
+    const messageId = parsedBody.messageId || '';
+
+    console.log(
+      `[EMAIL] [Success] [${new Date().toISOString()}] ` +
+      `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
+      `Recipient: ${emailLog.recipient} | Message ID: ${messageId} | Provider: Brevo`
+    );
+
+    return {
+      messageId,
+      responseCode,
+      responseBody: responseBodyText,
+    };
   }
 
   /**
