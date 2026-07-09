@@ -182,6 +182,9 @@ body {
   backdrop-filter: blur(12px);
   position: sticky; top: 0; z-index: 50;
 }
+.topbar-global {
+  z-index: 150; /* elevated z-index to prevent layout elements (like sidebar/page headers) from overlapping the profile drawer */
+}
 .topbar h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
 .topbar p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
 .page-content { padding: 32px; flex: 1; }

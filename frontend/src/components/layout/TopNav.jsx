@@ -22,7 +22,7 @@ export function TopNav() {
   const pathnames = location.pathname.split('/').filter(x => x);
   
   return (
-    <header className="topbar">
+    <header className="topbar topbar-global">
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', gap: '8px', textTransform: 'capitalize' }}>
           <span>Home</span>
