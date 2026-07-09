@@ -46,6 +46,7 @@ export class NotificationsService {
         attemptCount: 1,
       }),
     );
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Notification Created: ID ${notification.id} for user ${params.userId}`);
 
     // 1. Push WebSocket
     try {

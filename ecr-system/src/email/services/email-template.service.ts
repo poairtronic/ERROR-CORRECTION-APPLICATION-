@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface TemplateData {
   title: string;
@@ -14,6 +16,33 @@ export interface TemplateData {
 
 @Injectable()
 export class EmailTemplateService {
+  private getTemplateHtml(): string {
+    const pathsToTry = [
+      path.join(__dirname, '..', 'templates', 'default-template.html'),
+      path.join(__dirname, 'templates', 'default-template.html'),
+      path.join(process.cwd(), 'src', 'email', 'templates', 'default-template.html'),
+      path.join(process.cwd(), 'dist', 'email', 'templates', 'default-template.html'),
+    ];
+
+    for (const p of pathsToTry) {
+      if (fs.existsSync(p)) {
+        return fs.readFileSync(p, 'utf8');
+      }
+    }
+    // Fallback if file is somehow missing
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body>
+        <h3>{{title}}</h3>
+        <p>{{message}}</p>
+        {{table}}
+        {{button}}
+      </body>
+      </html>
+    `;
+  }
+
   private renderTable(tableData: Record<string, string> | undefined): string {
     if (!tableData || Object.keys(tableData).length === 0) return '';
     const rows = Object.entries(tableData)
@@ -45,42 +74,22 @@ export class EmailTemplateService {
     const logoUrl = data.logoUrl || 'https://via.placeholder.com/150x50?text=Logo';
     const appName = data.appName || 'Enterprise Notification System';
     const timestamp = new Date().toISOString();
+    const year = new Date().getFullYear().toString();
+    const table = this.renderTable(data.summaryTable);
+    const button = this.renderButton(data.primaryButton);
+    const formattedMessage = data.message.replace(/\n/g, '<br/>');
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
-          .container { max-width: 600px; margin: 20px auto; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-          .header { background-color: #002d72; padding: 20px; text-align: center; color: white; }
-          .header img { max-height: 50px; }
-          .content { padding: 30px; }
-          .footer { background-color: #eee; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <img src="${logoUrl}" alt="${appName} Logo" />
-            <h2>${appName}</h2>
-          </div>
-          <div class="content">
-            <h3 style="margin-top: 0;">${data.title}</h3>
-            <p>${data.message.replace(/\n/g, '<br/>')}</p>
-            ${this.renderTable(data.summaryTable)}
-            ${this.renderButton(data.primaryButton)}
-          </div>
-          <div class="footer">
-            <p>This is an automated message. Please do not reply directly to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} ${appName}. All rights reserved.</p>
-            <p>Generated at: ${timestamp}</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    let template = this.getTemplateHtml();
+    template = template.replace(/\{\{logoUrl\}\}/g, logoUrl);
+    template = template.replace(/\{\{appName\}\}/g, appName);
+    template = template.replace(/\{\{title\}\}/g, data.title);
+    template = template.replace(/\{\{message\}\}/g, formattedMessage);
+    template = template.replace(/\{\{table\}\}/g, table);
+    template = template.replace(/\{\{button\}\}/g, button);
+    template = template.replace(/\{\{year\}\}/g, year);
+    template = template.replace(/\{\{timestamp\}\}/g, timestamp);
+
+    return template;
   }
 
   renderText(data: TemplateData): string {

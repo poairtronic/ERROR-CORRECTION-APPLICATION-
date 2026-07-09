@@ -49,4 +49,11 @@ export class EmailController {
     });
     return { success: true, emailLogId: email.id };
   }
+
+  @Post('resend')
+  @HttpCode(HttpStatus.OK)
+  async resendEmail(@Body('id') id: string) {
+    const email = await this.emailService.resend(id);
+    return { success: true, email };
+  }
 }

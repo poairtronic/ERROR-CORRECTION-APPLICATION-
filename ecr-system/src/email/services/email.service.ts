@@ -114,6 +114,17 @@ export class EmailService implements OnModuleInit {
     return savedLog;
   }
 
+  async resend(id: string): Promise<EmailLog> {
+    const email = await this.emailLogRepo.findOne({ where: { id } });
+    if (!email) {
+      throw new Error('Email log not found');
+    }
+    email.status = EmailStatus.PENDING;
+    email.retryCount = 0;
+    email.failureReason = null as any;
+    return this.emailLogRepo.save(email);
+  }
+
   findAll() {
     return this.emailLogRepo.find({ order: { createdAt: 'DESC' } });
   }

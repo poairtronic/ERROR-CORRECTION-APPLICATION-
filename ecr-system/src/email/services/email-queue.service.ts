@@ -17,7 +17,7 @@ export class EmailQueueService {
     private emailService: EmailService,
     private configService: ConfigService,
   ) {
-    this.maxRetries = this.configService.get<number>('EMAIL_MAX_RETRIES', 3);
+    this.maxRetries = this.configService.get<number>('EMAIL_MAX_RETRIES', 5);
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -32,7 +32,6 @@ export class EmailQueueService {
           { status: EmailStatus.PENDING },
           { status: EmailStatus.FAILED },
         ],
-        take: 50,
         order: { createdAt: 'ASC' },
       });
     } catch (error) {
@@ -51,10 +50,27 @@ export class EmailQueueService {
       );
     });
 
-    const validEmails = emailsToProcess.filter(e => e.retryCount < this.maxRetries);
+    // Filter by backoff delays (Retry Engine)
+    const eligibleEmails: EmailLog[] = [];
+    const retryDelays = [1, 5, 15, 30, 30]; // delays in minutes for retry count 1, 2, 3, 4, 5
+
+    for (const email of emailsToProcess) {
+      if (email.status === EmailStatus.PENDING) {
+        eligibleEmails.push(email);
+      } else if (email.status === EmailStatus.FAILED) {
+        const minutesPassed = (Date.now() - email.updatedAt.getTime()) / (60 * 1000);
+        const requiredDelay = retryDelays[email.retryCount - 1] || 30;
+        if (minutesPassed >= requiredDelay) {
+          eligibleEmails.push(email);
+        }
+      }
+    }
+
+    // Limit to at most 5 emails per minute (Rate Limit)
+    const validEmails = eligibleEmails.slice(0, 5);
     if (validEmails.length === 0) return;
 
-    console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Processing: Found ${validEmails.length} pending emails to send.`);
+    console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Processing: Found ${validEmails.length} eligible emails to process.`);
 
     const transporter = this.emailService.getTransporter();
     const fromAddress = this.configService.get<string>('EMAIL_FROM');
@@ -81,6 +97,11 @@ export class EmailQueueService {
     }
 
     for (const email of validEmails) {
+      // Set to PROCESSING status to avoid duplicate pick (Step 5 Email Status)
+      email.status = EmailStatus.PROCESSING;
+      await this.emailLogRepo.save(email);
+      console.log(`[EMAIL_DIAGNOSTICS] [STEP 5] Queue Picked: Status updated to PROCESSING for Email ID ${email.id}`);
+
       let attempt = 0;
       const maxAttempts = 3;
       let delay = 1000; // start with 1 second delay
@@ -110,9 +131,6 @@ export class EmailQueueService {
             text: !email.isHtml ? email.content : undefined,
           });
 
-          const endTime = Date.now();
-          const connectionTime = endTime - startTime;
-
           // [STEP 10] Brevo Response & [STEP 11] Message ID & [STEP 12] Email Delivered
           console.log(`[EMAIL_DIAGNOSTICS] [STEP 10] Brevo Response: ${info.response}`);
           console.log(`[EMAIL_DIAGNOSTICS] [STEP 11] Message ID: ${info.messageId}`);
@@ -131,8 +149,6 @@ export class EmailQueueService {
           break; // break the retry loop
         } catch (error) {
           lastError = error;
-          const endTime = Date.now();
-          const connectionTime = endTime - startTime;
 
           // TASK 7 Diagnostics (On failure)
           console.error(
@@ -164,7 +180,7 @@ export class EmailQueueService {
 
       if (!sentSuccess) {
         email.retryCount += 1;
-        email.failureReason = lastError ? lastError.message : 'Unknown error';
+        email.failureReason = `${lastError ? lastError.message : 'Unknown error'}\nStack: ${lastError ? lastError.stack : ''}`;
         email.status = email.retryCount >= this.maxRetries ? EmailStatus.CANCELLED : EmailStatus.FAILED;
 
         console.error(
@@ -172,12 +188,13 @@ export class EmailQueueService {
           `Reason: ${email.failureReason}\n` +
           `File: email-queue.service.ts\n` +
           `Method: sendMail\n` +
-          `Stack: ${lastError ? lastError.stack : ''}\n` +
           `Config: host=${smtpHost}, port=${smtpPort}, user=${smtpUser}, sender=${fromAddress}`
         );
       }
 
+      // [STEP 12] Database Updated
       await this.emailLogRepo.save(email);
+      console.log(`[EMAIL_DIAGNOSTICS] [STEP 12] Database Updated: Email ID ${email.id} status is now ${email.status}`);
     }
   }
 }
