@@ -109,6 +109,9 @@ export class EmailTemplateService {
     const layoutTemplate = this.getLayoutTemplate();
     const bodyTemplate = this.getCompiledTemplate(templateName);
 
+    const summary = data.summaryTable || {};
+    const primaryButtonUrl = data.primaryButton?.url || '';
+
     // Merge env variables with fallback support
     const context = {
       appName: this.configService.get<string>('EMAIL_FROM_NAME', 'Velan Metrology'),
@@ -121,22 +124,56 @@ export class EmailTemplateService {
       // Escape values safely
       employeeName: data.employeeName || 'Employee',
       role: data.role || 'N/A',
-      reportId: data.reportId || 'N/A',
-      component: data.component || 'N/A',
-      errorType: data.errorType || 'N/A',
-      priority: data.priority || 'N/A',
-      createdDate: data.createdDate || 'N/A',
-      status: data.status || 'N/A',
-      comments: data.comments || '',
-      reviewer: data.reviewer || 'N/A',
-      applicationUrl: data.applicationUrl || 'http://localhost:5173',
+      reportId: data.reportId || summary['Report Number'] || summary['Report ID'] || 'N/A',
+      component: data.component || summary['Component'] || 'N/A',
+      errorType: data.errorType || summary['Error Type'] || summary['Inspector Summary'] || 'N/A',
+      priority: data.priority || summary['Priority'] || 'Normal',
+      createdDate: data.createdDate || summary['Submission Time'] || summary['Date'] || new Date().toLocaleDateString(),
+      status: data.status || summary['Status'] || 'N/A',
+      comments: data.comments || summary['Comments'] || summary['Remarks'] || summary['SM Notes'] || '',
+      reviewer: data.reviewer || summary['Raised By'] || summary['Inspector'] || summary['Approved By'] || summary['Rejected By'] || 'N/A',
+      applicationUrl: data.applicationUrl || primaryButtonUrl || 'http://localhost:5173',
       
       // Backward compatibility support for old calls
       title: data.title || '',
       message: data.message || '',
     };
 
-    const bodyHtml = bodyTemplate(context);
+    let bodyHtml = '';
+
+    // If the template is system-alert and we have a summaryTable, render a detailed table layout
+    if (templateName === 'system-alert' && data.summaryTable) {
+      let tableHtml = '<table class="table-details">';
+      for (const [key, val] of Object.entries(data.summaryTable)) {
+        tableHtml += `
+          <tr>
+            <td class="label">${key}</td>
+            <td class="value">${val || '—'}</td>
+          </tr>
+        `;
+      }
+      tableHtml += '</table>';
+
+      let buttonHtml = '';
+      if (data.primaryButton) {
+        buttonHtml = `
+          <div style="text-align: center;">
+            <a href="${data.primaryButton.url}" class="btn">${data.primaryButton.text}</a>
+          </div>
+        `;
+      }
+
+      bodyHtml = `
+        <span class="badge badge-pending">${data.title ? 'Action Required' : 'Alert'}</span>
+        <h3>${data.title || 'System Notification'}</h3>
+        <p>${data.message || 'Details of the latest update:'}</p>
+        ${tableHtml}
+        ${buttonHtml}
+      `;
+    } else {
+      bodyHtml = bodyTemplate(context);
+    }
+
     const finalHtml = layoutTemplate({
       ...context,
       body: bodyHtml,
