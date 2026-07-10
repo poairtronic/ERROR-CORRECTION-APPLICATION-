@@ -9,6 +9,14 @@ import { SIMPLIFIED_WORKFLOW } from '../utils/constants';
 export default function NewReportPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && !['OPERATOR', 'INSPECTOR', 'SENIOR_MANAGER'].includes(user.role?.toUpperCase())) {
+      toast.error('You do not have permission to raise a defect report.');
+      navigate('/reports', { replace: true });
+    }
+  }, [user, navigate]);
+
   const isSimplifiedInspector = SIMPLIFIED_WORKFLOW && user?.role === 'INSPECTOR';
 
   const [components, setComponents] = useState([]);

@@ -5,11 +5,13 @@ import api from '../services/apiClient';
 import { FiPlus, FiSearch } from 'react-icons/fi';
 import { Table } from '../components/ui/Table';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAuth } from '../contexts/AuthContext';
 
 import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [filterStatus, setFilterStatus] = useState('');
@@ -51,9 +53,11 @@ export default function ReportsPage() {
           <h1>Defect Reports</h1>
           <p>{filtered.length} reports</p>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/reports/new')}>
-          <FiPlus /> New Report
-        </button>
+        {['OPERATOR', 'INSPECTOR', 'SENIOR_MANAGER'].includes(user?.role?.toUpperCase()) && (
+          <button className="btn btn-primary" onClick={() => navigate('/reports/new')}>
+            <FiPlus /> New Report
+          </button>
+        )}
       </div>
 
       <div className="page-content">
