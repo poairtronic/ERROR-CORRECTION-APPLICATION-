@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { FiUser, FiShield } from 'react-icons/fi';
@@ -7,6 +7,7 @@ import { FiUser, FiShield } from 'react-icons/fi';
 export default function LoginPage() {
   const { login, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loginType, setLoginType] = useState('user'); // 'user' or 'admin'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -31,10 +32,11 @@ export default function LoginPage() {
       toast.success(`Welcome to the ${loginType === 'admin' ? 'Admin' : 'User'} Portal!`);
       
       // Navigate to appropriate landing page
+      const from = location.state?.from?.pathname || '/';
       if (user.role === 'ADMIN' && loginType === 'admin') {
         navigate('/users', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate(from, { replace: true });
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid credentials';
