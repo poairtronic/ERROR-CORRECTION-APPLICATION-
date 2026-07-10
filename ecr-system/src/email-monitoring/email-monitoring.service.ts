@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
+import { Repository, Like, In } from 'typeorm';
 import { EmailLog } from '../email/entities/email-log.entity';
 import { EmailStatus } from '../email/enums/email-status.enum';
 import { EmailMonitoringAuditLog } from './entities/email-monitoring-audit-log.entity';
@@ -164,10 +164,10 @@ export class EmailMonitoringService {
     const reportIds = items.map(i => i.relatedReportId).filter(Boolean) as string[];
 
     const users = recipientEmails.length > 0 
-      ? await this.userRepo.find({ where: { email: Like(`%${recipientEmails.join('%')}%`) } }) 
+      ? await this.userRepo.find({ where: { email: In(recipientEmails) } }) 
       : [];
     const reports = reportIds.length > 0
-      ? await this.reportRepo.find({ where: { id: Like(`%${reportIds.join('%')}%`) } })
+      ? await this.reportRepo.find({ where: { id: In(reportIds) } })
       : [];
 
     const mappedItems = items.map(item => {
