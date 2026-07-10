@@ -21,7 +21,6 @@ const MasterDataPage = lazy(() => import('./pages/MasterDataPage'));
 const AuditViewerPage = lazy(() => import('./pages/AuditViewerPage'));
 const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
 const EnterpriseAnalytics = lazy(() => import('./pages/EnterpriseAnalytics'));
-const AdminEmailDashboard = lazy(() => import('./pages/dashboards/AdminEmailDashboard'));
 const EmailMonitoringDashboard = lazy(() => import('./pages/dashboards/EmailMonitoringDashboard'));
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
