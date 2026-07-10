@@ -258,6 +258,11 @@ export class DefectReportsService implements OnModuleInit {
     });
     await this.inspectionRepo.save(inspection);
 
+    // Persist the inspection type (REWORK / REJECTION) if provided
+    if (dto.inspectionType) {
+      report.inspectionType = dto.inspectionType;
+    }
+
     const from = report.status;
     report.status = ReportStatus.PENDING_SM_REVIEW;
     await this.reportsRepo.save(report);

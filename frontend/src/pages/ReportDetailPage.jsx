@@ -31,6 +31,7 @@ export default function ReportDetailPage() {
   const queryClient = useQueryClient();
   const [modal, setModal] = useState(null); // 'inspect'|'sm-review'|'gm-approve'|'gm-reject'
   const [notes, setNotes] = useState('');
+  const [inspectionMode, setInspectionMode] = useState(null); // 'REWORK' | 'REJECTION' — gates the inspection form
 
   const { data: report, isLoading: loading } = useQuery({
     queryKey: ['report', id],
@@ -118,16 +119,29 @@ export default function ReportDetailPage() {
           <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)} style={{ marginBottom: 4 }}>
             <FiArrowLeft /> Back
           </button>
-          <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             Report <span className={`badge badge-${STATUS_COLORS[status] || 'draft'}`}>{STATUS_LABELS[status] || status}</span>
             {report.componentsIssued && <span className="badge badge-success">Components Issued</span>}
+            {report.inspectionType && (
+              <span className="badge" style={{
+                background: report.inspectionType === 'REWORK' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                color: report.inspectionType === 'REWORK' ? '#16a34a' : '#dc2626',
+                border: `1px solid ${report.inspectionType === 'REWORK' ? '#22c55e33' : '#ef444433'}`,
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.5px'
+              }}>
+                {report.inspectionType === 'REWORK' ? '🟢' : '🔴'} {report.inspectionType}
+              </span>
+            )}
           </h1>
           <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>ID: {report.reportNumber}</p>
         </div>
         <div className="flex gap-8">
           <button className="btn btn-ghost" onClick={() => window.print()}><FiPrinter /> Print</button>
-          {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && (
-            <button className="btn btn-success" onClick={() => setModal('inspect')}><FiCheckCircle /> Mark Inspected</button>
+          {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && !inspectionMode && (
+            <button className="btn btn-success" onClick={() => setModal('inspect-decision')}><FiCheckCircle /> Begin Inspection</button>
+          )}
+          {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && inspectionMode && (
+            <button className="btn btn-success" onClick={() => setModal('inspect')}><FiCheckCircle /> Submit {inspectionMode} Inspection</button>
           )}
           {role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW' && (
             <button className="btn btn-success" onClick={openSmReviewModal}><FiCheckCircle /> SM Review</button>
@@ -258,9 +272,51 @@ export default function ReportDetailPage() {
         </div>
       </div>
 
+      {/* Inspector Decision Screen */}
+      {modal === 'inspect-decision' && (
+        <Dialog open={true} onClose={() => setModal(null)} title="Inspection Decision">
+          <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: 14 }}>Choose how this report should be processed.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 420 }}>
+            <button
+              type="button"
+              onClick={() => { setInspectionMode('REWORK'); setModal('inspect'); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 16, padding: '24px 20px',
+                background: 'rgba(34,197,94,0.06)', border: '2px solid #22c55e33', borderRadius: 12,
+                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.background = 'rgba(34,197,94,0.12)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#22c55e33'; e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; }}
+            >
+              <span style={{ fontSize: 32 }}>🔧</span>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#16a34a' }}>REWORK</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Repair / Correct and Continue Production</div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setInspectionMode('REJECTION'); setModal('inspect'); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 16, padding: '24px 20px',
+                background: 'rgba(239,68,68,0.06)', border: '2px solid #ef444433', borderRadius: 12,
+                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#ef444433'; e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
+            >
+              <span style={{ fontSize: 32 }}>❌</span>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#dc2626' }}>REJECTION</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Reject Component / Material Entirely</div>
+              </div>
+            </button>
+          </div>
+        </Dialog>
+      )}
       {/* Inspect Modal */}
       {modal === 'inspect' && (
-        <ActionModal title="Inspector Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('inspect', inspectData)}>
+        <ActionModal title={`Inspector Review — ${inspectionMode || 'Review'}`} onClose={() => { setModal(null); setInspectionMode(null); }} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('inspect', { ...inspectData, inspectionType: inspectionMode })}>
           <div className="form-grid">
             <div className="form-group">
               <label>Error Type *</label>

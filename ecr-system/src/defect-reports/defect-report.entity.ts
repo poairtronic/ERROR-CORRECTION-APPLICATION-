@@ -74,6 +74,9 @@ export class DefectReport {
   @Column({ type: 'simple-enum', enum: ReportStatus, default: ReportStatus.DRAFT })
   status: ReportStatus;
 
+  @Column({ type: 'varchar', nullable: true })
+  inspectionType: string | null;  // 'REWORK' | 'REJECTION' — null for legacy reports
+
   @OneToOne(() => InspectionDetail, (i) => i.report, { nullable: true })
   inspectionDetail: InspectionDetail;
 

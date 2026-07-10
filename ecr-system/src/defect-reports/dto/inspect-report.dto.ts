@@ -1,7 +1,11 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min } from 'class-validator';
+import { IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min } from 'class-validator';
 import { Decision, ResponsibleParty } from '../../common/enums/report-status.enum';
 
 export class InspectReportDto {
+  @IsOptional()
+  @IsIn(['REWORK', 'REJECTION'])
+  inspectionType?: string;
+
   @IsNotEmpty()
   errorType: string;
 
