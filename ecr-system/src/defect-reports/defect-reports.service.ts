@@ -143,7 +143,7 @@ export class DefectReportsService implements OnModuleInit {
       await this.reportsRepo.save(report);
       await this.inspectionRepo.save(
         this.inspectionRepo.create({
-          reportId: report.id,
+          report,
           inspectorId: actor.id,
           errorType: dto.inlineInspection.errorType,
           rootCause: dto.inlineInspection.rootCause,
@@ -166,7 +166,7 @@ export class DefectReportsService implements OnModuleInit {
       await this.reportsRepo.save(report);
       await this.inspectionRepo.save(
         this.inspectionRepo.create({
-          reportId: report.id,
+          report,
           inspectorId: actor.id, // SM stands in for inspection step
           errorType: dto.inlineInspection.errorType,
           rootCause: dto.inlineInspection.rootCause,
@@ -181,7 +181,7 @@ export class DefectReportsService implements OnModuleInit {
       );
       await this.smReviewRepo.save(
         this.smReviewRepo.create({
-          reportId: report.id,
+          report,
           smId: actor.id,
           loopholeNote: dto.inlineSmReview.loopholeNote,
           decisionNote: dto.inlineSmReview.decisionNote,
@@ -235,9 +235,14 @@ export class DefectReportsService implements OnModuleInit {
       throw new BadRequestException('Cannot inspect a report you raised yourself');
     }
 
-    let inspection = await this.inspectionRepo.findOne({ where: { reportId: report.id } });
+    let inspection = await this.inspectionRepo.findOne({
+      where: { reportId: report.id },
+      relations: ['report'],
+    });
     if (!inspection) {
-      inspection = this.inspectionRepo.create({ reportId: report.id, report });
+      inspection = this.inspectionRepo.create({ report });
+    } else {
+      inspection.report = report;
     }
     Object.assign(inspection, {
       inspectorId: actor.id,
@@ -271,9 +276,14 @@ export class DefectReportsService implements OnModuleInit {
       throw new BadRequestException('Cannot review a report you raised yourself');
     }
 
-    let smReview = await this.smReviewRepo.findOne({ where: { reportId: report.id } });
+    let smReview = await this.smReviewRepo.findOne({
+      where: { reportId: report.id },
+      relations: ['report'],
+    });
     if (!smReview) {
-      smReview = this.smReviewRepo.create({ reportId: report.id });
+      smReview = this.smReviewRepo.create({ report });
+    } else {
+      smReview.report = report;
     }
     Object.assign(smReview, {
       smId: actor.id,
@@ -330,9 +340,14 @@ export class DefectReportsService implements OnModuleInit {
       throw new BadRequestException('Report is not pending GM approval');
     }
 
-    let gmApproval = await this.gmApprovalRepo.findOne({ where: { reportId: report.id } });
+    let gmApproval = await this.gmApprovalRepo.findOne({
+      where: { reportId: report.id },
+      relations: ['report'],
+    });
     if (!gmApproval) {
-      gmApproval = this.gmApprovalRepo.create({ reportId: report.id });
+      gmApproval = this.gmApprovalRepo.create({ report });
+    } else {
+      gmApproval.report = report;
     }
     Object.assign(gmApproval, {
       gmId: actor.id,
