@@ -155,7 +155,7 @@ export class NotificationListener {
           summaryTable,
           primaryButton: {
             text: 'Open Report',
-            url: `http://localhost:5173/reports/${report.id}`,
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
       });
@@ -190,7 +190,7 @@ export class NotificationListener {
           summaryTable,
           primaryButton: {
             text: 'Open Report',
-            url: `http://localhost:5173/reports/${report.id}`,
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
       });
@@ -224,7 +224,7 @@ export class NotificationListener {
           summaryTable: salesSummary,
           primaryButton: {
             text: 'View Details',
-            url: `http://localhost:5173/reports/${report.id}`,
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
       });
@@ -253,7 +253,7 @@ export class NotificationListener {
           summaryTable: storesSummary,
           primaryButton: {
             text: 'Issue Components',
-            url: `http://localhost:5173/reports/${report.id}`,
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
       });
@@ -298,7 +298,7 @@ export class NotificationListener {
           summaryTable,
           primaryButton: {
             text: 'View Report',
-            url: `http://localhost:5173/reports/${report.id}`,
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
       });
@@ -341,7 +341,7 @@ export class NotificationListener {
             summaryTable,
             primaryButton: {
               text: 'View Report',
-              url: `http://localhost:5173/reports/${report.id}`,
+              url: `${this.frontendUrl}/reports/${report.id}`,
             },
           },
         });
@@ -371,7 +371,7 @@ export class NotificationListener {
             },
             primaryButton: {
               text: 'View Report',
-              url: `http://localhost:5173/reports/${report.id}`,
+              url: `${this.frontendUrl}/reports/${report.id}`,
             },
           },
         });
