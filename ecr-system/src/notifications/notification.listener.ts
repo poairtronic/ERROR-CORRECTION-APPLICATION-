@@ -2,6 +2,7 @@ import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { User } from '../users/user.entity';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { Role } from '../common/enums/role.enum';
@@ -19,12 +20,16 @@ interface StatusChangedEvent {
 @Injectable()
 export class NotificationListener {
   private readonly logger = new Logger(NotificationListener.name);
+  private readonly frontendUrl: string;
 
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
     @InjectRepository(DefectReport) private reportsRepo: Repository<DefectReport>,
     private notificationsService: NotificationsService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+  }
 
   private async fetchReportWithRelations(reportId: string): Promise<DefectReport | null> {
     return this.reportsRepo.findOne({
@@ -41,7 +46,7 @@ export class NotificationListener {
       report = await this.fetchReportWithRelations(event.reportId);
     } catch (error) {
       console.error(`[EMAIL_DIAGNOSTICS] [FAILURE] Failed to fetch report with relations.\nReason: ${error.message}\nFile: notification.listener.ts\nMethod: handleStatusChanged\nStack: ${error.stack}`);
-      throw error;
+      return; // Don't throw - just log and return
     }
 
     if (!report) {
@@ -49,27 +54,35 @@ export class NotificationListener {
       return;
     }
 
-    switch (event.status) {
-      case ReportStatus.PENDING_INSPECTION:
-        await this.handlePendingInspection(report);
-        break;
-      case ReportStatus.PENDING_SM_REVIEW:
-        await this.handlePendingSmReview(report);
-        break;
-      case ReportStatus.PENDING_GM_APPROVAL:
-        await this.handlePendingGmApproval(report);
-        break;
-      case ReportStatus.APPROVED:
-        await this.handleApproved(report);
-        break;
-      case ReportStatus.COMPONENTS_ISSUED:
-        await this.handleComponentsIssued(report);
-        break;
-      case ReportStatus.REJECTED:
-        await this.handleRejected(report);
-        break;
-      default:
-        break;
+    try {
+      switch (event.status) {
+        case ReportStatus.PENDING_INSPECTION:
+          await this.handlePendingInspection(report);
+          break;
+        case ReportStatus.PENDING_SM_REVIEW:
+          await this.handlePendingSmReview(report);
+          break;
+        case ReportStatus.PENDING_GM_APPROVAL:
+          await this.handlePendingGmApproval(report);
+          break;
+        case ReportStatus.APPROVED:
+          await this.handleApproved(report);
+          break;
+        case ReportStatus.COMPONENTS_ISSUED:
+          await this.handleComponentsIssued(report);
+          break;
+        case ReportStatus.REJECTED:
+          await this.handleRejected(report);
+          break;
+        default:
+          break;
+      }
+    } catch (error: any) {
+      this.logger.error(
+        `[NOTIFICATION_ERROR] Failed to process notifications for report ${event.reportId} (status: ${event.status}): ${error.message}`,
+        error.stack,
+      );
+      // Don't re-throw - notification failures should not crash the report operation
     }
   }
 
@@ -101,7 +114,7 @@ export class NotificationListener {
           summaryTable,
           primaryButton: {
             text: 'Open Report',
-            url: `http://localhost:5173/reports/${report.id}`,
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
       });
@@ -392,7 +405,7 @@ export class NotificationListener {
         },
         primaryButton: {
           text: 'View Details',
-          url: `http://localhost:5173/reports/${payload.reportId}`,
+          url: `${this.frontendUrl}/reports/${payload.reportId}`,
         },
       },
     });
@@ -450,7 +463,7 @@ export class NotificationListener {
           },
           primaryButton: {
             text: 'View Report',
-            url: `http://localhost:5173/reports/${payload.reportId}`,
+            url: `${this.frontendUrl}/reports/${payload.reportId}`,
           },
         },
       });

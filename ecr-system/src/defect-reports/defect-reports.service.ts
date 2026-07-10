@@ -87,11 +87,19 @@ export class DefectReportsService implements OnModuleInit {
 
   private emitStatusChange(report: DefectReport) {
     // NotificationListener resolves recipients by new status and sends app+email (queued via cron retry)
-    this.events.emit('report.status.changed', {
-      reportId: report.id,
-      reportNumber: report.reportNumber,
-      status: report.status,
-    });
+    // Wrapped in try-catch so notification/email failures never crash report operations
+    try {
+      this.events.emit('report.status.changed', {
+        reportId: report.id,
+        reportNumber: report.reportNumber,
+        status: report.status,
+      });
+    } catch (error: any) {
+      console.error(
+        `[NOTIFICATION_ERROR] Failed to emit status change for report ${report.reportNumber}: ${error.message}. ` +
+        `Report status was updated successfully. Email/notification delivery will be retried.`
+      );
+    }
   }
 
   /**
