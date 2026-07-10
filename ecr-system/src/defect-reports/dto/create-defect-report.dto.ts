@@ -1,6 +1,10 @@
 import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateDefectReportDto {
+  @IsOptional()
+  @IsString()
+  inspectionType?: string;
+
   @IsNotEmpty()
   scOrPoNo: string;
 

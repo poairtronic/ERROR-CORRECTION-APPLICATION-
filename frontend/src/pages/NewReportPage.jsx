@@ -24,10 +24,27 @@ export default function NewReportPage() {
   const [vendors, setVendors] = useState([]);
   const [operators, setOperators] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [type, setType] = useState(null); // 'REWORK' | 'REJECTION'
   const [form, setForm] = useState({
     defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
     rootCause: '', responsibleParty: '', responsibleId: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
   });
+
+  const handleSelectType = (selectedType) => {
+    setType(selectedType);
+    setForm(f => ({
+      ...f,
+      decision: selectedType === 'REWORK' ? 'REWORK' : 'SCRAP'
+    }));
+  };
+
+  const handleBack = () => {
+    if (type) {
+      setType(null);
+    } else {
+      navigate(-1);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -49,7 +66,7 @@ export default function NewReportPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const body = { ...form, quantity: Number(form.quantity) };
+      const body = { ...form, quantity: Number(form.quantity), inspectionType: type };
       if (!body.vendorId) delete body.vendorId;
       
       if (isSimplifiedInspector) {
@@ -76,15 +93,73 @@ export default function NewReportPage() {
     }
   };
 
+  if (!type) {
+    return (
+      <>
+        <div className="topbar">
+          <div>
+            <button className="btn btn-ghost btn-sm" onClick={handleBack} style={{ marginBottom: 4 }}>
+              <FiArrowLeft /> Back
+            </button>
+            <h1>New Defect Report</h1>
+            <p>Select the type of error correction report to create</p>
+          </div>
+        </div>
+
+        <div className="page-content">
+          <div className="card" style={{ maxWidth: 600, margin: '0 auto', padding: '32px 24px' }}>
+            <h2 style={{ textAlign: 'center', marginBottom: 24, fontSize: 20 }}>Select Report Type</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <button
+                type="button"
+                onClick={() => handleSelectType('REWORK')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 16, padding: '24px 20px',
+                  background: 'rgba(34,197,94,0.06)', border: '2px solid #22c55e33', borderRadius: 12,
+                  cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left', width: '100%'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.background = 'rgba(34,197,94,0.12)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#22c55e33'; e.currentTarget.style.background = 'rgba(34,197,94,0.06)'; }}
+              >
+                <span style={{ fontSize: 32 }}>🔧</span>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#16a34a' }}>REWORK</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Raise report for rework / correction of a component</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectType('REJECTION')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 16, padding: '24px 20px',
+                  background: 'rgba(239,68,68,0.06)', border: '2px solid #ef444433', borderRadius: 12,
+                  cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left', width: '100%'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#ef444433'; e.currentTarget.style.background = 'rgba(239,68,68,0.06)'; }}
+              >
+                <span style={{ fontSize: 32 }}>❌</span>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#dc2626' }}>REJECTION</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Raise report to reject a component or material entirely</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="topbar">
         <div>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)} style={{ marginBottom: 4 }}>
+          <button className="btn btn-ghost btn-sm" onClick={handleBack} style={{ marginBottom: 4 }}>
             <FiArrowLeft /> Back
           </button>
-          <h1>New Defect Report</h1>
-          <p>Raise a new error correction report</p>
+          <h1>New {type === 'REWORK' ? 'Rework' : 'Rejection'} Report</h1>
+          <p>Raise a new error correction report for component {type.toLowerCase()}</p>
         </div>
       </div>
 
@@ -235,7 +310,7 @@ export default function NewReportPage() {
             )}
 
             <div className="flex gap-8" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => navigate(-1)}>Cancel</button>
+              <button type="button" className="btn btn-ghost" onClick={handleBack}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Submitting…' : 'Submit Report'}
               </button>

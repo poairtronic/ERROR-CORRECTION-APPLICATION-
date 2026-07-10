@@ -128,6 +128,7 @@ export class DefectReportsService implements OnModuleInit {
       defectDescription: dto.defectDescription,
       images: dto.images ?? [],
       status: ReportStatus.PENDING_INSPECTION,
+      inspectionType: dto.inspectionType,
     });
 
     if (raisedByRole === RaisedByRole.OPERATOR) {
