@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiSearch, FiUser, FiX } from 'react-icons/fi';
+import { FiSearch, FiUser } from 'react-icons/fi';
 import { useState } from 'react';
+import Dialog from '../ui/Dialog';
 
 export function TopNav() {
   const { user } = useAuth();
@@ -57,44 +58,38 @@ export function TopNav() {
         </button>
       </div>
 
-      {/* Profile Drawer Backdrop */}
-      <div 
-        className={`profile-drawer-backdrop ${isDrawerOpen ? 'open' : ''}`}
-        onClick={() => setIsDrawerOpen(false)}
-      />
-
-      {/* Profile Drawer */}
-      <div className={`profile-drawer ${isDrawerOpen ? 'open' : ''}`}>
-        <div className="profile-drawer-header">
-          <h3>User Profile</h3>
-          <button className="profile-drawer-close" onClick={() => setIsDrawerOpen(false)} type="button">
-            <FiX />
-          </button>
-        </div>
-        
-        <div className="profile-avatar-large">
-          {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
-        </div>
-
-        <div className="profile-info-section">
-          <div className="profile-info-item">
-            <span className="profile-info-label">Name</span>
-            <span className="profile-info-value">{user?.username || 'N/A'}</span>
+      {/* User Profile Pop-up Dialog */}
+      <Dialog 
+        open={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)} 
+        title="User Profile"
+        maxWidth="400px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingTop: '8px' }}>
+          <div className="profile-avatar-large">
+            {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
           </div>
 
-          <div className="profile-info-item">
-            <span className="profile-info-label">Position / Role</span>
-            <span className="profile-info-value" style={{ textTransform: 'capitalize' }}>
-              {user?.role ? user.role.replace('_', ' ').toLowerCase() : 'N/A'}
-            </span>
-          </div>
+          <div className="profile-info-section">
+            <div className="profile-info-item">
+              <span className="profile-info-label">Name</span>
+              <span className="profile-info-value">{user?.username || 'N/A'}</span>
+            </div>
 
-          <div className="profile-info-item">
-            <span className="profile-info-label">Email ID</span>
-            <span className="profile-info-value">{user?.email || 'N/A'}</span>
+            <div className="profile-info-item">
+              <span className="profile-info-label">Position / Role</span>
+              <span className="profile-info-value" style={{ textTransform: 'capitalize' }}>
+                {user?.role ? user.role.replace('_', ' ').toLowerCase() : 'N/A'}
+              </span>
+            </div>
+
+            <div className="profile-info-item">
+              <span className="profile-info-label">Email ID</span>
+              <span className="profile-info-value">{user?.email || 'N/A'}</span>
+            </div>
           </div>
         </div>
-      </div>
+      </Dialog>
     </header>
   );
 }
