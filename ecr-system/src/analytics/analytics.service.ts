@@ -143,7 +143,7 @@ export class AnalyticsService {
       .addSelect('COUNT(i.id)', 'reportsRaised')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.OPERATOR })
       .groupBy('o.name')
-      .orderBy('reportsRaised', 'DESC')
+      .orderBy('"reportsRaised"', 'DESC')
       .limit(10)
       .getRawMany();
   }
