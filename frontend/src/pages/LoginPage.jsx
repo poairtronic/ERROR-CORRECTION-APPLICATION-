@@ -42,7 +42,7 @@ export default function LoginPage() {
       const msg = err.response?.data?.message || 'Invalid credentials';
       setError(msg);
     } finally {
-      if (loginType !== 'admin' || !error) setLoading(false);
+      setLoading(false);
     }
   };
 

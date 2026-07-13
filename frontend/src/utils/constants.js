@@ -30,15 +30,15 @@ export const ROLES = [
   'SALES'
 ];
 
-export const ROLE_LABELS = {
-  ADMIN: 'Administrator',
-  OPERATOR: 'Operator',
-  INSPECTOR: 'Inspector',
-  SENIOR_MANAGER: 'Senior Manager',
-  GENERAL_MANAGER: 'General Manager',
-  STORE_MANAGER: 'Store Manager',
-  SALES: 'Sales',
-};
+export function getActiveStages(template, failedStage) {
+  const stages = PROCESS_TEMPLATES[template] || [];
+  const idx = stages.indexOf(failedStage);
+  return idx !== -1 ? stages.slice(0, idx + 1) : [];
+}
+
+export function sumStageCosts(activeStages, costs) {
+  return activeStages.reduce((sum, st) => sum + (Number(costs[st]) || 0), 0);
+}
 
 export const PROCESS_TEMPLATES = {
   'APG LESS THAN 6': ['DESIGN_APG', 'RM_APG', 'OP140_CG', 'SUPER_DRILL', 'OP150_SG_JET_RECESS', 'OP170_VA'],

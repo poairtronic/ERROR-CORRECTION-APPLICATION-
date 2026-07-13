@@ -6,9 +6,9 @@ An enterprise-grade platform for digitizing, tracking, and resolving factory flo
 
 This application employs a modern decoupled architecture:
 
-### Backend (NestJS / TypeORM / SQLite)
+### Backend (NestJS / TypeORM / PostgreSQL)
 - **Framework**: NestJS (v10) for robust, modular enterprise architecture.
-- **ORM**: TypeORM, interacting with a performance-indexed SQLite database.
+- **ORM**: TypeORM, interacting with a Neon PostgreSQL database.
 - **Security**: Hardened with Helmet HTTP headers, bcrypt password hashing, global exception filters (sanitizing stack traces), and HttpOnly cross-site cookies.
 - **Observability**: Jest integration for robust unit testing over critical workflow state machines.
 
@@ -29,22 +29,30 @@ This application employs a modern decoupled architecture:
 
 ## Installation & Setup
 
-Ensure you have Node.js 18+ installed.
+Ensure you have Node.js 22+ installed.
 
-### 1. Setup Backend
+### 1. Install Dependencies (from project root)
+
+```bash
+npm install
+```
+
+### 2. Setup Backend
+
 ```bash
 cd ecr-system
-npm install
 npm run start:dev
 ```
+
 The backend API will run on `http://localhost:3000`.
 
-### 2. Setup Frontend
+### 3. Setup Frontend
+
 ```bash
 cd frontend
-npm install
 npm run dev
 ```
+
 The application will run on `http://localhost:5173`.
 
 ## Testing
@@ -53,5 +61,5 @@ The backend includes a comprehensive Jest test suite validating core analytical 
 
 ```bash
 cd ecr-system
-npm run test
+npx jest
 ```

@@ -4,7 +4,7 @@ import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { SIMPLIFIED_WORKFLOW, PROCESS_TEMPLATES } from '../utils/constants';
+import { SIMPLIFIED_WORKFLOW, PROCESS_TEMPLATES, getActiveStages, sumStageCosts } from '../utils/constants';
 
 export default function NewReportPage() {
   const { user } = useAuth();
@@ -79,20 +79,14 @@ export default function NewReportPage() {
 
   const handleFailedStageChange = (stage) => {
     setForm(f => {
-      const stages = PROCESS_TEMPLATES[f.rejectionProcessTemplate] || [];
-      const idx = stages.indexOf(stage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      const activeStages = getActiveStages(f.rejectionProcessTemplate, stage);
       const newCosts = {};
-      let total = 0;
-      activeStages.forEach(st => {
-        newCosts[st] = f.rejectionStageCosts[st] || '';
-        total += Number(newCosts[st]) || 0;
-      });
+      activeStages.forEach(st => { newCosts[st] = f.rejectionStageCosts[st] || ''; });
       return {
         ...f,
         rejectionFailedStage: stage,
         rejectionStageCosts: newCosts,
-        costEstimate: total
+        costEstimate: sumStageCosts(activeStages, newCosts)
       };
     });
   };
@@ -100,22 +94,9 @@ export default function NewReportPage() {
   const handleStageCostChange = (stage, val) => {
     const numericVal = val === '' ? '' : Number(val);
     setForm(f => {
-      const newCosts = {
-        ...f.rejectionStageCosts,
-        [stage]: numericVal
-      };
-      const stages = PROCESS_TEMPLATES[f.rejectionProcessTemplate] || [];
-      const idx = stages.indexOf(f.rejectionFailedStage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-      let total = 0;
-      activeStages.forEach(st => {
-        total += Number(newCosts[st]) || 0;
-      });
-      return {
-        ...f,
-        rejectionStageCosts: newCosts,
-        costEstimate: total
-      };
+      const newCosts = { ...f.rejectionStageCosts, [stage]: numericVal };
+      const activeStages = getActiveStages(f.rejectionProcessTemplate, f.rejectionFailedStage);
+      return { ...f, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
     });
   };
 

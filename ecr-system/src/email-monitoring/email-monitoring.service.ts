@@ -24,12 +24,21 @@ export class EmailMonitoringService {
   ) {}
 
   async getSummary() {
-    const total = await this.emailLogRepo.count();
-    const queued = await this.emailLogRepo.count({ where: { status: EmailStatus.PENDING } });
-    const processing = await this.emailLogRepo.count({ where: { status: EmailStatus.PROCESSING } });
-    const sent = await this.emailLogRepo.count({ where: { status: EmailStatus.SENT } });
-    const failed = await this.emailLogRepo.count({ where: { status: EmailStatus.FAILED } });
-    const cancelled = await this.emailLogRepo.count({ where: { status: EmailStatus.CANCELLED } });
+    // Single grouped query for status counts
+    const statusCounts = await this.emailLogRepo
+      .createQueryBuilder('log')
+      .select('log.status', 'status')
+      .addSelect('COUNT(log.id)', 'count')
+      .groupBy('log.status')
+      .getRawMany();
+
+    const countMap = new Map(statusCounts.map((r: any) => [r.status, Number(r.count)]));
+    const total = statusCounts.reduce((sum: number, r: any) => sum + Number(r.count), 0);
+    const queued = countMap.get(EmailStatus.PENDING) || 0;
+    const processing = countMap.get(EmailStatus.PROCESSING) || 0;
+    const sent = countMap.get(EmailStatus.SENT) || 0;
+    const failed = countMap.get(EmailStatus.FAILED) || 0;
+    const cancelled = countMap.get(EmailStatus.CANCELLED) || 0;
 
     // Date bounds
     const now = new Date();
@@ -37,11 +46,20 @@ export class EmailMonitoringService {
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Today/Week/Month query
-    const queryBuilder = this.emailLogRepo.createQueryBuilder('log');
-    const todayCount = await queryBuilder.where('log.createdAt >= :todayStart', { todayStart }).getCount();
-    const weekCount = await queryBuilder.where('log.createdAt >= :weekStart', { weekStart }).getCount();
-    const monthCount = await queryBuilder.where('log.createdAt >= :monthStart', { monthStart }).getCount();
+    // Single query for date-range counts
+    const dateCounts = await this.emailLogRepo
+      .createQueryBuilder('log')
+      .select('COUNT(CASE WHEN log.createdAt >= :todayStart THEN 1 END)', 'todayCount')
+      .addSelect('COUNT(CASE WHEN log.createdAt >= :weekStart THEN 1 END)', 'weekCount')
+      .addSelect('COUNT(CASE WHEN log.createdAt >= :monthStart THEN 1 END)', 'monthCount')
+      .setParameter('todayStart', todayStart)
+      .setParameter('weekStart', weekStart)
+      .setParameter('monthStart', monthStart)
+      .getRawOne();
+
+    const todayCount = Number(dateCounts?.todayCount || 0);
+    const weekCount = Number(dateCounts?.weekCount || 0);
+    const monthCount = Number(dateCounts?.monthCount || 0);
 
     // Average Delivery Time
     const avgRes = await this.emailLogRepo

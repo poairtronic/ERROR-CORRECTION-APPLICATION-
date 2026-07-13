@@ -9,13 +9,11 @@ node_modules/
 dist/
 build/
 
-
 # SQLite databases
 *.sqlite
 *sqlite*
 
-# Build and Testing
-build/
+# Testing and logs
 coverage/
 logs/
 
@@ -23,6 +21,4 @@ logs/
 package.zip
 
 # Compiled frontend assets
-ecr-system/public/assets/
-ecr-system/public/index.html
-ecr-system/public/assets/*
+ecr-system/public/

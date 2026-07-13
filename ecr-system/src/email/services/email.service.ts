@@ -243,66 +243,6 @@ export class EmailService implements OnModuleInit {
     return savedLog;
   }
 
-  // Template methods to queue emails under official events (Requirement 10)
-  async sendPendingReview(recipient: string, templateData: any, reportId: string) {
-    return this.queueEmail({
-      recipient,
-      subject: 'New Report Awaiting Review',
-      event: NotificationEvent.REPORT_CREATED,
-      templateData,
-      relatedReportId: reportId,
-    });
-  }
-
-  async sendApproved(recipient: string, templateData: any, reportId: string) {
-    return this.queueEmail({
-      recipient,
-      subject: 'Report Approved',
-      event: NotificationEvent.REPORT_APPROVED,
-      templateData,
-      relatedReportId: reportId,
-    });
-  }
-
-  async sendRejected(recipient: string, templateData: any, reportId: string) {
-    return this.queueEmail({
-      recipient,
-      subject: 'Report Rejected',
-      event: NotificationEvent.REPORT_REJECTED,
-      templateData,
-      relatedReportId: reportId,
-    });
-  }
-
-  async sendEscalation(recipient: string, templateData: any, reportId: string) {
-    return this.queueEmail({
-      recipient,
-      subject: 'Report Escalation Alert',
-      event: NotificationEvent.ESCALATION,
-      templateData,
-      relatedReportId: reportId,
-    });
-  }
-
-  async sendReminder(recipient: string, templateData: any, reportId: string) {
-    return this.queueEmail({
-      recipient,
-      subject: 'Report Pending Action Reminder',
-      event: NotificationEvent.REMINDER,
-      templateData,
-      relatedReportId: reportId,
-    });
-  }
-
-  async sendPasswordReset(recipient: string, templateData: any) {
-    return this.queueEmail({
-      recipient,
-      subject: 'Password Reset Request',
-      event: NotificationEvent.REMINDER,
-      templateData,
-    });
-  }
-
   async resend(id: string): Promise<EmailLog> {
     const email = await this.emailLogRepo.findOne({ where: { id } });
     if (!email) {

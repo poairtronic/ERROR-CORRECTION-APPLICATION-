@@ -98,8 +98,8 @@ export class NotificationListener {
       'Submission Time': report.createdAt.toISOString(),
     };
 
-    for (const inspector of inspectors) {
-      await this.notificationsService.create({
+    await Promise.all(inspectors.map(inspector =>
+      this.notificationsService.create({
         userId: inspector.id,
         userEmail: inspector.email,
         channel: NotificationChannel.APP_AND_EMAIL,
@@ -117,8 +117,8 @@ export class NotificationListener {
             url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
-      });
-    }
+      })
+    ));
   }
 
   private async handlePendingSmReview(report: DefectReport) {
@@ -139,8 +139,8 @@ export class NotificationListener {
       'Submission Time': report.createdAt.toISOString(),
     };
 
-    for (const sm of smUsers) {
-      await this.notificationsService.create({
+    await Promise.all(smUsers.map(sm =>
+      this.notificationsService.create({
         userId: sm.id,
         userEmail: sm.email,
         channel: NotificationChannel.APP_AND_EMAIL,
@@ -158,8 +158,8 @@ export class NotificationListener {
             url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
-      });
-    }
+      })
+    ));
   }
 
   private async handlePendingGmApproval(report: DefectReport) {
@@ -174,8 +174,8 @@ export class NotificationListener {
       'SM Notes': report.smReview?.decisionNote || 'None',
     };
 
-    for (const gm of gmUsers) {
-      await this.notificationsService.create({
+    await Promise.all(gmUsers.map(gm =>
+      this.notificationsService.create({
         userId: gm.id,
         userEmail: gm.email,
         channel: NotificationChannel.APP_AND_EMAIL,
@@ -193,8 +193,8 @@ export class NotificationListener {
             url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
-      });
-    }
+      })
+    ));
   }
 
   private async handleApproved(report: DefectReport) {
@@ -208,28 +208,6 @@ export class NotificationListener {
       'Remarks': report.gmApproval?.remarks || 'None',
     };
 
-    for (const sales of salesUsers) {
-      await this.notificationsService.create({
-        userId: sales.id,
-        userEmail: sales.email,
-        channel: NotificationChannel.APP_AND_EMAIL,
-        type: 'Report Approved',
-        message: 'A defect report has been fully approved by the General Manager.',
-        event: NotificationEvent.REPORT_APPROVED,
-        subject: `Approved Report: ${report.reportNumber}`,
-        reportId: report.id,
-        templateData: {
-          title: 'Defect Report Approved',
-          message: 'A defect report has been fully approved by the General Manager.',
-          summaryTable: salesSummary,
-          primaryButton: {
-            text: 'View Details',
-            url: `${this.frontendUrl}/reports/${report.id}`,
-          },
-        },
-      });
-    }
-
     const storesSummary = {
       'Report Number': report.reportNumber,
       'Component Details': report.componentName,
@@ -237,27 +215,50 @@ export class NotificationListener {
       'Rework Information': report.defectDescription,
     };
 
-    for (const store of storeUsers) {
-      await this.notificationsService.create({
-        userId: store.id,
-        userEmail: store.email,
-        channel: NotificationChannel.APP_AND_EMAIL,
-        type: 'Action Required',
-        message: 'A defect report has been approved and requires components to be issued.',
-        event: NotificationEvent.REPORT_APPROVED,
-        subject: `Action Required - Approved Report: ${report.reportNumber}`,
-        reportId: report.id,
-        templateData: {
-          title: 'Component Issue Request',
-          message: 'A defect report has been approved and requires components to be issued.',
-          summaryTable: storesSummary,
-          primaryButton: {
-            text: 'Issue Components',
-            url: `${this.frontendUrl}/reports/${report.id}`,
+    await Promise.all([
+      ...salesUsers.map(sales =>
+        this.notificationsService.create({
+          userId: sales.id,
+          userEmail: sales.email,
+          channel: NotificationChannel.APP_AND_EMAIL,
+          type: 'Report Approved',
+          message: 'A defect report has been fully approved by the General Manager.',
+          event: NotificationEvent.REPORT_APPROVED,
+          subject: `Approved Report: ${report.reportNumber}`,
+          reportId: report.id,
+          templateData: {
+            title: 'Defect Report Approved',
+            message: 'A defect report has been fully approved by the General Manager.',
+            summaryTable: salesSummary,
+            primaryButton: {
+              text: 'View Details',
+              url: `${this.frontendUrl}/reports/${report.id}`,
+            },
           },
-        },
-      });
-    }
+        })
+      ),
+      ...storeUsers.map(store =>
+        this.notificationsService.create({
+          userId: store.id,
+          userEmail: store.email,
+          channel: NotificationChannel.APP_AND_EMAIL,
+          type: 'Action Required',
+          message: 'A defect report has been approved and requires components to be issued.',
+          event: NotificationEvent.REPORT_APPROVED,
+          subject: `Action Required - Approved Report: ${report.reportNumber}`,
+          reportId: report.id,
+          templateData: {
+            title: 'Component Issue Request',
+            message: 'A defect report has been approved and requires components to be issued.',
+            summaryTable: storesSummary,
+            primaryButton: {
+              text: 'Issue Components',
+              url: `${this.frontendUrl}/reports/${report.id}`,
+            },
+          },
+        })
+      ),
+    ]);
   }
 
   private async handleComponentsIssued(report: DefectReport) {
@@ -282,8 +283,8 @@ export class NotificationListener {
       'Remarks': report.issueRemarks || 'None',
     };
 
-    for (const user of usersToNotify) {
-      await this.notificationsService.create({
+    await Promise.all(usersToNotify.map(user =>
+      this.notificationsService.create({
         userId: user.id,
         userEmail: user.email,
         channel: NotificationChannel.APP_AND_EMAIL,
@@ -301,8 +302,8 @@ export class NotificationListener {
             url: `${this.frontendUrl}/reports/${report.id}`,
           },
         },
-      });
-    }
+      })
+    ));
   }
 
   private async handleRejected(report: DefectReport) {
@@ -325,8 +326,8 @@ export class NotificationListener {
         'Action Required': 'Review rejection and take corrective action if needed.',
       };
 
-      for (const user of usersToNotify) {
-        await this.notificationsService.create({
+      await Promise.all(usersToNotify.map(user =>
+        this.notificationsService.create({
           userId: user.id,
           userEmail: user.email,
           channel: NotificationChannel.APP_AND_EMAIL,
@@ -344,8 +345,8 @@ export class NotificationListener {
               url: `${this.frontendUrl}/reports/${report.id}`,
             },
           },
-        });
-      }
+        })
+      ));
     } 
     else if (report.smReview && report.smReview.forwardedToGm === false) {
       const inspectorId = report.inspectionDetail?.inspectorId || report.raisedById;

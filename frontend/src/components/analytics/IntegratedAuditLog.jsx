@@ -26,7 +26,7 @@ const IntegratedAuditLog = memo(({ delay = 0 }) => {
           <FiList style={{ color: '#60a5fa' }} /> Recent System Audits
         </h3>
         <button 
-          onClick={() => navigate('/audits')}
+          onClick={() => navigate('/audit')}
           style={{ fontSize: '12px', fontWeight: 500, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           View Full Log &rarr;
@@ -45,23 +45,23 @@ const IntegratedAuditLog = memo(({ delay = 0 }) => {
                 
                 {/* Icon Marker */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: '#15181e', color: '#9ca3af', flexShrink: 0, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                  {audit.action.toLowerCase().includes('created') ? <FiActivity size={14} /> : 
-                   audit.action.toLowerCase().includes('inspection') ? <FiList size={14} /> : 
+                  {audit.actionType === 'STATUS_CHANGE' ? <FiActivity size={14} /> : 
+                   audit.actionType === 'FIELD_EDIT' ? <FiList size={14} /> : 
                    <FiClock size={14} />}
                 </div>
                 
                 {/* Content */}
                 <div style={{ flex: 1, padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(4px)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '12px', color: 'rgba(255,255,255,0.9)' }}>{audit.action}</span>
+                    <span style={{ fontWeight: 600, fontSize: '12px', color: 'rgba(255,255,255,0.9)' }}>{audit.actionType || audit.action || 'Unknown'}</span>
                     <time style={{ fontSize: '10px', color: '#6b7280', fontWeight: 500 }}>
-                      {new Date(audit.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      {new Date(audit.timestamp || audit.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </time>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '8px' }}>{audit.notes || 'No additional notes'}</div>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '8px' }}>{audit.note || 'No additional notes'}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#6b7280' }}>
-                      <FiUser size={10} /> {audit.user?.name || 'System'}
+                      <FiUser size={10} /> {audit.actor?.name || 'System'}
                     </span>
                     <span style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' }}>
                       ID: {audit.reportNumber}

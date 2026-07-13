@@ -38,8 +38,8 @@ export default function SalesDashboard() {
       label: 'Cost Impact', 
       key: 'costEstimate',
       render: (r) => (
-        <span style={{ color: r.inspection?.costEstimate ? '#f87171' : 'inherit' }}>
-          {r.inspection?.costEstimate ? formatCurrency(r.inspection.costEstimate) : 'Pending Inspect'}
+        <span style={{ color: r.inspectionDetail?.costEstimate ? '#f87171' : 'inherit' }}>
+          {r.inspectionDetail?.costEstimate ? formatCurrency(r.inspectionDetail.costEstimate) : 'Pending Inspect'}
         </span>
       )
     },

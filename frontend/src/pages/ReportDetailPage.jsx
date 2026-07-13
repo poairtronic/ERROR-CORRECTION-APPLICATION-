@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiImage, FiEdit2, FiSave, FiX } from 'react-icons/fi';
 import Dialog from '../components/ui/Dialog';
 
-import { STATUS_COLORS, STATUS_LABELS, PROCESS_TEMPLATES } from '../utils/constants';
+import { STATUS_COLORS, STATUS_LABELS, PROCESS_TEMPLATES, getActiveStages, sumStageCosts } from '../utils/constants';
 
 function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false }) {
   return (
@@ -102,24 +102,11 @@ export default function ReportDetailPage() {
   const handleSalesStageCostChange = (stage, val) => {
     const numericVal = val === '' ? '' : Number(val);
     setSalesData(d => {
-      const newCosts = {
-        ...d.rejectionStageCosts,
-        [stage]: numericVal
-      };
+      const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
       const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
       const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-      const stages = PROCESS_TEMPLATES[template] || [];
-      const idx = stages.indexOf(failedStage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-      let total = 0;
-      activeStages.forEach(st => {
-        total += Number(newCosts[st]) || 0;
-      });
-      return {
-        ...d,
-        rejectionStageCosts: newCosts,
-        costEstimate: total
-      };
+      const activeStages = getActiveStages(template, failedStage);
+      return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
     });
   };
 
@@ -184,20 +171,14 @@ export default function ReportDetailPage() {
 
   const handleInspectFailedStageChange = (stage) => {
     setInspectData(d => {
-      const stages = PROCESS_TEMPLATES[d.rejectionProcessTemplate] || [];
-      const idx = stages.indexOf(stage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      const activeStages = getActiveStages(d.rejectionProcessTemplate, stage);
       const newCosts = {};
-      let total = 0;
-      activeStages.forEach(st => {
-        newCosts[st] = d.rejectionStageCosts[st] || '';
-        total += Number(newCosts[st]) || 0;
-      });
+      activeStages.forEach(st => { newCosts[st] = d.rejectionStageCosts[st] || ''; });
       return {
         ...d,
         rejectionFailedStage: stage,
         rejectionStageCosts: newCosts,
-        costEstimate: total
+        costEstimate: sumStageCosts(activeStages, newCosts)
       };
     });
   };
@@ -205,46 +186,20 @@ export default function ReportDetailPage() {
   const handleInspectStageCostChange = (stage, val) => {
     const numericVal = val === '' ? '' : Number(val);
     setInspectData(d => {
-      const newCosts = {
-        ...d.rejectionStageCosts,
-        [stage]: numericVal
-      };
-      const stages = PROCESS_TEMPLATES[d.rejectionProcessTemplate] || [];
-      const idx = stages.indexOf(d.rejectionFailedStage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-      let total = 0;
-      activeStages.forEach(st => {
-        total += Number(newCosts[st]) || 0;
-      });
-      return {
-        ...d,
-        rejectionStageCosts: newCosts,
-        costEstimate: total
-      };
+      const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
+      const activeStages = getActiveStages(d.rejectionProcessTemplate, d.rejectionFailedStage);
+      return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
     });
   };
 
   const handleSmStageCostChange = (stage, val) => {
     const numericVal = val === '' ? '' : Number(val);
     setSmData(d => {
-      const newCosts = {
-        ...d.rejectionStageCosts,
-        [stage]: numericVal
-      };
+      const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
       const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
       const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-      const stages = PROCESS_TEMPLATES[template] || [];
-      const idx = stages.indexOf(failedStage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-      let total = 0;
-      activeStages.forEach(st => {
-        total += Number(newCosts[st]) || 0;
-      });
-      return {
-        ...d,
-        rejectionStageCosts: newCosts,
-        costEstimate: total
-      };
+      const activeStages = getActiveStages(template, failedStage);
+      return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
     });
   };
 

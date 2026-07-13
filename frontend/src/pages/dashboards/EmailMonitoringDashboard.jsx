@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
-  FiMail, FiRefreshCw, FiAlertCircle, FiCheckCircle, FiClock, FiSearch, 
-  FiFilter, FiDownload, FiEye, FiPlay, FiStopCircle, FiInfo, FiLayers 
+  FiRefreshCw, FiAlertCircle, FiCheckCircle, FiClock, FiSearch, 
+  FiDownload, FiEye, FiPlay, FiStopCircle, FiLayers 
 } from 'react-icons/fi';
 import api from '../../services/apiClient';
 import { useNotifications } from '../../contexts/NotificationContext';

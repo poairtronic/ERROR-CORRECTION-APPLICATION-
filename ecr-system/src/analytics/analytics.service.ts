@@ -22,34 +22,41 @@ export class AnalyticsService {
   ) {}
 
   async getExecutiveKpis() {
-    // Basic counts
-    const totalReports = await this.reportsRepo.count();
-    const openReports = await this.reportsRepo.count({
-      where: [
-        { status: ReportStatus.DRAFT },
-        { status: ReportStatus.PENDING_INSPECTION },
-        { status: ReportStatus.PENDING_SM_REVIEW },
-        { status: ReportStatus.PENDING_GM_APPROVAL },
-        { status: ReportStatus.APPROVED },
-        { status: ReportStatus.COMPONENTS_ISSUED },
-        { status: ReportStatus.REWORK_IN_PROGRESS },
-        { status: ReportStatus.NEW_PRODUCTION },
-      ],
-    });
-    const closedReports = await this.reportsRepo.count({ where: { status: ReportStatus.CLOSED } });
-    const pendingInspect = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } });
-    const pendingSm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } });
-    const pendingGm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } });
-    const pendingStore = await this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } });
-
-    // Financial aggregations
-    // We can use QueryBuilder to sum costEstimate, lossAmount, etc.
-    const costs = await this.inspectRepo.createQueryBuilder('i')
-      .select('SUM(i.costEstimate)', 'totalCost')
-      .addSelect('SUM(i.lossAmount)', 'totalLoss')
-      .getRawOne();
-
-    const vendorCases = await this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } });
+    const [
+      totalReports,
+      openReports,
+      closedReports,
+      pendingInspect,
+      pendingSm,
+      pendingGm,
+      pendingStore,
+      costs,
+      vendorCases,
+    ] = await Promise.all([
+      this.reportsRepo.count(),
+      this.reportsRepo.count({
+        where: [
+          { status: ReportStatus.DRAFT },
+          { status: ReportStatus.PENDING_INSPECTION },
+          { status: ReportStatus.PENDING_SM_REVIEW },
+          { status: ReportStatus.PENDING_GM_APPROVAL },
+          { status: ReportStatus.APPROVED },
+          { status: ReportStatus.COMPONENTS_ISSUED },
+          { status: ReportStatus.REWORK_IN_PROGRESS },
+          { status: ReportStatus.NEW_PRODUCTION },
+        ],
+      }),
+      this.reportsRepo.count({ where: { status: ReportStatus.CLOSED } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } }),
+      this.inspectRepo.createQueryBuilder('i')
+        .select('SUM(i.costEstimate)', 'totalCost')
+        .addSelect('SUM(i.lossAmount)', 'totalLoss')
+        .getRawOne(),
+      this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } }),
+    ]);
 
     return {
       totalReports,
@@ -141,16 +148,16 @@ export class AnalyticsService {
   }
 
   async getSlaMetrics() {
-    // Average resolution time in days (PostgreSQL syntax)
-    const result = await this.reportsRepo.createQueryBuilder('r')
-      .select('AVG(EXTRACT(EPOCH FROM (r.updatedAt - r.createdAt)) / 86400.0)', 'avgResolutionDays')
-      .where('r.status = :status', { status: ReportStatus.CLOSED })
-      .getRawOne();
-
-    const pendingInspect = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } });
-    const pendingSm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } });
-    const pendingGm = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } });
-    const pendingStore = await this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } });
+    const [result, pendingInspect, pendingSm, pendingGm, pendingStore] = await Promise.all([
+      this.reportsRepo.createQueryBuilder('r')
+        .select('AVG(EXTRACT(EPOCH FROM (r.updatedAt - r.createdAt)) / 86400.0)', 'avgResolutionDays')
+        .where('r.status = :status', { status: ReportStatus.CLOSED })
+        .getRawOne(),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } }),
+      this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } }),
+    ]);
 
     return {
       averageResolutionDays: result?.avgResolutionDays ? parseFloat(result.avgResolutionDays).toFixed(1) : 0,
