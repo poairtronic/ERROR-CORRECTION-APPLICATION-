@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min, IsString, IsObject } from 'class-validator';
 import { Decision, ResponsibleParty } from '../../common/enums/report-status.enum';
 
 export class InspectReportDto {
@@ -7,15 +7,18 @@ export class InspectReportDto {
   inspectionType?: string;
 
   @IsOptional()
+  @IsString()
   errorType?: string;
 
   @IsOptional()
+  @IsString()
   rootCause?: string;
 
   @IsEnum(ResponsibleParty)
   responsibleParty: ResponsibleParty;
 
   @IsOptional()
+  @IsString()
   responsibleId?: string;
 
   @IsOptional()
@@ -23,6 +26,7 @@ export class InspectReportDto {
   decision?: Decision;
 
   @IsOptional()
+  @IsString()
   alternativeNote?: string;
 
   @IsNotEmpty()
@@ -53,6 +57,7 @@ export class InspectReportDto {
   rejectionFailedStage?: string;
 
   @IsOptional()
+  @IsObject()
   rejectionStageCosts?: any;
 
   @IsOptional()

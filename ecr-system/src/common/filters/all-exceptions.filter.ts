@@ -33,12 +33,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : '',
     );
 
-    // Send generic response (scrubbing stack traces from unhandled errors)
+    // Send standardized response
     response.status(status).json({
+      success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: typeof message === 'string' ? message : (message as any)?.message || 'Internal server error',
+      error: typeof message === 'string' ? message : (message as any)?.message || 'Internal server error',
     });
   }
 }

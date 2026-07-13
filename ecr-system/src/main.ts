@@ -36,6 +36,14 @@ async function bootstrap() {
   // Global Error Handler to sanitize stack traces
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  // Global Interceptors for standard response and timeout protection
+  const { TransformInterceptor } = await import('./common/interceptors/transform.interceptor');
+  const { TimeoutInterceptor } = await import('./common/interceptors/timeout.interceptor');
+  app.useGlobalInterceptors(
+    new TransformInterceptor(),
+    new TimeoutInterceptor(),
+  );
+
   // CORS is only needed for local development. Production is same-origin.
   app.enableCors({
     origin: 'http://localhost:5173',

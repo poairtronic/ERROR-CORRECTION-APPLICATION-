@@ -1,7 +1,8 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, IsObject } from 'class-validator';
 
 export class SmReviewDto {
   @IsNotEmpty()
+  @IsString()
   loopholeNote: string;
 
   @IsNumber()
@@ -15,6 +16,7 @@ export class SmReviewDto {
   lossAmount?: number;
 
   @IsNotEmpty()
+  @IsString()
   decisionNote: string;
 
   @IsOptional()
@@ -26,5 +28,6 @@ export class SmReviewDto {
   forwardToGm: boolean;
 
   @IsOptional()
+  @IsObject()
   rejectionStageCosts?: any;
 }

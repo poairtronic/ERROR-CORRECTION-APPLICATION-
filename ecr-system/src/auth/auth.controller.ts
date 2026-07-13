@@ -2,6 +2,7 @@ import { Body, Controller, Post, Get, HttpCode, Res, UseGuards, Req } from '@nes
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Response, Request } from 'express';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -10,7 +11,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   login(
-    @Body() body: { username: string; password: string },
+    @Body() body: LoginDto,
     @Res({ passthrough: true }) res: Response,
     @Req() req: Request,
   ) {

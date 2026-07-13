@@ -1,4 +1,4 @@
-import { Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Get, Post, Patch, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { Repository, ObjectLiteral } from 'typeorm';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
@@ -10,7 +10,7 @@ export class BaseCrudController<T extends ObjectLiteral> {
   constructor(protected readonly repo: Repository<T>) {}
 
   @Get()
-  findAll() {
+  findAll(@Query() pagination?: import('../dto/pagination.dto').PaginationDto) {
     return this.repo.find({ where: { isActive: true } as any });
   }
 

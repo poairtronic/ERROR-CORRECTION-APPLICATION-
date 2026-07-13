@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsNumber, IsBoolean, ValidateNested } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsNumber, IsBoolean, ValidateNested, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class InlineInspectionDto {
@@ -51,6 +51,7 @@ export class InlineInspectionDto {
   rejectionFailedStage?: string;
 
   @IsOptional()
+  @IsObject()
   rejectionStageCosts?: any;
 
   @IsOptional()
@@ -78,6 +79,7 @@ export class CreateDefectReportDto {
   inspectionType?: string;
 
   @IsNotEmpty()
+  @IsString()
   scOrPoNo: string;
 
   @IsOptional()
@@ -101,6 +103,7 @@ export class CreateDefectReportDto {
   rejectionFailedStage?: string;
 
   @IsOptional()
+  @IsObject()
   rejectionStageCosts?: any;
 
   @IsOptional()
@@ -108,27 +111,35 @@ export class CreateDefectReportDto {
   rejectionDescription?: string;
 
   @IsOptional()
+  @IsString()
   productId?: string;
 
   @IsNotEmpty()
+  @IsString()
   stageOfFailure: string;
 
   @IsNotEmpty()
+  @IsString()
   defectDescription: string;
 
   @IsOptional()
+  @IsString()
   componentId?: string; // Contains name from frontend
 
   @IsOptional()
+  @IsString()
   errorTypeId?: string; // Contains name from frontend
 
   @IsOptional()
+  @IsString()
   partNumber?: string;
 
   @IsOptional()
+  @IsString()
   batchNumber?: string;
 
   @IsOptional()
+  @IsNumber()
   quantity?: number;
 
   @IsOptional()

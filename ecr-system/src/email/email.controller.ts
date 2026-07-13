@@ -1,10 +1,16 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, Param, UseGuards } from '@nestjs/common';
 import { EmailService } from './services/email.service';
 import { GmailSmtpService } from './services/gmail-smtp.service';
 import { NotificationEvent } from './enums/notification-event.enum';
 import { EmailStatus } from './enums/email-status.enum';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
 
 @Controller('email')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
 export class EmailController {
   constructor(
     private readonly emailService: EmailService,

@@ -39,15 +39,14 @@ export class DefectReportsController {
   findAll(
     @Query('status') status?: string,
     @Query('mine') mine?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @CurrentUser() user?
+    @Query() pagination?: import('../common/dto/pagination.dto').PaginationDto,
+    @CurrentUser() user?: any,
   ) {
     return this.service.findAll({
       status,
       raisedById: mine === 'true' ? user?.id : undefined,
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      page: pagination?.page,
+      limit: pagination?.limit,
     });
   }
 
