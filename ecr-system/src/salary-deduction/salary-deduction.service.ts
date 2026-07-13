@@ -18,64 +18,74 @@ export class SalaryDeductionService {
   ) {}
 
   async create(dto: CreateSalaryDeductionDto, actorId: string, actorRole: string): Promise<SalaryDeduction> {
-    const record = this.deductionRepo.create({
-      reportId: dto.reportId,
-      operatorId: dto.operatorId,
-      amount: dto.amount,
-      reason: dto.reason,
-      monthRef: dto.monthRef,
-      status: 'PENDING',
-    });
+    return this.deductionRepo.manager.transaction(async (manager) => {
+      const deductionRepo = manager.getRepository(SalaryDeduction);
+      const auditRepo = manager.getRepository(AuditLog);
 
-    const saved = await this.deductionRepo.save(record);
-
-    await this.auditRepo.save(
-      this.auditRepo.create({
+      const record = deductionRepo.create({
         reportId: dto.reportId,
-        actorId,
-        actorRole,
-        actionType: AuditActionType.SALARY_DEDUCTION_CREATED,
-        oldValue: '',
-        newValue: saved.id,
-        note: `Salary deduction created for operator ${dto.operatorId} with amount ${dto.amount}`,
-      }),
-    );
+        operatorId: dto.operatorId,
+        amount: dto.amount,
+        reason: dto.reason,
+        monthRef: dto.monthRef,
+        status: 'PENDING',
+      });
 
-    this.events.emit('salary.deduction.created', {
-      deductionId: saved.id,
-      operatorId: saved.operatorId,
-      amount: saved.amount,
-      reportId: saved.reportId,
+      const saved = await deductionRepo.save(record);
+
+      await auditRepo.save(
+        auditRepo.create({
+          reportId: dto.reportId,
+          actorId,
+          actorRole,
+          actionType: AuditActionType.SALARY_DEDUCTION_CREATED,
+          oldValue: '',
+          newValue: saved.id,
+          note: `Salary deduction created for operator ${dto.operatorId} with amount ${dto.amount}`,
+        }),
+      );
+
+      this.events.emit('salary.deduction.created', {
+        deductionId: saved.id,
+        operatorId: saved.operatorId,
+        amount: saved.amount,
+        reportId: saved.reportId,
+      });
+
+      return saved;
     });
-
-    return saved;
   }
 
   async updateStatus(id: string, dto: UpdateSalaryDeductionStatusDto, actorId: string, actorRole: string): Promise<SalaryDeduction> {
-    const record = await this.deductionRepo.findOne({ where: { id } });
-    if (!record) {
-      throw new NotFoundException('Salary deduction record not found');
-    }
+    return this.deductionRepo.manager.transaction(async (manager) => {
+      const deductionRepo = manager.getRepository(SalaryDeduction);
+      const auditRepo = manager.getRepository(AuditLog);
 
-    const oldStatus = record.status;
-    record.status = dto.status;
-    
-    const saved = await this.deductionRepo.save(record);
+      const record = await deductionRepo.findOne({ where: { id } });
+      if (!record) {
+        throw new NotFoundException('Salary deduction record not found');
+      }
 
-    await this.auditRepo.save(
-      this.auditRepo.create({
-        reportId: record.reportId,
-        actorId,
-        actorRole,
-        actionType: AuditActionType.FIELD_EDIT,
-        fieldName: 'SalaryDeduction:status',
-        oldValue: oldStatus,
-        newValue: dto.status,
-        note: `Salary deduction status updated`,
-      }),
-    );
+      const oldStatus = record.status;
+      record.status = dto.status;
+      
+      const saved = await deductionRepo.save(record);
 
-    return saved;
+      await auditRepo.save(
+        auditRepo.create({
+          reportId: record.reportId,
+          actorId,
+          actorRole,
+          actionType: AuditActionType.FIELD_EDIT,
+          fieldName: 'SalaryDeduction:status',
+          oldValue: oldStatus,
+          newValue: dto.status,
+          note: `Salary deduction status updated`,
+        }),
+      );
+
+      return saved;
+    });
   }
 
   async getByReport(reportId: string): Promise<SalaryDeduction[]> {
@@ -102,34 +112,43 @@ export class SalaryDeductionService {
     const now = new Date();
     const monthRef = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    const record = this.deductionRepo.create({
-      reportId: report.id,
-      operatorId,
-      amount,
-      reason,
-      monthRef,
-      status: 'PENDING',
-    });
+    try {
+      await this.deductionRepo.manager.transaction(async (manager) => {
+        const deductionRepo = manager.getRepository(SalaryDeduction);
+        const auditRepo = manager.getRepository(AuditLog);
 
-    const saved = await this.deductionRepo.save(record);
+        const record = deductionRepo.create({
+          reportId: report.id,
+          operatorId,
+          amount,
+          reason,
+          monthRef,
+          status: 'PENDING',
+        });
 
-    await this.auditRepo.save(
-      this.auditRepo.create({
-        reportId: report.id,
-        actorId: gmId,
-        actorRole: Role.GENERAL_MANAGER,
-        actionType: AuditActionType.SALARY_DEDUCTION_CREATED,
-        oldValue: '',
-        newValue: saved.id,
-        note: `Auto-created salary deduction for operator ${operatorId} with amount ${amount}`,
-      }),
-    );
+        const saved = await deductionRepo.save(record);
 
-    this.events.emit('salary.deduction.created', {
-      deductionId: saved.id,
-      operatorId: saved.operatorId,
-      amount: saved.amount,
-      reportId: saved.reportId,
-    });
+        await auditRepo.save(
+          auditRepo.create({
+            reportId: report.id,
+            actorId: gmId,
+            actorRole: Role.GENERAL_MANAGER,
+            actionType: AuditActionType.SALARY_DEDUCTION_CREATED,
+            oldValue: '',
+            newValue: saved.id,
+            note: `Auto-created salary deduction for operator ${operatorId} with amount ${amount}`,
+          }),
+        );
+
+        this.events.emit('salary.deduction.created', {
+          deductionId: saved.id,
+          operatorId: saved.operatorId,
+          amount: saved.amount,
+          reportId: saved.reportId,
+        });
+      });
+    } catch (err: any) {
+      console.error(`[TRANSACTION_ERROR] Failed auto-creating salary deduction: ${err.message}`, err.stack);
+    }
   }
 }

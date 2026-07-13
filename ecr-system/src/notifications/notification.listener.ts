@@ -466,92 +466,104 @@ export class NotificationListener {
 
   @OnEvent('component.issued')
   async handleComponentIssued(payload: { reportId: string, issueId: string, issuedToId: string }) {
-    const user = await this.usersRepo.findOne({ where: { id: payload.issuedToId } });
-    if (!user) return;
-    
-    const report = await this.fetchReportWithRelations(payload.reportId);
+    try {
+      const user = await this.usersRepo.findOne({ where: { id: payload.issuedToId } });
+      if (!user) return;
+      
+      const report = await this.fetchReportWithRelations(payload.reportId);
 
-    await this.notificationsService.create({
-      userId: user.id,
-      userEmail: user.email,
-      channel: NotificationChannel.APP_AND_EMAIL,
-      type: 'Components Issued',
-      message: `Components have been issued to you for Defect Report ${report?.reportNumber || payload.reportId}.`,
-      event: NotificationEvent.COMPONENT_ISSUED,
-      subject: 'Components Issued',
-      reportId: payload.reportId,
-      templateData: {
-        title: 'Components Issued for Report',
+      await this.notificationsService.create({
+        userId: user.id,
+        userEmail: user.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'Components Issued',
         message: `Components have been issued to you for Defect Report ${report?.reportNumber || payload.reportId}.`,
-        summaryTable: {
-          'Issued Components': 'See system for details',
-          'Store Manager': 'N/A', 
-          'Issue Time': new Date().toISOString(),
+        event: NotificationEvent.COMPONENT_ISSUED,
+        subject: 'Components Issued',
+        reportId: payload.reportId,
+        templateData: {
+          title: 'Components Issued for Report',
+          message: `Components have been issued to you for Defect Report ${report?.reportNumber || payload.reportId}.`,
+          summaryTable: {
+            'Issued Components': 'See system for details',
+            'Store Manager': 'N/A', 
+            'Issue Time': new Date().toISOString(),
+          },
+          primaryButton: {
+            text: 'View Details',
+            url: `${this.frontendUrl}/reports/${payload.reportId}`,
+          },
         },
-        primaryButton: {
-          text: 'View Details',
-          url: `${this.frontendUrl}/reports/${payload.reportId}`,
-        },
-      },
-    });
+      });
+    } catch (err: any) {
+      this.logger.error(`Failed handling component.issued event: ${err.message}`, err.stack);
+    }
   }
 
   @OnEvent('salary.deduction.created')
   async handleSalaryDeductionCreated(payload: { deductionId: string, operatorId: string, amount: number, reportId: string }) {
-    const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
+    try {
+      const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
 
-    for (const admin of adminUsers) {
-      await this.notificationsService.create({
-        userId: admin.id,
-        userEmail: admin.email,
-        channel: NotificationChannel.APP_AND_EMAIL,
-        type: 'Salary Deduction',
-        message: 'A new salary deduction has been recorded in the system.',
-        event: NotificationEvent.SALARY_DEDUCTION,
-        subject: 'New Salary Deduction Logged',
-        reportId: payload.reportId,
-        templateData: {
-          title: 'Salary Deduction Record',
+      for (const admin of adminUsers) {
+        await this.notificationsService.create({
+          userId: admin.id,
+          userEmail: admin.email,
+          channel: NotificationChannel.APP_AND_EMAIL,
+          type: 'Salary Deduction',
           message: 'A new salary deduction has been recorded in the system.',
-          summaryTable: {
-            'Deduction ID': payload.deductionId,
-            'Operator ID': payload.operatorId,
-            'Amount': payload.amount.toString(),
+          event: NotificationEvent.SALARY_DEDUCTION,
+          subject: 'New Salary Deduction Logged',
+          reportId: payload.reportId,
+          templateData: {
+            title: 'Salary Deduction Record',
+            message: 'A new salary deduction has been recorded in the system.',
+            summaryTable: {
+              'Deduction ID': payload.deductionId,
+              'Operator ID': payload.operatorId,
+              'Amount': payload.amount.toString(),
+            },
           },
-        },
-      });
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed handling salary.deduction.created event: ${err.message}`, err.stack);
     }
   }
 
   @OnEvent('vendor.fault.created')
   async handleVendorFaultCreated(payload: { faultId: string, vendorId: string, reportId: string }) {
-    const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
-    const report = await this.fetchReportWithRelations(payload.reportId);
-    
-    for (const admin of adminUsers) {
-      await this.notificationsService.create({
-        userId: admin.id,
-        userEmail: admin.email,
-        channel: NotificationChannel.APP_AND_EMAIL,
-        type: 'Vendor Fault',
-        message: 'A vendor fault has been formally recorded and requires attention.',
-        event: NotificationEvent.VENDOR_FAULT,
-        subject: `Vendor Fault Logged: ${report?.reportNumber || payload.reportId}`,
-        reportId: payload.reportId,
-        templateData: {
-          title: 'Vendor Fault Recorded',
+    try {
+      const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
+      const report = await this.fetchReportWithRelations(payload.reportId);
+      
+      for (const admin of adminUsers) {
+        await this.notificationsService.create({
+          userId: admin.id,
+          userEmail: admin.email,
+          channel: NotificationChannel.APP_AND_EMAIL,
+          type: 'Vendor Fault',
           message: 'A vendor fault has been formally recorded and requires attention.',
-          summaryTable: {
-            'Fault ID': payload.faultId,
-            'Vendor ID': payload.vendorId,
-            'Report Number': report?.reportNumber || payload.reportId,
+          event: NotificationEvent.VENDOR_FAULT,
+          subject: `Vendor Fault Logged: ${report?.reportNumber || payload.reportId}`,
+          reportId: payload.reportId,
+          templateData: {
+            title: 'Vendor Fault Recorded',
+            message: 'A vendor fault has been formally recorded and requires attention.',
+            summaryTable: {
+              'Fault ID': payload.faultId,
+              'Vendor ID': payload.vendorId,
+              'Report Number': report?.reportNumber || payload.reportId,
+            },
+            primaryButton: {
+              text: 'View Report',
+              url: `${this.frontendUrl}/reports/${payload.reportId}`,
+            },
           },
-          primaryButton: {
-            text: 'View Report',
-            url: `${this.frontendUrl}/reports/${payload.reportId}`,
-          },
-        },
-      });
+        });
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed handling vendor.fault.created event: ${err.message}`, err.stack);
     }
   }
 }

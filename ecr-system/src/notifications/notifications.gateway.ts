@@ -30,9 +30,13 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   @OnEvent('email.logs.updated')
   handleEmailLogsUpdated() {
-    this.logger.debug('Email logs updated, broadcasting to clients...');
-    if (this.server) {
-      this.server.emit('email_logs_updated');
+    try {
+      this.logger.debug('Email logs updated, broadcasting to clients...');
+      if (this.server) {
+        this.server.emit('email_logs_updated');
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to broadcast email logs update: ${err.message}`);
     }
   }
 
@@ -119,8 +123,12 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   // Allow client to manually acknowledge if they prefer a standard event
   @SubscribeMessage('acknowledge_notification')
   async handleAcknowledge(@MessageBody() payload: { id: string }, @ConnectedSocket() client: Socket) {
-    if (!client.data.user) return;
-    await this.notificationsService.markDelivered(payload.id);
-    this.logger.log(`Notification ${payload.id} manually acknowledged by ${client.data.user.sub}`);
+    try {
+      if (!client.data.user) return;
+      await this.notificationsService.markDelivered(payload.id);
+      this.logger.log(`Notification ${payload.id} manually acknowledged by ${client.data.user.sub}`);
+    } catch (err: any) {
+      this.logger.error(`Failed handling manual notification acknowledgement: ${err.message}`, err.stack);
+    }
   }
 }

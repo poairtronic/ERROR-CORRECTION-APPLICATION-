@@ -23,12 +23,12 @@ export default function AuditViewerPage() {
 
   const debouncedSearch = useDebounce(search, 300);
 
-  const filtered = audits.filter(a => 
-    !debouncedSearch || 
-    a.actionType.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-    (a.actor?.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-    (a.reportNumber || a.reportId).toLowerCase().includes(debouncedSearch.toLowerCase())
-  );
+  const filtered = audits.filter(a => {
+    const actionMatch = (a.actionType || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+    const actorMatch = (a.actor?.name || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+    const reportMatch = (a.reportNumber || a.reportId || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+    return !debouncedSearch || actionMatch || actorMatch || reportMatch;
+  });
 
   const columns = [
     { header: 'Date', render: (row) => new Date(row.timestamp).toLocaleString('en-IN') },

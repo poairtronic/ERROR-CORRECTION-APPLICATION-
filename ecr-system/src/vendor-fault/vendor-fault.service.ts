@@ -19,84 +19,94 @@ export class VendorFaultService {
   ) {}
 
   async create(dto: CreateVendorFaultDto, actorId: string, actorRole: string): Promise<VendorFaultLog> {
-    const record = this.faultRepo.create({
-      reportId: dto.reportId,
-      vendorId: dto.vendorId,
-      note: dto.note,
-      recoveryStatus: RecoveryStatus.PENDING,
-      recoveryAmount: 0,
-    });
+    return this.faultRepo.manager.transaction(async (manager) => {
+      const faultRepo = manager.getRepository(VendorFaultLog);
+      const auditRepo = manager.getRepository(AuditLog);
 
-    const saved = await this.faultRepo.save(record);
-
-    await this.auditRepo.save(
-      this.auditRepo.create({
+      const record = faultRepo.create({
         reportId: dto.reportId,
-        actorId,
-        actorRole,
-        actionType: AuditActionType.VENDOR_FAULT_CREATED,
-        oldValue: '',
-        newValue: saved.id,
-        note: `Vendor fault created for vendor ${dto.vendorId}`,
-      }),
-    );
+        vendorId: dto.vendorId,
+        note: dto.note,
+        recoveryStatus: RecoveryStatus.PENDING,
+        recoveryAmount: 0,
+      });
 
-    this.events.emit('vendor.fault.created', {
-      faultId: saved.id,
-      vendorId: saved.vendorId,
-      reportId: saved.reportId,
+      const saved = await faultRepo.save(record);
+
+      await auditRepo.save(
+        auditRepo.create({
+          reportId: dto.reportId,
+          actorId,
+          actorRole,
+          actionType: AuditActionType.VENDOR_FAULT_CREATED,
+          oldValue: '',
+          newValue: saved.id,
+          note: `Vendor fault created for vendor ${dto.vendorId}`,
+        }),
+      );
+
+      this.events.emit('vendor.fault.created', {
+        faultId: saved.id,
+        vendorId: saved.vendorId,
+        reportId: saved.reportId,
+      });
+
+      return saved;
     });
-
-    return saved;
   }
 
   async update(id: string, dto: UpdateVendorFaultDto, actorId: string, actorRole: string): Promise<VendorFaultLog> {
-    const record = await this.faultRepo.findOne({ where: { id } });
-    if (!record) {
-      throw new NotFoundException('Vendor fault record not found');
-    }
+    return this.faultRepo.manager.transaction(async (manager) => {
+      const faultRepo = manager.getRepository(VendorFaultLog);
+      const auditRepo = manager.getRepository(AuditLog);
 
-    if (dto.recoveryStatus && dto.recoveryStatus !== record.recoveryStatus) {
-      await this.auditRepo.save(
-        this.auditRepo.create({
-          reportId: record.reportId,
-          actorId,
-          actorRole,
-          actionType: AuditActionType.FIELD_EDIT,
-          fieldName: 'VendorFaultLog:recoveryStatus',
-          oldValue: record.recoveryStatus,
-          newValue: dto.recoveryStatus,
-          note: `Recovery status updated`,
-        }),
-      );
-      record.recoveryStatus = dto.recoveryStatus;
-      
-      if (dto.recoveryStatus === RecoveryStatus.RECOVERED || dto.recoveryStatus === RecoveryStatus.PARTIALLY_RECOVERED) {
-        record.recoveredAt = new Date();
+      const record = await faultRepo.findOne({ where: { id } });
+      if (!record) {
+        throw new NotFoundException('Vendor fault record not found');
       }
-    }
 
-    if (dto.recoveryAmount !== undefined && dto.recoveryAmount !== record.recoveryAmount) {
-      await this.auditRepo.save(
-        this.auditRepo.create({
-          reportId: record.reportId,
-          actorId,
-          actorRole,
-          actionType: AuditActionType.FIELD_EDIT,
-          fieldName: 'VendorFaultLog:recoveryAmount',
-          oldValue: record.recoveryAmount.toString(),
-          newValue: dto.recoveryAmount.toString(),
-          note: `Recovery amount updated`,
-        }),
-      );
-      record.recoveryAmount = dto.recoveryAmount;
-    }
+      if (dto.recoveryStatus && dto.recoveryStatus !== record.recoveryStatus) {
+        await auditRepo.save(
+          auditRepo.create({
+            reportId: record.reportId,
+            actorId,
+            actorRole,
+            actionType: AuditActionType.FIELD_EDIT,
+            fieldName: 'VendorFaultLog:recoveryStatus',
+            oldValue: record.recoveryStatus,
+            newValue: dto.recoveryStatus,
+            note: `Recovery status updated`,
+          }),
+        );
+        record.recoveryStatus = dto.recoveryStatus;
+        
+        if (dto.recoveryStatus === RecoveryStatus.RECOVERED || dto.recoveryStatus === RecoveryStatus.PARTIALLY_RECOVERED) {
+          record.recoveredAt = new Date();
+        }
+      }
 
-    if (dto.note) {
-      record.note = record.note ? `${record.note}\n${dto.note}` : dto.note;
-    }
+      if (dto.recoveryAmount !== undefined && dto.recoveryAmount !== record.recoveryAmount) {
+        await auditRepo.save(
+          auditRepo.create({
+            reportId: record.reportId,
+            actorId,
+            actorRole,
+            actionType: AuditActionType.FIELD_EDIT,
+            fieldName: 'VendorFaultLog:recoveryAmount',
+            oldValue: record.recoveryAmount.toString(),
+            newValue: dto.recoveryAmount.toString(),
+            note: `Recovery amount updated`,
+          }),
+        );
+        record.recoveryAmount = dto.recoveryAmount;
+      }
 
-    return this.faultRepo.save(record);
+      if (dto.note) {
+        record.note = record.note ? `${record.note}\n${dto.note}` : dto.note;
+      }
+
+      return faultRepo.save(record);
+    });
   }
 
   async getByReport(reportId: string): Promise<VendorFaultLog[]> {
