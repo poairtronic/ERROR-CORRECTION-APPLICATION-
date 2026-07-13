@@ -3,7 +3,7 @@ import api from '../services/apiClient';
 import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar } from 'react-icons/fi';
 import EnterpriseKpiCard from '../components/analytics/EnterpriseKpiCard';
 import TrendChartWidget from '../components/analytics/TrendChartWidget';
-import HealthScoreWidget from '../components/analytics/HealthScoreWidget';
+import ReportStatusWidget from '../components/analytics/ReportStatusWidget';
 import WorkflowAnalyticsWidget from '../components/analytics/WorkflowAnalyticsWidget';
 import IntelligenceGridWidget from '../components/analytics/IntelligenceGridWidget';
 import IntegratedAuditLog from '../components/analytics/IntegratedAuditLog';
@@ -32,12 +32,11 @@ export default function EnterpriseAnalytics() {
   const { data: trends, isLoading: trendsLoading, refetch: refetchTrends } = useQuery({ queryKey: ['analytics-trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
   const { data: insights, refetch: refetchInsights } = useQuery({ queryKey: ['analytics-insights'], queryFn: async () => (await api.get('/analytics/insights')).data, staleTime: 30000 });
   const { data: slaData, refetch: refetchSla } = useQuery({ queryKey: ['analytics-sla'], queryFn: async () => (await api.get('/analytics/sla')).data, staleTime: 30000 });
-  const { data: healthData, refetch: refetchHealth } = useQuery({ queryKey: ['analytics-health'], queryFn: async () => (await api.get('/analytics/health-score')).data, staleTime: 30000 });
   const { data: vendorData, refetch: refetchVendor } = useQuery({ queryKey: ['analytics-vendor'], queryFn: async () => (await api.get('/analytics/vendor-intelligence')).data, staleTime: 30000 });
   const { data: operatorData, refetch: refetchOperator } = useQuery({ queryKey: ['analytics-operator'], queryFn: async () => (await api.get('/analytics/operator-intelligence')).data, staleTime: 30000 });
   const { data: machineData, refetch: refetchMachine } = useQuery({ queryKey: ['analytics-machine'], queryFn: async () => (await api.get('/analytics/machine-intelligence')).data, staleTime: 30000 });
 
-  const handleRefresh = () => { refetchKpis(); refetchTrends(); refetchInsights(); refetchSla(); refetchHealth(); refetchVendor(); refetchOperator(); refetchMachine(); };
+  const handleRefresh = () => { refetchKpis(); refetchTrends(); refetchInsights(); refetchSla(); refetchVendor(); refetchOperator(); refetchMachine(); };
 
   const isLoading = kpisLoading || trendsLoading;
   const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
@@ -98,7 +97,7 @@ export default function EnterpriseAnalytics() {
             </div>
 
             <div className="col-span-4" style={{ height: '360px' }}>
-              <HealthScoreWidget scoreData={healthData} kpis={kpis} sla={slaData} />
+              <ReportStatusWidget kpis={kpis} delay={400} />
             </div>
 
             {/* Intelligence Row */}

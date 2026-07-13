@@ -170,43 +170,4 @@ export class AnalyticsService {
       gmQueue: pendingGm,
       storeQueue: pendingStore
     };
-  }
-
-  async getQualityHealthScore() {
-    let score = 100;
-    
-    // Penalize for high open report volume
-    const openCount = await this.reportsRepo.count({
-      where: [
-        { status: ReportStatus.PENDING_INSPECTION },
-        { status: ReportStatus.PENDING_SM_REVIEW },
-        { status: ReportStatus.PENDING_GM_APPROVAL },
-        { status: ReportStatus.APPROVED, componentsIssued: false }
-      ]
-    });
-    score -= (openCount * 2); // -2 points per open report
-
-    // Penalize for high financial loss
-    const costs = await this.inspectRepo.createQueryBuilder('i')
-      .select('SUM(i.costEstimate)', 'totalCost')
-      .getRawOne();
-    const totalCost = costs?.totalCost || 0;
-    if (totalCost > 5000) score -= 10;
-    if (totalCost > 20000) score -= 20;
-
-    // Penalize for poor SLA
-    const sla = await this.getSlaMetrics();
-    const avgDays = parseFloat(sla.averageResolutionDays as string) || 0;
-    if (avgDays > 5) score -= 5;
-    if (avgDays > 10) score -= 15;
-
-    // Ensure score stays between 0 and 100
-    if (score < 0) score = 0;
-    if (score > 100) score = 100;
-
-    return {
-      score,
-      trend: score >= 80 ? 'EXCELLENT' : score >= 60 ? 'FAIR' : 'POOR'
-    };
-  }
-}
+  }}

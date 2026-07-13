@@ -56,11 +56,4 @@ export class AnalyticsController {
   @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER)
   getSlaMetrics() {
     return this.analyticsService.getSlaMetrics();
-  }
-
-  @Get('health-score')
-  @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER)
-  getQualityHealthScore() {
-    return this.analyticsService.getQualityHealthScore();
-  }
-}
+  }}
