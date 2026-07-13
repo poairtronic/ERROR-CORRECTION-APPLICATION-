@@ -37,10 +37,8 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   // Global Interceptors for standard response and timeout protection
-  const { TransformInterceptor } = await import('./common/interceptors/transform.interceptor');
   const { TimeoutInterceptor } = await import('./common/interceptors/timeout.interceptor');
   app.useGlobalInterceptors(
-    new TransformInterceptor(),
     new TimeoutInterceptor(),
   );
 
