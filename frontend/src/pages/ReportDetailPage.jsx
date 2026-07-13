@@ -522,7 +522,7 @@ export default function ReportDetailPage() {
             </div>
           )}
 
-          <div className="card" style={{ marginTop: 20 }}>
+          <div className="card no-print" style={{ marginTop: 20 }}>
             <div className="card-title">Audit Trail</div>
             {report.auditLogs?.length > 0 ? (
               <div className="timeline">
@@ -545,7 +545,7 @@ export default function ReportDetailPage() {
             )}
           </div>
 
-          <div className="card" style={{ marginTop: 20 }}>
+          <div className="card no-print" style={{ marginTop: 20 }}>
             <div className="card-title">Notification Timeline</div>
             {notifications.length > 0 ? (
               <div className="timeline">

@@ -758,3 +758,106 @@ select option { background: var(--bg-card); color: var(--text); }
   color: #fff;
 }
 
+/* Print Stylesheet */
+@media print {
+  /* Hide UI wrapper and layout elements */
+  .sidebar,
+  .topbar,
+  .no-print,
+  .profile-trigger-btn,
+  .topbar-global,
+  .btn,
+  button,
+  .btn-logout {
+    display: none !important;
+  }
+
+  /* Make containers occupy the full width and print beautifully */
+  body, html, .layout, .main, .page-content {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    display: block !important;
+    box-shadow: none !important;
+  }
+
+  /* Expand detail layout to full single-column width */
+  .detail-grid {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .card-title {
+    color: #000000 !important;
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #000000 !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 24px !important;
+  }
+
+  /* Fields formatting */
+  .detail-field-row {
+    border-bottom: 1px dashed #dddddd !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    page-break-inside: avoid !important;
+  }
+
+  .detail-label {
+    color: #555555 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: none !important;
+  }
+
+  .detail-value, 
+  .detail-value strong, 
+  strong, 
+  span {
+    color: #000000 !important;
+    font-size: 13px !important;
+  }
+
+  /* Hide inner buttons like inline edit pencils */
+  .detail-field-row button {
+    display: none !important;
+  }
+
+  /* Badge styling in black & white print */
+  .badge {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Force headers and tables to show in print layout */
+  h1, h2, h3, h4, h5, h6 {
+    color: #000000 !important;
+    margin-top: 0 !important;
+  }
+}
+
+
