@@ -93,7 +93,7 @@ export default function EnterpriseAnalytics() {
 
             {/* Main Charts Row */}
             <div className="col-span-8" style={{ height: '360px' }}>
-              <TrendChartWidget title="Monthly Defect Volume Trend" data={trends} dataKey="count" nameKey="month" color="#3b82f6" delay={400} height={300} />
+              <TrendChartWidget title="Defect Volume Trend" data={trends} color="#3b82f6" delay={400} />
             </div>
 
             <div className="col-span-4" style={{ height: '360px' }}>

@@ -1,11 +1,11 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FiTrendingUp } from 'react-icons/fi';
 
 const CustomTooltip = ({ active, payload, label, color }) => {
   if (active && payload && payload.length) {
     return (
-      <div style={{ backgroundColor: 'rgba(21, 24, 30, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}>
+      <div style={{ backgroundColor: 'rgba(21, 24, 30, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', zIndex: 100 }}>
         <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '4px', fontWeight: 500 }}>{label}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: color }} />
@@ -17,21 +17,68 @@ const CustomTooltip = ({ active, payload, label, color }) => {
   return null;
 };
 
-const TrendChartWidget = memo(({ title, data, dataKey, nameKey, color = '#3b82f6', delay = 0 }) => {
+const TrendChartWidget = memo(({ title, data, color = '#3b82f6', delay = 0 }) => {
+  const [timeframe, setTimeframe] = useState('monthly');
+
+  const monthlyData = Array.isArray(data) ? data : (data?.monthly || []);
+  const dailyData = Array.isArray(data) ? [] : (data?.daily || []);
+
+  const activeData = timeframe === 'monthly' ? monthlyData : dailyData;
+  const nameKey = timeframe === 'monthly' ? 'month' : 'day';
+  const dataKey = 'count';
+
   return (
     <div className={`glass-card animate-slide-up`} style={{ animationDelay: `${delay}ms`, padding: '24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#d1d5db', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}>
-          <FiTrendingUp style={{ color: color }} /> {title}
+          <FiTrendingUp style={{ color: color }} /> {timeframe === 'monthly' ? 'Monthly' : 'Daily'} Defect Volume Trend
         </h3>
+
+        {/* Timeframe Toggle Switch */}
+        <div style={{ display: 'flex', gap: '4px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <button 
+            style={{ 
+              padding: '4px 12px', 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              borderRadius: '4px', 
+              border: 'none', 
+              cursor: 'pointer',
+              backgroundColor: timeframe === 'monthly' ? color : 'transparent',
+              color: timeframe === 'monthly' ? 'white' : '#9ca3af',
+              transition: 'all 0.2s ease'
+            }}
+            onClick={() => setTimeframe('monthly')}
+          >
+            Month
+          </button>
+          <button 
+            style={{ 
+              padding: '4px 12px', 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              borderRadius: '4px', 
+              border: 'none', 
+              cursor: 'pointer',
+              backgroundColor: timeframe === 'daily' ? color : 'transparent',
+              color: timeframe === 'daily' ? 'white' : '#9ca3af',
+              transition: 'all 0.2s ease'
+            }}
+            onClick={() => setTimeframe('daily')}
+          >
+            Day
+          </button>
+        </div>
       </div>
       
       <div style={{ flex: 1, width: '100%', minHeight: '220px' }}>
-        {(!data || data.length === 0) ? (
-          <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '14px' }}>No trend data available</div>
+        {(!activeData || activeData.length === 0) ? (
+          <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '14px' }}>
+            No trend data available for {timeframe} view
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={activeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id={`color-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.4}/>
@@ -42,14 +89,14 @@ const TrendChartWidget = memo(({ title, data, dataKey, nameKey, color = '#3b82f6
               <XAxis 
                 dataKey={nameKey} 
                 stroke="#6b7280" 
-                tick={{fill: '#6b7280', fontSize: 12}} 
+                tick={{ fill: '#6b7280', fontSize: 11 }} 
                 tickLine={false}
                 axisLine={false}
                 dy={10}
               />
               <YAxis 
                 stroke="#6b7280" 
-                tick={{fill: '#6b7280', fontSize: 12}} 
+                tick={{ fill: '#6b7280', fontSize: 11 }} 
                 tickLine={false}
                 axisLine={false}
                 dx={-10}

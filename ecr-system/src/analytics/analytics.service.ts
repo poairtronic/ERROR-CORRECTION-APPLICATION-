@@ -77,14 +77,22 @@ export class AnalyticsService {
 
   async getTrends() {
     // defects grouped by month (PostgreSQL query)
-    const trends = await this.reportsRepo.createQueryBuilder('r')
+    const monthly = await this.reportsRepo.createQueryBuilder('r')
       .select("to_char(r.createdAt, 'YYYY-MM')", 'month')
       .addSelect('COUNT(r.id)', 'count')
       .groupBy('month')
       .orderBy('month', 'ASC')
       .getRawMany();
 
-    return trends;
+    // defects grouped by day (PostgreSQL query)
+    const daily = await this.reportsRepo.createQueryBuilder('r')
+      .select("to_char(r.createdAt, 'YYYY-MM-DD')", 'day')
+      .addSelect('COUNT(r.id)', 'count')
+      .groupBy('day')
+      .orderBy('day', 'ASC')
+      .getRawMany();
+
+    return { monthly, daily };
   }
 
   async getRootCauses() {
