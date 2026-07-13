@@ -61,6 +61,18 @@ export class InspectionDetail {
   @Column({ type: 'text', nullable: true })
   reworkDescription: string;
 
+  @Column({ name: 'rejection_process_template', type: 'varchar', nullable: true })
+  rejectionProcessTemplate?: string;
+
+  @Column({ name: 'rejection_failed_stage', type: 'varchar', nullable: true })
+  rejectionFailedStage?: string;
+
+  @Column({ name: 'rejection_stage_costs', type: 'json', nullable: true })
+  rejectionStageCosts?: any;
+
+  @Column({ name: 'rejection_description', type: 'text', nullable: true })
+  rejectionDescription?: string;
+
   @CreateDateColumn()
   reviewedAt: Date;
 }

@@ -24,4 +24,7 @@ export class SmReviewDto {
   // false = reject back, true = forward to GM
   @IsBoolean()
   forwardToGm: boolean;
+
+  @IsOptional()
+  rejectionStageCosts?: any;
 }

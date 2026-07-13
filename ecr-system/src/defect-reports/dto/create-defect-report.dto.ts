@@ -21,6 +21,21 @@ export class CreateDefectReportDto {
   reworkDescription?: string;
 
   @IsOptional()
+  @IsString()
+  rejectionProcessTemplate?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionFailedStage?: string;
+
+  @IsOptional()
+  rejectionStageCosts?: any;
+
+  @IsOptional()
+  @IsString()
+  rejectionDescription?: string;
+
+  @IsOptional()
   productId?: string;
 
   @IsNotEmpty()
@@ -62,6 +77,10 @@ export class CreateDefectReportDto {
     timeEstimateHours?: number;
     lossAmount?: number;
     reworkDescription?: string;
+    rejectionProcessTemplate?: string;
+    rejectionFailedStage?: string;
+    rejectionStageCosts?: any;
+    rejectionDescription?: string;
   };
 
   @IsOptional()

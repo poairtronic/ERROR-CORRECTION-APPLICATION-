@@ -43,4 +43,19 @@ export class InspectReportDto {
   @IsOptional()
   @IsString()
   reworkDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionProcessTemplate?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionFailedStage?: string;
+
+  @IsOptional()
+  rejectionStageCosts?: any;
+
+  @IsOptional()
+  @IsString()
+  rejectionDescription?: string;
 }

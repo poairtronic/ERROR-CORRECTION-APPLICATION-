@@ -113,6 +113,8 @@ export class DefectReportsService implements OnModuleInit {
     const raisedByRole = this.mapRoleToRaisedBy(actor.role);
     const reportNumber = await this.generateReportNumber();
 
+    const isRejection = dto.inspectionType === 'REJECTION';
+
     const report = this.reportsRepo.create({
       reportNumber,
       raisedById: actor.id,
@@ -121,9 +123,13 @@ export class DefectReportsService implements OnModuleInit {
       scNo: dto.scNo,
       poNo: dto.poNo,
       reworkDescription: dto.reworkDescription,
+      rejectionProcessTemplate: dto.rejectionProcessTemplate,
+      rejectionFailedStage: dto.rejectionFailedStage,
+      rejectionStageCosts: dto.rejectionStageCosts,
+      rejectionDescription: dto.rejectionDescription,
       productId: dto.productId,
       componentName: dto.componentId,
-      errorTypeName: dto.errorTypeId || (dto.inlineInspection?.errorType || 'Rework'),
+      errorTypeName: dto.errorTypeId || (dto.inlineInspection?.errorType || (isRejection ? 'Rejection' : 'Rework')),
       partNumber: dto.partNumber,
       batchNumber: dto.batchNumber,
       quantity: dto.quantity,
@@ -149,16 +155,20 @@ export class DefectReportsService implements OnModuleInit {
         this.inspectionRepo.create({
           report,
           inspectorId: actor.id,
-          errorType: dto.inlineInspection.errorType || 'Rework',
-          rootCause: dto.inlineInspection.rootCause || 'Rework',
+          errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
+          rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
           responsibleParty: dto.inlineInspection.responsibleParty as any,
           responsibleId: dto.inlineInspection.responsibleId,
-          decision: (dto.inlineInspection.decision || 'REWORK') as any,
+          decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
           alternativeNote: dto.inlineInspection.alternativeNote,
           costEstimate: dto.inlineInspection.costEstimate,
           timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? 0,
           lossAmount: dto.inlineInspection.lossAmount,
           reworkDescription: dto.inlineInspection.reworkDescription,
+          rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
+          rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
+          rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
+          rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
         }),
       );
     } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
@@ -173,16 +183,20 @@ export class DefectReportsService implements OnModuleInit {
         this.inspectionRepo.create({
           report,
           inspectorId: actor.id, // SM stands in for inspection step
-          errorType: dto.inlineInspection.errorType || 'Rework',
-          rootCause: dto.inlineInspection.rootCause || 'Rework',
+          errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
+          rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
           responsibleParty: dto.inlineInspection.responsibleParty as any,
           responsibleId: dto.inlineInspection.responsibleId,
-          decision: (dto.inlineInspection.decision || 'REWORK') as any,
+          decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
           alternativeNote: dto.inlineInspection.alternativeNote,
           costEstimate: dto.inlineInspection.costEstimate,
           timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? 0,
           lossAmount: dto.inlineInspection.lossAmount,
           reworkDescription: dto.inlineInspection.reworkDescription,
+          rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
+          rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
+          rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
+          rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
         }),
       );
       await this.smReviewRepo.save(
@@ -250,24 +264,36 @@ export class DefectReportsService implements OnModuleInit {
     } else {
       inspection.report = report;
     }
+    const isRejection = dto.inspectionType === 'REJECTION' || report.inspectionType === 'REJECTION';
     Object.assign(inspection, {
       inspectorId: actor.id,
-      errorType: dto.errorType || 'Rework',
-      rootCause: dto.rootCause || 'Rework',
+      errorType: dto.errorType || (isRejection ? 'Rejection' : 'Rework'),
+      rootCause: dto.rootCause || (isRejection ? 'Rejection' : 'Rework'),
       responsibleParty: dto.responsibleParty,
       responsibleId: dto.responsibleId,
-      decision: dto.decision || 'REWORK',
+      decision: dto.decision || (isRejection ? 'SCRAP' : 'REWORK'),
       alternativeNote: dto.alternativeNote,
       costEstimate: dto.costEstimate,
       timeEstimateHours: dto.timeEstimateHours ?? 0,
       lossAmount: dto.lossAmount,
       reworkDescription: dto.reworkDescription,
+      rejectionProcessTemplate: dto.rejectionProcessTemplate,
+      rejectionFailedStage: dto.rejectionFailedStage,
+      rejectionStageCosts: dto.rejectionStageCosts,
+      rejectionDescription: dto.rejectionDescription,
     });
     await this.inspectionRepo.save(inspection);
 
     // Persist the inspection type (REWORK / REJECTION) if provided
     if (dto.inspectionType) {
       report.inspectionType = dto.inspectionType;
+    }
+
+    if (isRejection) {
+      report.rejectionProcessTemplate = dto.rejectionProcessTemplate;
+      report.rejectionFailedStage = dto.rejectionFailedStage;
+      report.rejectionStageCosts = dto.rejectionStageCosts;
+      report.rejectionDescription = dto.rejectionDescription;
     }
 
     const from = report.status;
@@ -307,33 +333,53 @@ export class DefectReportsService implements OnModuleInit {
     await this.smReviewRepo.save(smReview);
 
     if (report.inspectionDetail) {
-      const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
+      const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount', 'rejectionStageCosts'];
       let changed = false;
-      const newLogs: AuditLog[] = [];
+      const newLogs: any[] = [];
       for (const field of inspectFields) {
-        if (dto[field] !== (report.inspectionDetail as any)[field] && dto[field] !== undefined) {
-          const log = await this.auditRepo.save(
-            this.auditRepo.create({
-              reportId: report.id,
-              actorId: actor.id,
-              actorRole: actor.role,
-              actionType: AuditActionType.FIELD_EDIT,
-              fieldName: field,
-              oldValue: String((report.inspectionDetail as any)[field]),
-              newValue: String(dto[field]),
-              note: `Senior Manager edited ${field} during review`,
-            })
-          );
-          newLogs.push(log);
-          (report.inspectionDetail as any)[field] = dto[field];
-          changed = true;
+        if (dto[field] !== undefined) {
+          let hasChanged = false;
+          let oldValueStr = '';
+          let newValueStr = '';
+          if (field === 'rejectionStageCosts') {
+            const oldVal = report.inspectionDetail.rejectionStageCosts;
+            const newVal = dto[field];
+            if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+              hasChanged = true;
+              oldValueStr = JSON.stringify(oldVal);
+              newValueStr = JSON.stringify(newVal);
+              report.rejectionStageCosts = newVal;
+              report.inspectionDetail.rejectionStageCosts = newVal;
+              await this.reportsRepo.save(report);
+            }
+          } else {
+            if (dto[field] !== (report.inspectionDetail as any)[field]) {
+              hasChanged = true;
+              oldValueStr = String((report.inspectionDetail as any)[field]);
+              newValueStr = String(dto[field]);
+              (report.inspectionDetail as any)[field] = dto[field];
+            }
+          }
+          if (hasChanged) {
+            const log = await this.auditRepo.save(
+              this.auditRepo.create({
+                reportId: report.id,
+                actorId: actor.id,
+                actorRole: actor.role,
+                actionType: AuditActionType.FIELD_EDIT,
+                fieldName: field,
+                oldValue: oldValueStr,
+                newValue: newValueStr,
+                note: `Senior Manager edited ${field} during review`,
+              })
+            );
+            newLogs.push(log);
+            changed = true;
+          }
         }
       }
       if (changed) {
         await this.inspectionRepo.save(report.inspectionDetail);
-      }
-      if (report.auditLogs) {
-        report.auditLogs.push(...newLogs);
       }
     }
 
@@ -409,6 +455,7 @@ export class DefectReportsService implements OnModuleInit {
       'timeEstimateHours',
       'lossAmount',
       'decisionNote',
+      'rejectionStageCosts',
     ];
 
     if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
@@ -416,9 +463,9 @@ export class DefectReportsService implements OnModuleInit {
     }
 
     if (actor.role === Role.SALES) {
-      const salesAllowedFields = ['costEstimate', 'lossAmount', 'salesDescription'];
+      const salesAllowedFields = ['costEstimate', 'lossAmount', 'salesDescription', 'rejectionStageCosts'];
       if (!salesAllowedFields.includes(field)) {
-        throw new BadRequestException('Sales can only edit costEstimate, lossAmount, or salesDescription');
+        throw new BadRequestException('Sales can only edit costEstimate, lossAmount, salesDescription, or rejectionStageCosts');
       }
       if (report.status !== 'APPROVED') {
         throw new BadRequestException('Sales can only edit approved reports');
@@ -448,11 +495,25 @@ export class DefectReportsService implements OnModuleInit {
       } else {
         throw new BadRequestException('Cannot edit cost or loss because report has not been inspected');
       }
+    } else if (field === 'rejectionStageCosts') {
+      oldValue = report.rejectionStageCosts;
+      const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
+      report.rejectionStageCosts = parsed;
+      await this.reportsRepo.save(report);
+
+      if (report.inspectionDetail) {
+        report.inspectionDetail.rejectionStageCosts = parsed;
+        await this.inspectionRepo.save(report.inspectionDetail);
+      }
     } else {
       oldValue = (report as any)[field];
       if (field in report) {
         (report as any)[field] = newValue;
         await this.reportsRepo.save(report);
+      }
+      if (report.inspectionDetail && field in report.inspectionDetail) {
+        (report.inspectionDetail as any)[field] = newValue;
+        await this.inspectionRepo.save(report.inspectionDetail);
       }
     }
 

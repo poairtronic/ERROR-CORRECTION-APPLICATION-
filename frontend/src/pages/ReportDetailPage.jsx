@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiImage, FiEdit2, FiSave, FiX } from 'react-icons/fi';
 import Dialog from '../components/ui/Dialog';
 
-import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
+import { STATUS_COLORS, STATUS_LABELS, PROCESS_TEMPLATES } from '../utils/constants';
 
 function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false }) {
   return (
@@ -71,16 +71,182 @@ export default function ReportDetailPage() {
       toast.error(Array.isArray(msg) ? msg.join(', ') : (msg || 'Action failed'));
     }
   });
-
   const [inspectData, setInspectData] = useState({
     errorType: '', rootCause: '', responsibleParty: '', decision: '',
-    responsibleId: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: '', reworkDescription: ''
+    responsibleId: '', responsibleName: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: '', reworkDescription: '',
+    rejectionProcessTemplate: '', rejectionFailedStage: '', rejectionStageCosts: {}, rejectionDescription: ''
   });
-  
+
   const [smData, setSmData] = useState({
     loopholeNote: '', costEstimate: '', timeEstimateHours: '',
     lossAmount: '', decisionNote: '', biasedFlag: false, forwardToGm: 'true'
   });
+
+  const [salesData, setSalesData] = useState({
+    costEstimate: '',
+    lossAmount: '',
+    salesDescription: '',
+    rejectionStageCosts: {}
+  });
+
+  const openSalesReviewModal = () => {
+    setSalesData({
+      costEstimate: report.inspectionDetail?.costEstimate ?? 0,
+      lossAmount: report.inspectionDetail?.lossAmount ?? '',
+      salesDescription: report.salesDescription || '',
+      rejectionStageCosts: report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {}
+    });
+    setModal('sales-review');
+  };
+
+  const handleSalesStageCostChange = (stage, val) => {
+    const numericVal = val === '' ? '' : Number(val);
+    setSalesData(d => {
+      const newCosts = {
+        ...d.rejectionStageCosts,
+        [stage]: numericVal
+      };
+      const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
+      const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+      const stages = PROCESS_TEMPLATES[template] || [];
+      const idx = stages.indexOf(failedStage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      let total = 0;
+      activeStages.forEach(st => {
+        total += Number(newCosts[st]) || 0;
+      });
+      return {
+        ...d,
+        rejectionStageCosts: newCosts,
+        costEstimate: total
+      };
+    });
+  };
+
+  const handleSalesSave = async () => {
+    try {
+      await api.patch(`/defect-reports/${id}/field`, { field: 'costEstimate', value: String(salesData.costEstimate) });
+      await api.patch(`/defect-reports/${id}/field`, { field: 'lossAmount', value: String(salesData.lossAmount) });
+      await api.patch(`/defect-reports/${id}/field`, { field: 'salesDescription', value: salesData.salesDescription });
+      if (report.inspectionType === 'REJECTION') {
+        await api.patch(`/defect-reports/${id}/field`, { field: 'rejectionStageCosts', value: JSON.stringify(salesData.rejectionStageCosts) });
+      }
+      toast.success('Sales review details saved successfully');
+      setModal(null);
+      queryClient.invalidateQueries({ queryKey: ['report', id] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save sales review details');
+    }
+  };
+
+  useEffect(() => {
+    if (report) {
+      const respParty = report.inspectionDetail?.responsibleParty || '';
+      const respId = report.inspectionDetail?.responsibleId || '';
+      let respName = '';
+      if (respParty === 'OPERATOR') {
+        respName = operators.find(o => o.id === respId)?.name || '';
+      } else if (respParty === 'VENDOR') {
+        respName = vendors.find(v => v.id === respId)?.name || '';
+      }
+      setInspectData({
+        errorType: report.inspectionDetail?.errorType || '',
+        rootCause: report.inspectionDetail?.rootCause || '',
+        responsibleParty: respParty,
+        decision: report.inspectionDetail?.decision || '',
+        responsibleId: respId,
+        responsibleName: respName,
+        alternativeNote: report.inspectionDetail?.alternativeNote || '',
+        costEstimate: report.inspectionDetail?.costEstimate || 0,
+        timeEstimateHours: report.inspectionDetail?.timeEstimateHours || '',
+        lossAmount: report.inspectionDetail?.lossAmount || '',
+        reworkDescription: report.inspectionDetail?.reworkDescription || report.reworkDescription || '',
+        rejectionProcessTemplate: report.rejectionProcessTemplate || '',
+        rejectionFailedStage: report.rejectionFailedStage || '',
+        rejectionStageCosts: report.rejectionStageCosts || {},
+        rejectionDescription: report.inspectionDetail?.rejectionDescription || report.rejectionDescription || ''
+      });
+      if (report.inspectionType) {
+        setInspectionMode(report.inspectionType);
+      }
+    }
+  }, [report, operators, vendors]);
+
+  const handleInspectTemplateChange = (template) => {
+    setInspectData(d => ({
+      ...d,
+      rejectionProcessTemplate: template,
+      rejectionFailedStage: '',
+      rejectionStageCosts: {},
+      costEstimate: 0
+    }));
+  };
+
+  const handleInspectFailedStageChange = (stage) => {
+    setInspectData(d => {
+      const stages = PROCESS_TEMPLATES[d.rejectionProcessTemplate] || [];
+      const idx = stages.indexOf(stage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      const newCosts = {};
+      let total = 0;
+      activeStages.forEach(st => {
+        newCosts[st] = d.rejectionStageCosts[st] || '';
+        total += Number(newCosts[st]) || 0;
+      });
+      return {
+        ...d,
+        rejectionFailedStage: stage,
+        rejectionStageCosts: newCosts,
+        costEstimate: total
+      };
+    });
+  };
+
+  const handleInspectStageCostChange = (stage, val) => {
+    const numericVal = val === '' ? '' : Number(val);
+    setInspectData(d => {
+      const newCosts = {
+        ...d.rejectionStageCosts,
+        [stage]: numericVal
+      };
+      const stages = PROCESS_TEMPLATES[d.rejectionProcessTemplate] || [];
+      const idx = stages.indexOf(d.rejectionFailedStage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      let total = 0;
+      activeStages.forEach(st => {
+        total += Number(newCosts[st]) || 0;
+      });
+      return {
+        ...d,
+        rejectionStageCosts: newCosts,
+        costEstimate: total
+      };
+    });
+  };
+
+  const handleSmStageCostChange = (stage, val) => {
+    const numericVal = val === '' ? '' : Number(val);
+    setSmData(d => {
+      const newCosts = {
+        ...d.rejectionStageCosts,
+        [stage]: numericVal
+      };
+      const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
+      const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+      const stages = PROCESS_TEMPLATES[template] || [];
+      const idx = stages.indexOf(failedStage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      let total = 0;
+      activeStages.forEach(st => {
+        total += Number(newCosts[st]) || 0;
+      });
+      return {
+        ...d,
+        rejectionStageCosts: newCosts,
+        costEstimate: total
+      };
+    });
+  };
 
   const openSmReviewModal = () => {
     setSmData({
@@ -90,7 +256,8 @@ export default function ReportDetailPage() {
       lossAmount: report.inspectionDetail?.lossAmount ?? '', 
       decisionNote: report.smReview?.decisionNote || '', 
       biasedFlag: report.smReview?.biasedFlag || false, 
-      forwardToGm: 'true'
+      forwardToGm: 'true',
+      rejectionStageCosts: report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {}
     });
     setModal('sm-review');
   };
@@ -104,17 +271,21 @@ export default function ReportDetailPage() {
     const body = {
       ...inspectData,
       inspectionType: inspectionMode,
-      errorType: isRework ? 'Rework' : inspectData.errorType,
-      rootCause: isRework ? 'Rework' : inspectData.rootCause,
-      decision: isRework ? 'REWORK' : inspectData.decision,
-      timeEstimateHours: isRework ? 0 : Number(inspectData.timeEstimateHours) || 0,
+      errorType: isRework ? 'Rework' : 'Rejection',
+      rootCause: isRework ? 'Rework' : 'Rejection',
+      decision: isRework ? 'REWORK' : 'SCRAP',
+      timeEstimateHours: 0,
       costEstimate: Number(inspectData.costEstimate) || 0,
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
+      reworkDescription: isRework ? inspectData.reworkDescription : undefined,
+      rejectionProcessTemplate: !isRework ? inspectData.rejectionProcessTemplate : undefined,
+      rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
+      rejectionStageCosts: !isRework ? inspectData.rejectionStageCosts : undefined,
+      rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
     };
     delete body.responsibleName;
     doAction('inspect', body);
   };
-
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
 
@@ -129,19 +300,44 @@ export default function ReportDetailPage() {
     }
   };
 
+  const handleEditRejectionStageCostsSave = async () => {
+    try {
+      const parsedCosts = JSON.parse(editValue || '{}');
+      const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
+      const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+      const stages = PROCESS_TEMPLATES[template] || [];
+      const idx = stages.indexOf(failedStage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      const total = activeStages.reduce((sum, st) => sum + (Number(parsedCosts[st]) || 0), 0);
+
+      await api.patch(`/defect-reports/${id}/field`, { field: 'rejectionStageCosts', value: editValue });
+      await api.patch(`/defect-reports/${id}/field`, { field: 'costEstimate', value: String(total) });
+
+      toast.success('Stage-wise costs and total cost updated successfully');
+      setEditingField(null);
+      queryClient.invalidateQueries({ queryKey: ['report', id] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update stage-wise costs');
+    }
+  };
+
   const canEdit = (fieldKey) => {
     if (!fieldKey) return false;
     if (role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL') return true;
     if (role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW') {
-      const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote'];
+      const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts'];
       return smAllowed.includes(fieldKey);
     }
     if (role === 'SALES' && status === 'APPROVED') {
-      const salesAllowed = ['costEstimate', 'lossAmount', 'salesDescription'];
+      const salesAllowed = ['costEstimate', 'lossAmount', 'salesDescription', 'rejectionStageCosts'];
       return salesAllowed.includes(fieldKey);
     }
     return false;
   };
+
+  const inspectSelectedTemplateStages = inspectData.rejectionProcessTemplate ? (PROCESS_TEMPLATES[inspectData.rejectionProcessTemplate] || []) : [];
+  const inspectFailedStageIndex = inspectSelectedTemplateStages.indexOf(inspectData.rejectionFailedStage);
+  const inspectStagesUpToFailure = inspectFailedStageIndex !== -1 ? inspectSelectedTemplateStages.slice(0, inspectFailedStageIndex + 1) : [];
 
   if (loading) return <div className="page-content"><div className="spinner" /></div>;
   if (!report) return <div className="page-content"><div className="empty-state"><div className="icon">❌</div><p>Report not found.</p></div></div>;
@@ -191,6 +387,9 @@ export default function ReportDetailPage() {
           {role === 'STORE_MANAGER' && status === 'APPROVED' && !report.componentsIssued && (
             <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
+          {role === 'SALES' && status === 'APPROVED' && (
+            <button className="btn btn-primary" onClick={openSalesReviewModal}><FiEdit2 /> Sales Review</button>
+          )}
         </div>
       </div>
 
@@ -221,16 +420,36 @@ export default function ReportDetailPage() {
               ] : [
                 ['Description', report.defectDescription, 'defectDescription'],
                 ['Component', report.componentName || '—', 'componentName'],
-                ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
-                ['Error Type', report.errorTypeName || report.inspectionDetail?.errorType || '—', 'errorType'],
-                ['Root Cause', report.inspectionDetail?.rootCause || '—', 'rootCause'],
-                ['Decision', report.inspectionDetail?.decision || '—', 'decision'],
-                ['Cost Estimate', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
-                ['Time Estimate', report.inspectionDetail?.timeEstimateHours !== undefined ? `${report.inspectionDetail.timeEstimateHours} Hours` : '—', 'timeEstimateHours'],
-                ['Loss Amount', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
-                ['Part Number', report.partNumber || '—', 'partNumber'],
-                ['Batch Number', report.batchNumber || '—', 'batchNumber'],
+                ['SC Number', report.scNo || '—', 'scNo'],
+                ['PO Number', report.poNo || '—', 'poNo'],
+                ['Stage of Failure', (
+                  <div key="stage-failure">
+                    <strong>{report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure || '—'}</strong> 
+                    {(report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate) && <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>({report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate})</span>}
+                    {(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts) && Object.keys(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts).length > 0 && (
+                      <div style={{ marginTop: 8, padding: 8, background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border)', maxWidth: 300 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: 4, marginBottom: 4 }}>Stage-wise Cost Breakdown</div>
+                        {Object.entries(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts).map(([stage, cost]) => (
+                          <div key={stage} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, margin: '2px 0' }}>
+                            <span>{stage}:</span>
+                            <strong>${cost}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ), 'rejectionStageCosts'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
+                ['Responsible Party', report.inspectionDetail?.responsibleParty || '—', 'responsibleParty'],
+                ['Operator / Vendor Name', report.inspectionDetail?.responsibleId ? (
+                  report.inspectionDetail.responsibleParty === 'OPERATOR' 
+                    ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
+                    : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
+                ) : '—', 'responsibleId'],
+                ['Rejection Description', report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '—', 'rejectionDescription'],
+                ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
+                ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
               ]).concat(report.componentsIssued ? [
@@ -244,13 +463,69 @@ export default function ReportDetailPage() {
                     <div className="detail-label">{label}</div>
                     {editingField === fieldKey ? (
                       <div style={{ display: 'flex', gap: 8, marginTop: 4, width: '100%' }}>
-                        {fieldKey === 'salesDescription' ? (
+                        {fieldKey === 'rejectionStageCosts' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', padding: 12, background: 'var(--bg-card)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Edit Stage Costs</div>
+                            {(() => {
+                              const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
+                              const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+                              const stages = PROCESS_TEMPLATES[template] || [];
+                              const idx = stages.indexOf(failedStage);
+                              const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+                              let currentCosts = {};
+                              try {
+                                currentCosts = JSON.parse(editValue || '{}');
+                              } catch (e) {
+                                console.warn('Failed to parse editValue:', e);
+                              }
+                              
+                              return (
+                                <>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    {activeStages.map(st => (
+                                      <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                                        <input 
+                                          type="number" 
+                                          min="0" 
+                                          step="0.01" 
+                                          className="form-control"
+                                          style={{ height: 32, padding: '4px 8px', fontSize: 12 }}
+                                          value={currentCosts[st] ?? ''} 
+                                          onChange={e => {
+                                            const val = e.target.value;
+                                            const numericVal = val === '' ? '' : Number(val);
+                                            const updatedCosts = { ...currentCosts, [st]: numericVal };
+                                            setEditValue(JSON.stringify(updatedCosts));
+                                          }}
+                                          placeholder="Cost ($)"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                                    <span>Calculated Total Cost:</span>
+                                    <span>${activeStages.reduce((sum, st) => sum + (Number(currentCosts[st]) || 0), 0).toFixed(2)}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                              <button type="button" className="btn btn-success btn-sm" onClick={() => handleEditRejectionStageCostsSave()}><FiSave /> Save</button>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /> Cancel</button>
+                            </div>
+                          </div>
+                        ) : fieldKey === 'salesDescription' ? (
                           <textarea className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1, minHeight: 60 }} rows={3} />
                         ) : (
                           <input className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1 }} />
                         )}
-                        <button className="btn btn-success btn-sm" onClick={() => handleEditSave(fieldKey)}><FiSave /></button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /></button>
+                        {fieldKey !== 'rejectionStageCosts' && (
+                          <>
+                            <button className="btn btn-success btn-sm" onClick={() => handleEditSave(fieldKey)}><FiSave /></button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /></button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className="detail-value">{value}</div>
@@ -263,6 +538,8 @@ export default function ReportDetailPage() {
                         ? report.inspectionDetail?.costEstimate 
                         : fieldKey === 'lossAmount' 
                         ? report.inspectionDetail?.lossAmount 
+                        : fieldKey === 'rejectionStageCosts'
+                        ? JSON.stringify(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {})
                         : value === '—' ? '' : value;
                       setEditValue(rawValue !== undefined && rawValue !== null ? String(rawValue) : ''); 
                     }}>
@@ -461,55 +738,113 @@ export default function ReportDetailPage() {
           ) : (
             <div className="form-grid">
               <div className="form-group">
-                <label>Error Type *</label>
-                <input value={inspectData.errorType} onChange={e => setInspectData({...inspectData, errorType: e.target.value})} placeholder="e.g. Dimensional Error" required />
-              </div>
-              <div className="form-group">
-                <label>Root Cause *</label>
-                <input value={inspectData.rootCause} onChange={e => setInspectData({...inspectData, rootCause: e.target.value})} placeholder="e.g. Machine Calibration" required />
-              </div>
-              <div className="form-group">
                 <label>Responsible Party *</label>
-                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value})} required>
+                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: '', responsibleName: ''})} required>
                   <option value="">Select Party</option>
                   <option value="OPERATOR">Operator</option>
                   <option value="VENDOR">Vendor</option>
-                  <option value="PROCESS">Process</option>
-                  <option value="MACHINE">Machine</option>
+                </select>
+              </div>
+              {inspectData.responsibleParty === 'OPERATOR' && (
+                <div className="form-group">
+                  <label>Operator Name *</label>
+                  <input 
+                    list="inspect-operator-names" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      const match = operators.find(o => o.name === val);
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: match ? match.id : ''
+                      });
+                    }}
+                    placeholder="Type or select operator..."
+                    required
+                  />
+                  <datalist id="inspect-operator-names">
+                    {operators.map(o => <option key={o.id} value={o.name} />)}
+                  </datalist>
+                </div>
+              )}
+              {inspectData.responsibleParty === 'VENDOR' && (
+                <div className="form-group">
+                  <label>Vendor Name *</label>
+                  <input 
+                    list="inspect-vendor-names" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      const match = vendors.find(v => v.name === val);
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: match ? match.id : ''
+                      });
+                    }}
+                    placeholder="Type or select vendor..."
+                    required
+                  />
+                  <datalist id="inspect-vendor-names">
+                    {vendors.map(v => <option key={v.id} value={v.name} />)}
+                  </datalist>
+                </div>
+              )}
+              <div className="form-group">
+                <label>Process Template *</label>
+                <select value={inspectData.rejectionProcessTemplate} onChange={e => handleInspectTemplateChange(e.target.value)} required>
+                  <option value="">Select Template...</option>
+                  {Object.keys(PROCESS_TEMPLATES).map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Decision *</label>
-                <select value={inspectData.decision} onChange={e => setInspectData({...inspectData, decision: e.target.value})} required>
-                  <option value="">Select Decision</option>
-                  <option value="REWORK">Rework</option>
-                  <option value="SCRAP">Scrap</option>
-                  <option value="ALTERNATIVE">Alternative Use</option>
+                <label>Failed Stage *</label>
+                <select value={inspectData.rejectionFailedStage} onChange={e => handleInspectFailedStageChange(e.target.value)} required disabled={!inspectData.rejectionProcessTemplate}>
+                  <option value="">Select Stage...</option>
+                  {inspectSelectedTemplateStages.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              {(inspectData.responsibleParty === 'OPERATOR' || inspectData.responsibleParty === 'VENDOR') && (
-                <div className="form-group full">
-                  <label>Responsible Entity ID/Name (Optional)</label>
-                  <input value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} placeholder="e.g. Operator ID or Vendor Name" />
+              <div className="form-group full">
+                <label>Rejection Description *</label>
+                <textarea value={inspectData.rejectionDescription} onChange={e => setInspectData({...inspectData, rejectionDescription: e.target.value})} placeholder="Describe the rejection reasons/details…" required rows={4} />
+              </div>
+
+              {/* Stage Costs Entry list */}
+              {inspectStagesUpToFailure.length > 0 && (
+                <div className="form-group full" style={{ background: 'rgba(0,0,0,0.02)', padding: 16, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                  <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600 }}>Process Flow Costs up to Failed Stage</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {inspectStagesUpToFailure.map(st => (
+                      <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          step="0.01" 
+                          style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border-color)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
+                          value={inspectData.rejectionStageCosts[st] ?? ''} 
+                          onChange={e => handleInspectStageCostChange(st, e.target.value)} 
+                          required
+                          placeholder="Enter cost ($)"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {inspectData.decision === 'ALTERNATIVE' && (
-                <div className="form-group full">
-                  <label>Alternative Note (Optional)</label>
-                  <input value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Explain alternative use..." />
-                </div>
-              )}
+
               <div className="form-group">
-                <label>Cost Estimate ($) *</label>
+                <label>Cost Estimation ($) *</label>
                 <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
               </div>
               <div className="form-group">
-                <label>Estimated Time (Hours) *</label>
-                <input type="number" min="0" step="0.5" value={inspectData.timeEstimateHours} onChange={e => setInspectData({...inspectData, timeEstimateHours: Number(e.target.value)})} required />
-              </div>
-              <div className="form-group">
-                <label>Loss Amount ($) (Optional)</label>
+                <label>Loss Estimation ($) (Optional)</label>
                 <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
+              </div>
+              <div className="form-group full">
+                <label>Alternative Notes (Optional)</label>
+                <textarea value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Alternative notes or remarks..." rows={2} />
               </div>
             </div>
           )}
@@ -528,10 +863,49 @@ export default function ReportDetailPage() {
               <label>Loophole Note *</label>
               <textarea value={smData.loopholeNote} onChange={e => setSmData({...smData, loopholeNote: e.target.value})} placeholder="Describe systemic loopholes..." required rows={2} />
             </div>
-            <div className="form-group">
-              <label>Cost Estimate *</label>
-              <input type="number" min="0" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value})} required />
-            </div>
+            {report.inspectionType === 'REJECTION' ? (
+              <>
+                {(() => {
+                  const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
+                  const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+                  const stages = PROCESS_TEMPLATES[template] || [];
+                  const idx = stages.indexOf(failedStage);
+                  const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+                  
+                  return activeStages.length > 0 ? (
+                    <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <h4 style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Process Flow Costs up to Failed Stage ({template})</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {activeStages.map(st => (
+                          <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                            <input 
+                              type="number" 
+                              min="0" 
+                              step="0.01" 
+                              style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
+                              value={smData.rejectionStageCosts[st] ?? ''} 
+                              onChange={e => handleSmStageCostChange(st, e.target.value)} 
+                              required
+                              placeholder="Enter cost ($)"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+                <div className="form-group">
+                  <label>Cost Estimate *</label>
+                  <input type="number" min="0" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value})} required />
+                </div>
+              </>
+            ) : (
+              <div className="form-group">
+                <label>Cost Estimate *</label>
+                <input type="number" min="0" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value})} required />
+              </div>
+            )}
             <div className="form-group">
               <label>Time Estimate (Hours) *</label>
               <input type="number" min="0" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value})} required />
@@ -573,6 +947,97 @@ export default function ReportDetailPage() {
         <ActionModal title="Issue Components" onClose={() => setModal(null)} actionLabel="Confirm Issuance" loading={actionMutation.isPending} onConfirm={() => doAction('issue-components', { remarks: notes })}>
           <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>Confirm that you have issued the required components for this defect report.</p>
           <div className="form-group"><label>Issue Remarks (optional)</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add any remarks regarding the issued components…" /></div>
+        </ActionModal>
+      )}
+      {modal === 'sales-review' && (
+        <ActionModal 
+          title="Sales Financial Review" 
+          onClose={() => setModal(null)} 
+          actionLabel="Save" 
+          loading={actionMutation.isPending} 
+          onConfirm={handleSalesSave}
+        >
+          <div className="form-grid">
+            <div className="form-group full">
+              <label>Sales Description *</label>
+              <textarea 
+                value={salesData.salesDescription} 
+                onChange={e => setSalesData({...salesData, salesDescription: e.target.value})} 
+                placeholder="Enter sales review description or notes..." 
+                required 
+                rows={3} 
+              />
+            </div>
+            
+            {report.inspectionType === 'REJECTION' ? (
+              <>
+                {(() => {
+                  const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
+                  const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+                  const stages = PROCESS_TEMPLATES[template] || [];
+                  const idx = stages.indexOf(failedStage);
+                  const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+                  
+                  return activeStages.length > 0 ? (
+                    <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <h4 style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Process Flow Costs up to Failed Stage ({template})</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {activeStages.map(st => (
+                          <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                            <input 
+                              type="number" 
+                              min="0" 
+                              step="0.01" 
+                              style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
+                              value={salesData.rejectionStageCosts[st] ?? ''} 
+                              onChange={e => handleSalesStageCostChange(st, e.target.value)} 
+                              required
+                              placeholder="Enter cost ($)"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+                <div className="form-group">
+                  <label>Cost Estimation ($) *</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    step="0.01" 
+                    value={salesData.costEstimate} 
+                    onChange={e => setSalesData({...salesData, costEstimate: Number(e.target.value)})} 
+                    required 
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="form-group">
+                <label>Cost Estimation ($) *</label>
+                <input 
+                  type="number" 
+                  min="0" 
+                  step="0.01" 
+                  value={salesData.costEstimate} 
+                  onChange={e => setSalesData({...salesData, costEstimate: Number(e.target.value)})} 
+                  required 
+                />
+              </div>
+            )}
+            
+            <div className="form-group">
+              <label>Loss Estimation ($) (Optional)</label>
+              <input 
+                type="number" 
+                min="0" 
+                step="0.01" 
+                value={salesData.lossAmount} 
+                onChange={e => setSalesData({...salesData, lossAmount: e.target.value ? Number(e.target.value) : ''})} 
+              />
+            </div>
+          </div>
         </ActionModal>
       )}
     </>

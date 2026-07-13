@@ -4,7 +4,7 @@ import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { SIMPLIFIED_WORKFLOW } from '../utils/constants';
+import { SIMPLIFIED_WORKFLOW, PROCESS_TEMPLATES } from '../utils/constants';
 
 export default function NewReportPage() {
   const { user } = useAuth();
@@ -20,7 +20,6 @@ export default function NewReportPage() {
   const isSimplifiedInspector = SIMPLIFIED_WORKFLOW && user?.role === 'INSPECTOR';
 
   const [components, setComponents] = useState([]);
-  const [errorTypes, setErrorTypes] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [operators, setOperators] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,8 +27,12 @@ export default function NewReportPage() {
   const [form, setForm] = useState({
     defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
     scNo: '', poNo: '', reworkDescription: '',
+    rejectionProcessTemplate: '', rejectionFailedStage: '', rejectionStageCosts: {}, rejectionDescription: '',
     rootCause: '', responsibleParty: '', responsibleId: '', responsibleName: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
   });
+  const selectedTemplateStages = form.rejectionProcessTemplate ? (PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []) : [];
+  const failedStageIndex = selectedTemplateStages.indexOf(form.rejectionFailedStage);
+  const stagesUpToFailure = failedStageIndex !== -1 ? selectedTemplateStages.slice(0, failedStageIndex + 1) : [];
 
   const handleSelectType = (selectedType) => {
     setType(selectedType);
@@ -51,18 +54,70 @@ export default function NewReportPage() {
     const isInspectorOrStaff = user?.role !== 'OPERATOR';
     Promise.all([
       api.get('/master-data/components').catch(() => ({ data: [] })),
-      api.get('/master-data/error-types').catch(() => ({ data: [] })),
       api.get('/master-data/vendors').catch(() => ({ data: [] })),
       isInspectorOrStaff ? api.get('/admin/users?role=OPERATOR').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
-    ]).then(([c, e, v, o]) => { 
+    ]).then(([c, v, o]) => { 
       setComponents(c.data || []); 
-      setErrorTypes(e.data || []); 
       setVendors(v.data || []); 
       setOperators(o.data || []);
     });
   }, [user]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleTemplateChange = (template) => {
+    setForm(f => {
+      return {
+        ...f,
+        rejectionProcessTemplate: template,
+        rejectionFailedStage: '',
+        rejectionStageCosts: {},
+        costEstimate: 0
+      };
+    });
+  };
+
+  const handleFailedStageChange = (stage) => {
+    setForm(f => {
+      const stages = PROCESS_TEMPLATES[f.rejectionProcessTemplate] || [];
+      const idx = stages.indexOf(stage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      const newCosts = {};
+      let total = 0;
+      activeStages.forEach(st => {
+        newCosts[st] = f.rejectionStageCosts[st] || '';
+        total += Number(newCosts[st]) || 0;
+      });
+      return {
+        ...f,
+        rejectionFailedStage: stage,
+        rejectionStageCosts: newCosts,
+        costEstimate: total
+      };
+    });
+  };
+
+  const handleStageCostChange = (stage, val) => {
+    const numericVal = val === '' ? '' : Number(val);
+    setForm(f => {
+      const newCosts = {
+        ...f.rejectionStageCosts,
+        [stage]: numericVal
+      };
+      const stages = PROCESS_TEMPLATES[f.rejectionProcessTemplate] || [];
+      const idx = stages.indexOf(f.rejectionFailedStage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      let total = 0;
+      activeStages.forEach(st => {
+        total += Number(newCosts[st]) || 0;
+      });
+      return {
+        ...f,
+        rejectionStageCosts: newCosts,
+        costEstimate: total
+      };
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,10 +128,15 @@ export default function NewReportPage() {
         ...form, 
         quantity: Number(form.quantity), 
         inspectionType: type,
-        scOrPoNo: isRework ? `${form.scNo} / ${form.poNo}` : form.scOrPoNo,
-        scNo: isRework ? form.scNo : undefined,
-        poNo: isRework ? form.poNo : undefined,
+        scOrPoNo: `${form.scNo} / ${form.poNo}`,
+        scNo: form.scNo,
+        poNo: form.poNo,
         reworkDescription: isRework ? form.reworkDescription : undefined,
+        rejectionProcessTemplate: !isRework ? form.rejectionProcessTemplate : undefined,
+        rejectionFailedStage: !isRework ? form.rejectionFailedStage : undefined,
+        rejectionStageCosts: !isRework ? form.rejectionStageCosts : undefined,
+        rejectionDescription: !isRework ? form.rejectionDescription : undefined,
+        stageOfFailure: isRework ? form.stageOfFailure : form.rejectionFailedStage,
       };
       delete body.responsibleName;
       if (!body.vendorId) delete body.vendorId;
@@ -97,15 +157,19 @@ export default function NewReportPage() {
           };
         } else {
           body.inlineInspection = {
-            errorType: body.errorTypeId,
-            rootCause: body.rootCause,
+            errorType: 'Rejection',
+            rootCause: 'Rejection',
             responsibleParty: body.responsibleParty,
             responsibleId: body.responsibleId,
-            decision: body.decision,
+            decision: 'SCRAP',
             alternativeNote: body.alternativeNote,
             costEstimate: Number(body.costEstimate) || 0,
-            timeEstimateHours: Number(body.timeEstimateHours) || 0,
-            lossAmount: body.lossAmount ? Number(body.lossAmount) : undefined
+            timeEstimateHours: 0,
+            lossAmount: body.lossAmount ? Number(body.lossAmount) : undefined,
+            rejectionProcessTemplate: body.rejectionProcessTemplate,
+            rejectionFailedStage: body.rejectionFailedStage,
+            rejectionStageCosts: body.rejectionStageCosts,
+            rejectionDescription: body.rejectionDescription,
           };
         }
       }
@@ -257,56 +321,30 @@ export default function NewReportPage() {
                   </datalist>
                 </div>
                 <div className="form-group">
-                  <label>Error Type *</label>
-                  <input 
-                    list="error-type-list" 
-                    value={form.errorTypeId} 
-                    onChange={e => set('errorTypeId', e.target.value)} 
-                    placeholder="Select or type error type..." 
-                    required 
-                  />
-                  <datalist id="error-type-list">
-                    {errorTypes.map(e => <option key={e.id} value={e.name} />)}
-                  </datalist>
+                  <label>SC Number *</label>
+                  <input value={form.scNo} onChange={e => set('scNo', e.target.value)} placeholder="e.g. SC-10294" required />
                 </div>
                 <div className="form-group">
-                  <label>SC / PO Number *</label>
-                  <input value={form.scOrPoNo} onChange={e => set('scOrPoNo', e.target.value)} placeholder="e.g. PO-10294" required />
+                  <label>PO Number *</label>
+                  <input value={form.poNo} onChange={e => set('poNo', e.target.value)} placeholder="e.g. PO-10294" required />
                 </div>
                 <div className="form-group">
-                  <label>Stage of Failure *</label>
-                  <input 
-                    list="stage-list" 
-                    value={form.stageOfFailure} 
-                    onChange={e => set('stageOfFailure', e.target.value)} 
-                    placeholder="Select or type stage..." 
-                    required 
-                  />
-                  <datalist id="stage-list">
-                    <option value="Inward Inspection" />
-                    <option value="In-Process" />
-                    <option value="Final Inspection" />
-                    <option value="Customer Return" />
-                  </datalist>
+                  <label>Process Template *</label>
+                  <select value={form.rejectionProcessTemplate} onChange={e => handleTemplateChange(e.target.value)} required>
+                    <option value="">Select Template...</option>
+                    {Object.keys(PROCESS_TEMPLATES).map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
-                  <label>Vendor (if vendor fault)</label>
-                  <select value={form.vendorId} onChange={e => set('vendorId', e.target.value)}>
-                    <option value="">Not a vendor fault</option>
-                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                  <label>Failed Stage *</label>
+                  <select value={form.rejectionFailedStage} onChange={e => handleFailedStageChange(e.target.value)} required disabled={!form.rejectionProcessTemplate}>
+                    <option value="">Select Stage...</option>
+                    {(PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []).map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Quantity Affected *</label>
                   <input type="number" min="1" value={form.quantity} onChange={e => set('quantity', e.target.value)} required />
-                </div>
-                <div className="form-group">
-                  <label>Part Number</label>
-                  <input value={form.partNumber} onChange={e => set('partNumber', e.target.value)} placeholder="e.g. VM-2024-001" />
-                </div>
-                <div className="form-group">
-                  <label>Batch Number</label>
-                  <input value={form.batchNumber} onChange={e => set('batchNumber', e.target.value)} placeholder="e.g. B20240102" />
                 </div>
                 <div className="form-group full">
                   <label>Defect Description *</label>
@@ -394,67 +432,99 @@ export default function NewReportPage() {
                 ) : (
                   <div className="form-grid">
                     <div className="form-group">
-                      <label>Root Cause *</label>
-                      <input value={form.rootCause} onChange={e => set('rootCause', e.target.value)} required={isSimplifiedInspector} />
-                    </div>
-                    <div className="form-group">
                       <label>Responsible Party *</label>
-                      <select value={form.responsibleParty} onChange={e => set('responsibleParty', e.target.value)} required={isSimplifiedInspector}>
+                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); set('responsibleName', ''); }} required={isSimplifiedInspector}>
                         <option value="">Select...</option>
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
-                        <option value="MACHINE">Machine</option>
-                        <option value="PROCESS">Process</option>
                       </select>
                     </div>
-                    {['OPERATOR', 'VENDOR', 'MACHINE'].includes(form.responsibleParty) && (
+                    {form.responsibleParty === 'OPERATOR' && (
                       <div className="form-group">
-                        <label>
-                          {form.responsibleParty === 'OPERATOR' ? 'Operator ID / Name' : 
-                           form.responsibleParty === 'VENDOR' ? 'Vendor ID / Name' : 'Machine ID / Name'} *
-                        </label>
+                        <label>Operator Name *</label>
                         <input 
-                          list={`${form.responsibleParty.toLowerCase()}-list`}
-                          value={form.responsibleId} 
-                          onChange={e => set('responsibleId', e.target.value)} 
-                          placeholder={`Select or type ${form.responsibleParty.toLowerCase()}...`}
-                          required 
+                          list="operator-names" 
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            const match = operators.find(o => o.name === val);
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: match ? match.id : ''
+                            }));
+                          }}
+                          placeholder="Type or select operator..."
+                          required={isSimplifiedInspector}
                         />
-                        <datalist id="operator-list">
-                          {operators.map(o => <option key={o.id} value={`${o.id} - ${o.name}`} />)}
-                        </datalist>
-                        <datalist id="vendor-list">
-                          {vendors.map(v => <option key={v.id} value={`${v.id} - ${v.name}`} />)}
-                        </datalist>
-                        <datalist id="machine-list">
-                          {components.map(c => <option key={c.id} value={`${c.id} - ${c.name}`} />)}
+                        <datalist id="operator-names">
+                          {operators.map(o => <option key={o.id} value={o.name} />)}
                         </datalist>
                       </div>
                     )}
-                    <div className="form-group">
-                      <label>Decision *</label>
-                      <select value={form.decision} onChange={e => set('decision', e.target.value)} required={isSimplifiedInspector}>
-                        <option value="">Select...</option>
-                        <option value="REWORK">Rework</option>
-                        <option value="SCRAP">Scrap</option>
-                        <option value="ALTERNATIVE">Alternative Use</option>
-                      </select>
+                    {form.responsibleParty === 'VENDOR' && (
+                      <div className="form-group">
+                        <label>Vendor Name *</label>
+                        <input 
+                          list="vendor-names" 
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            const match = vendors.find(v => v.name === val);
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: match ? match.id : ''
+                            }));
+                          }}
+                          placeholder="Type or select vendor..."
+                          required={isSimplifiedInspector}
+                        />
+                        <datalist id="vendor-names">
+                          {vendors.map(v => <option key={v.id} value={v.name} />)}
+                        </datalist>
+                      </div>
+                    )}
+                    <div className="form-group full">
+                      <label>Rejection Description *</label>
+                      <textarea value={form.rejectionDescription} onChange={e => set('rejectionDescription', e.target.value)} placeholder="Describe the rejection in detail…" required={isSimplifiedInspector} rows={4} />
                     </div>
+
+                    {/* Stage Costs Entry list */}
+                    {stagesUpToFailure.length > 0 && (
+                      <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Process Flow Costs up to Failed Stage</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          {stagesUpToFailure.map(st => (
+                            <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                              <input 
+                                type="number" 
+                                min="0" 
+                                step="0.01" 
+                                style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg)', color: 'var(--text)' }}
+                                value={form.rejectionStageCosts[st] ?? ''} 
+                                onChange={e => handleStageCostChange(st, e.target.value)} 
+                                required={isSimplifiedInspector}
+                                placeholder="Enter cost ($)"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="form-group">
-                      <label>Cost Estimate ($) *</label>
+                      <label>Cost Estimation ($) *</label>
                       <input type="number" min="0" step="0.01" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value)} required={isSimplifiedInspector} />
                     </div>
                     <div className="form-group">
-                      <label>Estimated Time (Hours) *</label>
-                      <input type="number" min="0" step="0.5" value={form.timeEstimateHours} onChange={e => set('timeEstimateHours', e.target.value)} required={isSimplifiedInspector} />
-                    </div>
-                    <div className="form-group">
-                      <label>Loss Amount ($) (Optional)</label>
+                      <label>Loss Estimation ($) (Optional)</label>
                       <input type="number" min="0" step="0.01" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value)} />
                     </div>
                     <div className="form-group full">
-                      <label>Alternative Note / Remarks</label>
-                      <textarea value={form.alternativeNote} onChange={e => set('alternativeNote', e.target.value)} rows={2} />
+                      <label>Alternative Notes (Optional)</label>
+                      <textarea value={form.alternativeNote} onChange={e => set('alternativeNote', e.target.value)} placeholder="Alternative notes or remarks..." rows={2} />
                     </div>
                   </div>
                 )}
