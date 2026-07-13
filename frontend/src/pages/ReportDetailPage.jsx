@@ -43,6 +43,22 @@ export default function ReportDetailPage() {
     queryFn: async () => (await api.get(`/notifications/report/${id}`)).data
   });
 
+  const { data: vendors = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: async () => (await api.get('/master-data/vendors')).data
+  });
+
+  const { data: operators = [] } = useQuery({
+    queryKey: ['operators'],
+    queryFn: async () => {
+      try {
+        return (await api.get('/admin/users?role=OPERATOR')).data || [];
+      } catch (err) {
+        return [];
+      }
+    }
+  });
+
   const actionMutation = useMutation({
     mutationFn: async ({ endpoint, body }) => api.patch(`/defect-reports/${id}/${endpoint}`, body),
     onSuccess: () => {
@@ -58,7 +74,7 @@ export default function ReportDetailPage() {
 
   const [inspectData, setInspectData] = useState({
     errorType: '', rootCause: '', responsibleParty: '', decision: '',
-    responsibleId: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
+    responsibleId: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: '', reworkDescription: ''
   });
   
   const [smData, setSmData] = useState({
@@ -81,6 +97,21 @@ export default function ReportDetailPage() {
 
   const doAction = (endpoint, body) => {
     actionMutation.mutate({ endpoint, body });
+  };
+
+  const handleInspectSubmit = () => {
+    const isRework = inspectionMode === 'REWORK';
+    const body = {
+      ...inspectData,
+      inspectionType: inspectionMode,
+      errorType: isRework ? 'Rework' : inspectData.errorType,
+      rootCause: isRework ? 'Rework' : inspectData.rootCause,
+      decision: isRework ? 'REWORK' : inspectData.decision,
+      timeEstimateHours: isRework ? 0 : Number(inspectData.timeEstimateHours) || 0,
+      costEstimate: Number(inspectData.costEstimate) || 0,
+      lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
+    };
+    doAction('inspect', body);
   };
 
   const [editingField, setEditingField] = useState(null);
@@ -163,7 +194,26 @@ export default function ReportDetailPage() {
           <div className="card">
             <div className="card-title">Report Details</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {[
+              {(report.inspectionType === 'REWORK' ? [
+                ['Description', report.defectDescription, 'defectDescription'],
+                ['Component', report.componentName || '—', 'componentName'],
+                ['SC Number', report.scNo || '—', 'scNo'],
+                ['PO Number', report.poNo || '—', 'poNo'],
+                ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
+                ['Quantity Affected', report.quantity || '—', 'quantity'],
+                ['Responsible Party', report.inspectionDetail?.responsibleParty || '—', 'responsibleParty'],
+                ['Operator / Vendor Name', report.inspectionDetail?.responsibleId ? (
+                  report.inspectionDetail.responsibleParty === 'OPERATOR' 
+                    ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
+                    : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
+                ) : '—', 'responsibleId'],
+                ['Rework Description', report.inspectionDetail?.reworkDescription || report.reworkDescription || '—', 'reworkDescription'],
+                ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
+                ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
+                ['Raised By', report.raisedBy?.name || '—', undefined],
+                ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
+              ] : [
                 ['Description', report.defectDescription, 'defectDescription'],
                 ['Component', report.componentName || '—', 'componentName'],
                 ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
@@ -178,11 +228,10 @@ export default function ReportDetailPage() {
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
-                ...(report.componentsIssued ? [
-                  ['Components Issued On', new Date(report.componentsIssuedAt).toLocaleString('en-IN'), undefined],
-                  ['Issue Remarks', report.issueRemarks || '—', undefined]
-                ] : [])
-              ].map(([label, value, fieldKey]) => (
+              ]).concat(report.componentsIssued ? [
+                ['Components Issued On', new Date(report.componentsIssuedAt).toLocaleString('en-IN'), undefined],
+                ['Issue Remarks', report.issueRemarks || '—', undefined]
+              ] : []).map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div className="detail-label">{label}</div>
@@ -316,60 +365,107 @@ export default function ReportDetailPage() {
       )}
       {/* Inspect Modal */}
       {modal === 'inspect' && (
-        <ActionModal title={`Inspector Review — ${inspectionMode || 'Review'}`} onClose={() => { setModal(null); setInspectionMode(null); }} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('inspect', { ...inspectData, inspectionType: inspectionMode })}>
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Error Type *</label>
-              <input value={inspectData.errorType} onChange={e => setInspectData({...inspectData, errorType: e.target.value})} placeholder="e.g. Dimensional Error" required />
-            </div>
-            <div className="form-group">
-              <label>Root Cause *</label>
-              <input value={inspectData.rootCause} onChange={e => setInspectData({...inspectData, rootCause: e.target.value})} placeholder="e.g. Machine Calibration" required />
-            </div>
-            <div className="form-group">
-              <label>Responsible Party *</label>
-              <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value})} required>
-                <option value="">Select Party</option>
-                <option value="OPERATOR">Operator</option>
-                <option value="VENDOR">Vendor</option>
-                <option value="PROCESS">Process</option>
-                <option value="MACHINE">Machine</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Decision *</label>
-              <select value={inspectData.decision} onChange={e => setInspectData({...inspectData, decision: e.target.value})} required>
-                <option value="">Select Decision</option>
-                <option value="REWORK">Rework</option>
-                <option value="SCRAP">Scrap</option>
-                <option value="ALTERNATIVE">Alternative Use</option>
-              </select>
-            </div>
-            {(inspectData.responsibleParty === 'OPERATOR' || inspectData.responsibleParty === 'VENDOR') && (
-              <div className="form-group full">
-                <label>Responsible Entity ID/Name (Optional)</label>
-                <input value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} placeholder="e.g. Operator ID or Vendor Name" />
+        <ActionModal title={`Inspector Review — ${inspectionMode || 'Review'}`} onClose={() => { setModal(null); setInspectionMode(null); }} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={handleInspectSubmit}>
+          {inspectionMode === 'REWORK' ? (
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Responsible Party *</label>
+                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: ''})} required>
+                  <option value="">Select Party</option>
+                  <option value="OPERATOR">Operator</option>
+                  <option value="VENDOR">Vendor</option>
+                </select>
               </div>
-            )}
-            {inspectData.decision === 'ALTERNATIVE' && (
+              {inspectData.responsibleParty === 'OPERATOR' && (
+                <div className="form-group">
+                  <label>Operator Name *</label>
+                  <select value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} required>
+                    <option value="">Select Operator...</option>
+                    {operators.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  </select>
+                </div>
+              )}
+              {inspectData.responsibleParty === 'VENDOR' && (
+                <div className="form-group">
+                  <label>Vendor Name *</label>
+                  <select value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} required>
+                    <option value="">Select Vendor...</option>
+                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="form-group full">
-                <label>Alternative Note (Optional)</label>
-                <input value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Explain alternative use..." />
+                <label>Rework Description *</label>
+                <textarea value={inspectData.reworkDescription} onChange={e => setInspectData({...inspectData, reworkDescription: e.target.value})} placeholder="Describe the rework in detail…" required rows={4} />
               </div>
-            )}
-            <div className="form-group">
-              <label>Cost Estimate ($) *</label>
-              <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
+              <div className="form-group">
+                <label>Cost Estimation ($) *</label>
+                <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
+              </div>
+              <div className="form-group">
+                <label>Loss Estimation ($) (Optional)</label>
+                <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
+              </div>
+              <div className="form-group full">
+                <label>Alternative Notes (Optional)</label>
+                <textarea value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Alternative notes or remarks..." rows={2} />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Estimated Time (Hours) *</label>
-              <input type="number" min="0" step="0.5" value={inspectData.timeEstimateHours} onChange={e => setInspectData({...inspectData, timeEstimateHours: Number(e.target.value)})} required />
+          ) : (
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Error Type *</label>
+                <input value={inspectData.errorType} onChange={e => setInspectData({...inspectData, errorType: e.target.value})} placeholder="e.g. Dimensional Error" required />
+              </div>
+              <div className="form-group">
+                <label>Root Cause *</label>
+                <input value={inspectData.rootCause} onChange={e => setInspectData({...inspectData, rootCause: e.target.value})} placeholder="e.g. Machine Calibration" required />
+              </div>
+              <div className="form-group">
+                <label>Responsible Party *</label>
+                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value})} required>
+                  <option value="">Select Party</option>
+                  <option value="OPERATOR">Operator</option>
+                  <option value="VENDOR">Vendor</option>
+                  <option value="PROCESS">Process</option>
+                  <option value="MACHINE">Machine</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Decision *</label>
+                <select value={inspectData.decision} onChange={e => setInspectData({...inspectData, decision: e.target.value})} required>
+                  <option value="">Select Decision</option>
+                  <option value="REWORK">Rework</option>
+                  <option value="SCRAP">Scrap</option>
+                  <option value="ALTERNATIVE">Alternative Use</option>
+                </select>
+              </div>
+              {(inspectData.responsibleParty === 'OPERATOR' || inspectData.responsibleParty === 'VENDOR') && (
+                <div className="form-group full">
+                  <label>Responsible Entity ID/Name (Optional)</label>
+                  <input value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} placeholder="e.g. Operator ID or Vendor Name" />
+                </div>
+              )}
+              {inspectData.decision === 'ALTERNATIVE' && (
+                <div className="form-group full">
+                  <label>Alternative Note (Optional)</label>
+                  <input value={inspectData.alternativeNote} onChange={e => setInspectData({...inspectData, alternativeNote: e.target.value})} placeholder="Explain alternative use..." />
+                </div>
+              )}
+              <div className="form-group">
+                <label>Cost Estimate ($) *</label>
+                <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
+              </div>
+              <div className="form-group">
+                <label>Estimated Time (Hours) *</label>
+                <input type="number" min="0" step="0.5" value={inspectData.timeEstimateHours} onChange={e => setInspectData({...inspectData, timeEstimateHours: Number(e.target.value)})} required />
+              </div>
+              <div className="form-group">
+                <label>Loss Amount ($) (Optional)</label>
+                <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Loss Amount ($) (Optional)</label>
-              <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
-            </div>
-          </div>
+          )}
         </ActionModal>
       )}
       {modal === 'sm-review' && (

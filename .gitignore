@@ -21,3 +21,8 @@ logs/
 
 # Archives
 package.zip
+
+# Compiled frontend assets
+ecr-system/public/assets/
+ecr-system/public/index.html
+ecr-system/public/assets/*

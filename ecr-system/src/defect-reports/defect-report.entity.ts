@@ -43,6 +43,12 @@ export class DefectReport {
   scOrPoNo: string;
 
   @Column({ nullable: true })
+  scNo: string;
+
+  @Column({ nullable: true })
+  poNo: string;
+
+  @Column({ nullable: true })
   productId: string;
 
   @Column({ nullable: true })
@@ -65,6 +71,9 @@ export class DefectReport {
 
   @Column({ type: 'text' })
   defectDescription: string;
+
+  @Column({ type: 'text', nullable: true })
+  reworkDescription: string;
 
   // array of image URLs (Cloudinary free tier or local disk path)
   @Column({ type: 'simple-json', default: '[]' })

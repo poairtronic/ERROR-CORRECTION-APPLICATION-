@@ -30,10 +30,10 @@ export class InspectionDetail {
   @Column({ name: 'inspector_id', nullable: true })
   inspectorId: string;
 
-  @Column()
+  @Column({ nullable: true })
   errorType: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   rootCause: string;
 
   @Column({ type: 'simple-enum', enum: ResponsibleParty })
@@ -43,7 +43,7 @@ export class InspectionDetail {
   @Column({ nullable: true })
   responsibleId: string;
 
-  @Column({ type: 'simple-enum', enum: Decision })
+  @Column({ type: 'simple-enum', enum: Decision, nullable: true })
   decision: Decision;
 
   @Column({ type: 'text', nullable: true })
@@ -52,11 +52,14 @@ export class InspectionDetail {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   costEstimate: number;
 
-  @Column({ type: 'decimal', precision: 8, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 8, scale: 2, default: 0, nullable: true })
   timeEstimateHours: number;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   lossAmount: number;
+
+  @Column({ type: 'text', nullable: true })
+  reworkDescription: string;
 
   @CreateDateColumn()
   reviewedAt: Date;

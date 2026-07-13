@@ -9,6 +9,18 @@ export class CreateDefectReportDto {
   scOrPoNo: string;
 
   @IsOptional()
+  @IsString()
+  scNo?: string;
+
+  @IsOptional()
+  @IsString()
+  poNo?: string;
+
+  @IsOptional()
+  @IsString()
+  reworkDescription?: string;
+
+  @IsOptional()
   productId?: string;
 
   @IsNotEmpty()
@@ -40,15 +52,16 @@ export class CreateDefectReportDto {
   // Inspector fills inspectionDetail inline; SM fills both inspectionDetail + smReview inline.
   @IsOptional()
   inlineInspection?: {
-    errorType: string;
-    rootCause: string;
+    errorType?: string;
+    rootCause?: string;
     responsibleParty: string;
     responsibleId?: string;
-    decision: string;
+    decision?: string;
     alternativeNote?: string;
     costEstimate: number;
-    timeEstimateHours: number;
+    timeEstimateHours?: number;
     lossAmount?: number;
+    reworkDescription?: string;
   };
 
   @IsOptional()

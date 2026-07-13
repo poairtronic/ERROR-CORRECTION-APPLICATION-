@@ -117,10 +117,13 @@ export class DefectReportsService implements OnModuleInit {
       reportNumber,
       raisedById: actor.id,
       raisedByRole,
-      scOrPoNo: dto.scOrPoNo,
+      scOrPoNo: dto.scNo && dto.poNo ? `${dto.scNo} / ${dto.poNo}` : (dto.scOrPoNo || ''),
+      scNo: dto.scNo,
+      poNo: dto.poNo,
+      reworkDescription: dto.reworkDescription,
       productId: dto.productId,
       componentName: dto.componentId,
-      errorTypeName: dto.errorTypeId,
+      errorTypeName: dto.errorTypeId || (dto.inlineInspection?.errorType || 'Rework'),
       partNumber: dto.partNumber,
       batchNumber: dto.batchNumber,
       quantity: dto.quantity,
@@ -146,15 +149,16 @@ export class DefectReportsService implements OnModuleInit {
         this.inspectionRepo.create({
           report,
           inspectorId: actor.id,
-          errorType: dto.inlineInspection.errorType,
-          rootCause: dto.inlineInspection.rootCause,
+          errorType: dto.inlineInspection.errorType || 'Rework',
+          rootCause: dto.inlineInspection.rootCause || 'Rework',
           responsibleParty: dto.inlineInspection.responsibleParty as any,
           responsibleId: dto.inlineInspection.responsibleId,
-          decision: dto.inlineInspection.decision as any,
+          decision: (dto.inlineInspection.decision || 'REWORK') as any,
           alternativeNote: dto.inlineInspection.alternativeNote,
           costEstimate: dto.inlineInspection.costEstimate,
-          timeEstimateHours: dto.inlineInspection.timeEstimateHours,
+          timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? 0,
           lossAmount: dto.inlineInspection.lossAmount,
+          reworkDescription: dto.inlineInspection.reworkDescription,
         }),
       );
     } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
@@ -169,15 +173,16 @@ export class DefectReportsService implements OnModuleInit {
         this.inspectionRepo.create({
           report,
           inspectorId: actor.id, // SM stands in for inspection step
-          errorType: dto.inlineInspection.errorType,
-          rootCause: dto.inlineInspection.rootCause,
+          errorType: dto.inlineInspection.errorType || 'Rework',
+          rootCause: dto.inlineInspection.rootCause || 'Rework',
           responsibleParty: dto.inlineInspection.responsibleParty as any,
           responsibleId: dto.inlineInspection.responsibleId,
-          decision: dto.inlineInspection.decision as any,
+          decision: (dto.inlineInspection.decision || 'REWORK') as any,
           alternativeNote: dto.inlineInspection.alternativeNote,
           costEstimate: dto.inlineInspection.costEstimate,
-          timeEstimateHours: dto.inlineInspection.timeEstimateHours,
+          timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? 0,
           lossAmount: dto.inlineInspection.lossAmount,
+          reworkDescription: dto.inlineInspection.reworkDescription,
         }),
       );
       await this.smReviewRepo.save(
@@ -247,15 +252,16 @@ export class DefectReportsService implements OnModuleInit {
     }
     Object.assign(inspection, {
       inspectorId: actor.id,
-      errorType: dto.errorType,
-      rootCause: dto.rootCause,
+      errorType: dto.errorType || 'Rework',
+      rootCause: dto.rootCause || 'Rework',
       responsibleParty: dto.responsibleParty,
       responsibleId: dto.responsibleId,
-      decision: dto.decision,
+      decision: dto.decision || 'REWORK',
       alternativeNote: dto.alternativeNote,
       costEstimate: dto.costEstimate,
-      timeEstimateHours: dto.timeEstimateHours,
+      timeEstimateHours: dto.timeEstimateHours ?? 0,
       lossAmount: dto.lossAmount,
+      reworkDescription: dto.reworkDescription,
     });
     await this.inspectionRepo.save(inspection);
 

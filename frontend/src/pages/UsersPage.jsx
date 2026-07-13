@@ -6,7 +6,7 @@ import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { Table } from '../components/ui/Table';
 import Dialog from '../components/ui/Dialog';
 
-import { ROLES, SIMPLIFIED_WORKFLOW } from '../utils/constants';
+import { ROLES } from '../utils/constants';
 
 function UserModal({ user, onClose, onSave }) {
   const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', role: user?.role || 'OPERATOR', department: user?.department || '', password: '' });
@@ -35,7 +35,7 @@ function UserModal({ user, onClose, onSave }) {
             <div className="form-group"><label>Email / Username *</label><input value={form.email} onChange={e => set('email', e.target.value)} required /></div>
             <div className="form-group"><label>Role *</label>
               <select value={form.role} onChange={e => set('role', e.target.value)}>
-                {ROLES.filter(r => !(SIMPLIFIED_WORKFLOW && r === 'OPERATOR')).map(r => <option key={r} value={r}>{r}</option>)}
+                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div className="form-group"><label>Department</label><input value={form.department} onChange={e => set('department', e.target.value)} /></div>
