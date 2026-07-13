@@ -15,6 +15,8 @@ export default function ReportsPage() {
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [filterStatus, setFilterStatus] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     if (searchParams.get('search')) {
@@ -32,7 +34,23 @@ export default function ReportsPage() {
   const filtered = reports.filter(r => {
     const matchSearch = !debouncedSearch || ((r.reportNumber || '') + r.id + r.componentName + r.errorTypeName + r.defectDescription + (r.raisedBy?.name || '') + (r.raisedBy?.username || '')).toLowerCase().includes(debouncedSearch.toLowerCase());
     const matchStatus = !filterStatus || r.status === filterStatus;
-    return matchSearch && matchStatus;
+    
+    let matchDate = true;
+    if (startDate || endDate) {
+      const createdDate = new Date(r.createdAt);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (createdDate < start) matchDate = false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (createdDate > end) matchDate = false;
+      }
+    }
+
+    return matchSearch && matchStatus && matchDate;
   });
 
   const columns = [
@@ -62,12 +80,43 @@ export default function ReportsPage() {
 
       <div className="page-content">
         <div className="card">
-          <div className="flex gap-12 mb-16" style={{ flexWrap: 'wrap' }}>
+          <div className="flex gap-12 mb-16" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
               <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
               <input placeholder="Search reports…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 36 }} />
             </div>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ width: 200 }}>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 13 }}>From:</label>
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={e => setStartDate(e.target.value)} 
+                style={{ width: 140, height: 38, padding: '8px 10px' }} 
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ margin: 0, whiteSpace: 'nowrap', fontSize: 13 }}>To:</label>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={e => setEndDate(e.target.value)} 
+                style={{ width: 140, height: 38, padding: '8px 10px' }} 
+              />
+            </div>
+            
+            {(startDate || endDate) && (
+              <button 
+                className="btn btn-ghost btn-sm" 
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                style={{ height: 38 }}
+              >
+                Clear
+              </button>
+            )}
+
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ width: 180 }}>
               <option value="">All Statuses</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
