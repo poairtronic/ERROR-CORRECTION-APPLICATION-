@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   FiRefreshCw, FiAlertCircle, FiCheckCircle, FiClock, FiSearch, 
@@ -88,7 +88,7 @@ export default function EmailMonitoringDashboard() {
     return () => {
       socket.off('email_logs_updated', handleUpdate);
     };
-  }, [socket, selectedEmailId]);
+  }, [socket, selectedEmailId, refetchSummary, refetchList, refetchDetail]);
 
   // Operations
   const triggerResend = async () => {
