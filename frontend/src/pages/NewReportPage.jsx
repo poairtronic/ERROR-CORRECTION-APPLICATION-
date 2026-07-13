@@ -28,7 +28,7 @@ export default function NewReportPage() {
   const [form, setForm] = useState({
     defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
     scNo: '', poNo: '', reworkDescription: '',
-    rootCause: '', responsibleParty: '', responsibleId: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
+    rootCause: '', responsibleParty: '', responsibleId: '', responsibleName: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
   });
 
   const handleSelectType = (selectedType) => {
@@ -78,6 +78,7 @@ export default function NewReportPage() {
         poNo: isRework ? form.poNo : undefined,
         reworkDescription: isRework ? form.reworkDescription : undefined,
       };
+      delete body.responsibleName;
       if (!body.vendorId) delete body.vendorId;
       
       if (isSimplifiedInspector) {
@@ -321,7 +322,7 @@ export default function NewReportPage() {
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Responsible Party *</label>
-                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); }} required={isSimplifiedInspector}>
+                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); set('responsibleName', ''); }} required={isSimplifiedInspector}>
                         <option value="">Select...</option>
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
@@ -330,19 +331,47 @@ export default function NewReportPage() {
                     {form.responsibleParty === 'OPERATOR' && (
                       <div className="form-group">
                         <label>Operator Name *</label>
-                        <select value={form.responsibleId} onChange={e => set('responsibleId', e.target.value)} required={isSimplifiedInspector}>
-                          <option value="">Select Operator...</option>
-                          {operators.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                        </select>
+                        <input 
+                          list="operator-names" 
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            const match = operators.find(o => o.name === val);
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: match ? match.id : ''
+                            }));
+                          }}
+                          placeholder="Type or select operator..."
+                          required={isSimplifiedInspector}
+                        />
+                        <datalist id="operator-names">
+                          {operators.map(o => <option key={o.id} value={o.name} />)}
+                        </datalist>
                       </div>
                     )}
                     {form.responsibleParty === 'VENDOR' && (
                       <div className="form-group">
                         <label>Vendor Name *</label>
-                        <select value={form.responsibleId} onChange={e => set('responsibleId', e.target.value)} required={isSimplifiedInspector}>
-                          <option value="">Select Vendor...</option>
-                          {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                        </select>
+                        <input 
+                          list="vendor-names" 
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            const match = vendors.find(v => v.name === val);
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: match ? match.id : ''
+                            }));
+                          }}
+                          placeholder="Type or select vendor..."
+                          required={isSimplifiedInspector}
+                        />
+                        <datalist id="vendor-names">
+                          {vendors.map(v => <option key={v.id} value={v.name} />)}
+                        </datalist>
                       </div>
                     )}
                     <div className="form-group full">

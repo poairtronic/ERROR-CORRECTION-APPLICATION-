@@ -111,6 +111,7 @@ export default function ReportDetailPage() {
       costEstimate: Number(inspectData.costEstimate) || 0,
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
     };
+    delete body.responsibleName;
     doAction('inspect', body);
   };
 
@@ -370,7 +371,7 @@ export default function ReportDetailPage() {
             <div className="form-grid">
               <div className="form-group">
                 <label>Responsible Party *</label>
-                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: ''})} required>
+                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: '', responsibleName: ''})} required>
                   <option value="">Select Party</option>
                   <option value="OPERATOR">Operator</option>
                   <option value="VENDOR">Vendor</option>
@@ -379,19 +380,47 @@ export default function ReportDetailPage() {
               {inspectData.responsibleParty === 'OPERATOR' && (
                 <div className="form-group">
                   <label>Operator Name *</label>
-                  <select value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} required>
-                    <option value="">Select Operator...</option>
-                    {operators.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
+                  <input 
+                    list="inspect-operator-names" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      const match = operators.find(o => o.name === val);
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: match ? match.id : ''
+                      });
+                    }}
+                    placeholder="Type or select operator..."
+                    required
+                  />
+                  <datalist id="inspect-operator-names">
+                    {operators.map(o => <option key={o.id} value={o.name} />)}
+                  </datalist>
                 </div>
               )}
               {inspectData.responsibleParty === 'VENDOR' && (
                 <div className="form-group">
                   <label>Vendor Name *</label>
-                  <select value={inspectData.responsibleId} onChange={e => setInspectData({...inspectData, responsibleId: e.target.value})} required>
-                    <option value="">Select Vendor...</option>
-                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
+                  <input 
+                    list="inspect-vendor-names" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      const match = vendors.find(v => v.name === val);
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: match ? match.id : ''
+                      });
+                    }}
+                    placeholder="Type or select vendor..."
+                    required
+                  />
+                  <datalist id="inspect-vendor-names">
+                    {vendors.map(v => <option key={v.id} value={v.name} />)}
+                  </datalist>
                 </div>
               )}
               <div className="form-group full">
