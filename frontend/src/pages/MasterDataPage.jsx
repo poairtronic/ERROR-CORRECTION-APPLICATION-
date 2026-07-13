@@ -109,6 +109,7 @@ export default function MasterDataPage() {
         <Section title="Error Types" endpoint="error-types" fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. Dimensional' }, { key: 'description', label: 'Description', placeholder: 'Optional' }]} />
         <Section title="Components" endpoint="components" fields={[{ key: 'name', label: 'Name', placeholder: 'e.g. Shaft' }, { key: 'partCode', label: 'Part Code', placeholder: 'e.g. VM-001' }]} />
         <Section title="Vendors" endpoint="vendors" fields={[{ key: 'name', label: 'Name', placeholder: 'Vendor name' }, { key: 'contactEmail', label: 'Contact Email', placeholder: 'vendor@example.com' }]} />
+        <Section title="Operators" endpoint="operators" fields={[{ key: 'name', label: 'Name', placeholder: 'Operator name' }, { key: 'operatorCode', label: 'Operator Code', placeholder: 'Optional' }]} />
         <Section title="Cost Rates" endpoint="cost-rates" fields={[{ key: 'category', label: 'Category', placeholder: 'e.g. Rework' }, { key: 'ratePerUnit', label: 'Rate (₹)', placeholder: '0.00' }]} />
       </div>
     </>

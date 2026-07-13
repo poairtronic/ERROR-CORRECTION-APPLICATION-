@@ -51,11 +51,10 @@ export default function NewReportPage() {
   };
 
   useEffect(() => {
-    const isInspectorOrStaff = user?.role !== 'OPERATOR';
     Promise.all([
       api.get('/master-data/components').catch(() => ({ data: [] })),
       api.get('/master-data/vendors').catch(() => ({ data: [] })),
-      isInspectorOrStaff ? api.get('/admin/users?role=OPERATOR').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+      api.get('/master-data/operators').catch(() => ({ data: [] }))
     ]).then(([c, v, o]) => { 
       setComponents(c.data || []); 
       setVendors(v.data || []); 

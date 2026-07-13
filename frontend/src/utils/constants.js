@@ -7,6 +7,9 @@ export const STATUS_COLORS = {
   PENDING_GM_APPROVAL: 'approval',
   APPROVED: 'approved',
   REJECTED: 'rejected',
+  COMPONENTS_ISSUED: 'approved',
+  REWORK_IN_PROGRESS: 'review',
+  NEW_PRODUCTION: 'approval',
   CLOSED: 'closed'
 };
 
@@ -17,6 +20,9 @@ export const STATUS_LABELS = {
   PENDING_GM_APPROVAL: 'GM Approval',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
+  COMPONENTS_ISSUED: 'Components Issued',
+  REWORK_IN_PROGRESS: 'Rework In Progress',
+  NEW_PRODUCTION: 'New Production',
   CLOSED: 'Closed'
 };
 

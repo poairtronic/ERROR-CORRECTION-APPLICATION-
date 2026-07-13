@@ -38,6 +38,43 @@ export class NotificationListener {
     });
   }
 
+  private async notifyAdmins(
+    report: DefectReport,
+    type: string,
+    subject: string,
+    message: string,
+    summary: Record<string, string>,
+  ) {
+    try {
+      const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
+      await Promise.all(
+        adminUsers.map(admin =>
+          this.notificationsService.create({
+            userId: admin.id,
+            userEmail: admin.email,
+            channel: NotificationChannel.APP_AND_EMAIL,
+            type,
+            message,
+            event: NotificationEvent.REPORT_UPDATED,
+            subject,
+            reportId: report.id,
+            templateData: {
+              title: subject,
+              message,
+              summaryTable: summary,
+              primaryButton: {
+                text: 'View Report',
+                url: `${this.frontendUrl}/reports/${report.id}`,
+              },
+            },
+          }),
+        ),
+      );
+    } catch (err) {
+      this.logger.error(`Failed to send notification to admin: ${err.message}`);
+    }
+  }
+
   @OnEvent('report.status.changed')
   async handleStatusChanged(event: StatusChangedEvent) {
     console.log(`[EMAIL_DIAGNOSTICS] [STEP 3] Listener Triggered: report.status.changed (Report ID: ${event.reportId}, Status: ${event.status})`);
@@ -73,6 +110,9 @@ export class NotificationListener {
           break;
         case ReportStatus.REJECTED:
           await this.handleRejected(report);
+          break;
+        case ReportStatus.CLOSED:
+          await this.handleClosed(report);
           break;
         default:
           break;
@@ -259,6 +299,14 @@ export class NotificationListener {
         })
       ),
     ]);
+
+    await this.notifyAdmins(
+      report,
+      'Report Approved',
+      `Approved Report: ${report.reportNumber}`,
+      `Defect report ${report.reportNumber} has been fully approved by the General Manager.`,
+      salesSummary,
+    );
   }
 
   private async handleComponentsIssued(report: DefectReport) {
@@ -304,6 +352,14 @@ export class NotificationListener {
         },
       })
     ));
+
+    await this.notifyAdmins(
+      report,
+      'Components Issued',
+      `Components Issued: ${report.reportNumber}`,
+      `The required replacement components have been successfully issued by the Store Manager.`,
+      summaryTable,
+    );
   }
 
   private async handleRejected(report: DefectReport) {
@@ -378,6 +434,34 @@ export class NotificationListener {
         });
       }
     }
+
+    await this.notifyAdmins(
+      report,
+      'Report Rejected',
+      `Report Rejected: ${report.reportNumber}`,
+      `Defect report ${report.reportNumber} was rejected.`,
+      {
+        'Report Number': report.reportNumber,
+        'Reason': report.gmApproval?.remarks || report.smReview?.decisionNote || 'No reason provided',
+        'Remarks': 'Rejected by Manager',
+      }
+    );
+  }
+
+  private async handleClosed(report: DefectReport) {
+    await this.notifyAdmins(
+      report,
+      'Report Closed',
+      `Completed/Closed Report: ${report.reportNumber}`,
+      `Defect report ${report.reportNumber} has been fully completed and closed.`,
+      {
+        'Report Number': report.reportNumber,
+        'Status': 'CLOSED (Completed)',
+        'Cost Estimate': report.inspectionDetail?.costEstimate?.toString() || 'N/A',
+        'Loss Amount': report.inspectionDetail?.lossAmount?.toString() || 'N/A',
+        'Closing Notes': 'All operations are completed.',
+      }
+    );
   }
 
   @OnEvent('component.issued')

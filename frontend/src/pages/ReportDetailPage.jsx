@@ -52,7 +52,7 @@ export default function ReportDetailPage() {
     queryKey: ['operators'],
     queryFn: async () => {
       try {
-        return (await api.get('/admin/users?role=OPERATOR')).data || [];
+        return (await api.get('/master-data/operators')).data || [];
       } catch (err) {
         return [];
       }
