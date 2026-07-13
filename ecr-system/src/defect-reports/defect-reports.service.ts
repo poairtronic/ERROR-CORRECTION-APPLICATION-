@@ -472,13 +472,30 @@ export class DefectReportsService implements OnModuleInit {
       throw new BadRequestException('Senior Manager cannot edit this field');
     }
 
+    if (actor.role === Role.GENERAL_MANAGER) {
+      const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount'];
+      if (!gmAllowedFields.includes(field)) {
+        throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, or lossAmount');
+      }
+      if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
+        throw new BadRequestException('General Manager can only edit reports pending GM approval');
+      }
+    }
+
     if (actor.role === Role.SALES) {
       const salesAllowedFields = ['costEstimate', 'lossAmount', 'salesDescription', 'rejectionStageCosts'];
       if (!salesAllowedFields.includes(field)) {
         throw new BadRequestException('Sales can only edit costEstimate, lossAmount, salesDescription, or rejectionStageCosts');
       }
-      if (report.status !== 'APPROVED') {
-        throw new BadRequestException('Sales can only edit approved reports');
+      const allowedSalesStatuses = [
+        ReportStatus.APPROVED,
+        ReportStatus.COMPONENTS_ISSUED,
+        ReportStatus.REWORK_IN_PROGRESS,
+        ReportStatus.NEW_PRODUCTION,
+        ReportStatus.CLOSED,
+      ];
+      if (!allowedSalesStatuses.includes(report.status as any)) {
+        throw new BadRequestException('Sales can only edit reports that are approved or beyond');
       }
     }
 

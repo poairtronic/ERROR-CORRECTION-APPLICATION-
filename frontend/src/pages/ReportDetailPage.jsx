@@ -278,12 +278,15 @@ export default function ReportDetailPage() {
 
   const canEdit = (fieldKey) => {
     if (!fieldKey) return false;
-    if (role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL') return true;
+    if (role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL') {
+      const gmAllowed = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount'];
+      return gmAllowed.includes(fieldKey);
+    }
     if (role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW') {
       const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts'];
       return smAllowed.includes(fieldKey);
     }
-    if (role === 'SALES' && status === 'APPROVED') {
+    if (role === 'SALES' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status)) {
       const salesAllowed = ['costEstimate', 'lossAmount', 'salesDescription', 'rejectionStageCosts'];
       return salesAllowed.includes(fieldKey);
     }
@@ -342,7 +345,7 @@ export default function ReportDetailPage() {
           {role === 'STORE_MANAGER' && status === 'APPROVED' && !report.componentsIssued && (
             <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
-          {role === 'SALES' && status === 'APPROVED' && (
+          {role === 'SALES' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status) && (
             <button className="btn btn-primary" onClick={openSalesReviewModal}><FiEdit2 /> Sales Review</button>
           )}
         </div>

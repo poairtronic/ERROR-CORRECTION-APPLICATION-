@@ -25,7 +25,7 @@ export default function SalesDashboard() {
     staleTime: 30000
   });
 
-  const approvedReports = reports.filter(r => r.status === 'APPROVED' || r.status === 'CLOSED');
+  const approvedReports = reports.filter(r => ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(r.status));
   
   const totalCost = kpis?.totalCost || 0;
   const vendorRecoveries = kpis?.totalLoss || 0;
