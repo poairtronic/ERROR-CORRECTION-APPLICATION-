@@ -136,6 +136,10 @@ export default function ReportDetailPage() {
       const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote'];
       return smAllowed.includes(fieldKey);
     }
+    if (role === 'SALES' && status === 'APPROVED') {
+      const salesAllowed = ['costEstimate', 'lossAmount', 'salesDescription'];
+      return salesAllowed.includes(fieldKey);
+    }
     return false;
   };
 
@@ -232,13 +236,19 @@ export default function ReportDetailPage() {
               ]).concat(report.componentsIssued ? [
                 ['Components Issued On', new Date(report.componentsIssuedAt).toLocaleString('en-IN'), undefined],
                 ['Issue Remarks', report.issueRemarks || '—', undefined]
+              ] : []).concat(status === 'APPROVED' || report.salesDescription ? [
+                ['Sales Description', report.salesDescription || '—', 'salesDescription']
               ] : []).map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div className="detail-label">{label}</div>
                     {editingField === fieldKey ? (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                        <input className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1 }} />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 4, width: '100%' }}>
+                        {fieldKey === 'salesDescription' ? (
+                          <textarea className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1, minHeight: 60 }} rows={3} />
+                        ) : (
+                          <input className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1 }} />
+                        )}
                         <button className="btn btn-success btn-sm" onClick={() => handleEditSave(fieldKey)}><FiSave /></button>
                         <button className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /></button>
                       </div>
@@ -247,7 +257,15 @@ export default function ReportDetailPage() {
                     )}
                   </div>
                   {canEdit(fieldKey) && editingField !== fieldKey && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setEditingField(fieldKey); setEditValue(value === '—' ? '' : value); }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { 
+                      setEditingField(fieldKey); 
+                      const rawValue = fieldKey === 'costEstimate' 
+                        ? report.inspectionDetail?.costEstimate 
+                        : fieldKey === 'lossAmount' 
+                        ? report.inspectionDetail?.lossAmount 
+                        : value === '—' ? '' : value;
+                      setEditValue(rawValue !== undefined && rawValue !== null ? String(rawValue) : ''); 
+                    }}>
                       <FiEdit2 />
                     </button>
                   )}

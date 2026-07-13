@@ -113,6 +113,9 @@ export class DefectReport {
   @Column({ type: 'text', nullable: true })
   issueRemarks: string;
 
+  @Column({ name: 'sales_description', type: 'text', nullable: true })
+  salesDescription: string;
+
   @Index()
   @CreateDateColumn()
   createdAt: Date;

@@ -414,8 +414,23 @@ export class DefectReportsService implements OnModuleInit {
     if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
       throw new BadRequestException('Senior Manager cannot edit this field');
     }
-    if (actor.role !== Role.SENIOR_MANAGER && actor.role !== Role.GENERAL_MANAGER) {
-      throw new BadRequestException('Only Senior Manager or General Manager can edit report data');
+
+    if (actor.role === Role.SALES) {
+      const salesAllowedFields = ['costEstimate', 'lossAmount', 'salesDescription'];
+      if (!salesAllowedFields.includes(field)) {
+        throw new BadRequestException('Sales can only edit costEstimate, lossAmount, or salesDescription');
+      }
+      if (report.status !== 'APPROVED') {
+        throw new BadRequestException('Sales can only edit approved reports');
+      }
+    }
+
+    if (
+      actor.role !== Role.SENIOR_MANAGER &&
+      actor.role !== Role.GENERAL_MANAGER &&
+      actor.role !== Role.SALES
+    ) {
+      throw new BadRequestException('Only Senior Manager, General Manager, or Sales can edit report data');
     }
 
     if (field === 'status') {
@@ -430,6 +445,8 @@ export class DefectReportsService implements OnModuleInit {
         oldValue = (report.inspectionDetail as any)[field];
         (report.inspectionDetail as any)[field] = Number(newValue);
         await this.inspectionRepo.save(report.inspectionDetail);
+      } else {
+        throw new BadRequestException('Cannot edit cost or loss because report has not been inspected');
       }
     } else {
       oldValue = (report as any)[field];
