@@ -45,6 +45,7 @@ export class SalaryDeductionService {
       deductionId: saved.id,
       operatorId: saved.operatorId,
       amount: saved.amount,
+      reportId: saved.reportId,
     });
 
     return saved;
@@ -128,6 +129,7 @@ export class SalaryDeductionService {
       deductionId: saved.id,
       operatorId: saved.operatorId,
       amount: saved.amount,
+      reportId: saved.reportId,
     });
   }
 }

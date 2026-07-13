@@ -7,6 +7,7 @@ import {
 import api from '../../services/apiClient';
 import { useNotifications } from '../../contexts/NotificationContext';
 import toast from 'react-hot-toast';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export default function EmailMonitoringDashboard() {
   const { socket } = useNotifications();
@@ -15,8 +16,10 @@ export default function EmailMonitoringDashboard() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [status, setStatus] = useState('');
   const [recipient, setRecipient] = useState('');
+  const debouncedRecipient = useDebounce(recipient, 400);
   const [template, setTemplate] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('DESC');
@@ -38,15 +41,15 @@ export default function EmailMonitoringDashboard() {
 
   // Fetch logs list
   const { data: listData, isLoading, refetch: refetchList } = useQuery({
-    queryKey: ['email-list', page, search, status, recipient, template, sortBy, sortOrder],
+    queryKey: ['email-list', page, debouncedSearch, status, debouncedRecipient, template, sortBy, sortOrder],
     queryFn: async () => {
       const { data } = await api.get('/email-monitoring/list', {
         params: {
           page,
           limit,
-          search,
+          search: debouncedSearch,
           status,
-          recipient,
+          recipient: debouncedRecipient,
           template,
           sortBy,
           sortOrder,

@@ -43,7 +43,11 @@ export default function SalesDashboard() {
         </span>
       )
     },
-    { label: 'Responsible Party', key: 'responsibleParty' },
+    { 
+      label: 'Responsible Party', 
+      key: 'responsibleParty',
+      render: (r) => r.inspectionDetail?.responsibleParty || '—'
+    },
     { label: 'Date Closed', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
   ];
 

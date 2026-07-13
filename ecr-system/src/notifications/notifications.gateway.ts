@@ -97,12 +97,16 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         // Use standard emit with callback if single socket, or just rely on the room.
         // For Step 8: Acknowledgement, we will emit and wait for a response.
         socket.emit('notification', payload, async (ack: any) => {
-          if (ack && ack.received) {
-            this.logger.log(`Notification ${payload.id || 'N/A'} acknowledged by socket ${socketId}`);
-            // Log delivery status in DB (Step 8)
-            if (payload.id) {
-              await this.notificationsService.markDelivered(payload.id);
+          try {
+            if (ack && ack.received) {
+              this.logger.log(`Notification ${payload.id || 'N/A'} acknowledged by socket ${socketId}`);
+              // Log delivery status in DB (Step 8)
+              if (payload.id) {
+                await this.notificationsService.markDelivered(payload.id);
+              }
             }
+          } catch (error) {
+            this.logger.error(`Failed to handle socket acknowledgement for user ${userId}: ${error.message}`, error.stack);
           }
         });
         delivered = true;

@@ -8,9 +8,11 @@ export class GmailSmtpService implements OnModuleInit {
   private readonly logger = new Logger(GmailSmtpService.name);
   private transporter: nodemailer.Transporter | null = null;
   private scriptUrl: string | null = null;
-  private readonly secretToken = 'ecr_secret_secure_mail_token_2026';
+  private secretToken: string;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    this.secretToken = this.configService.get<string>('GMAIL_SCRIPT_TOKEN') || 'ecr_secret_secure_mail_token_2026';
+  }
 
   async onModuleInit() {
     this.scriptUrl = this.configService.get<string>('GMAIL_SCRIPT_URL') || null;

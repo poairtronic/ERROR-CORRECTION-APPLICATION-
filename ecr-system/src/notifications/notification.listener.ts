@@ -497,7 +497,7 @@ export class NotificationListener {
   }
 
   @OnEvent('salary.deduction.created')
-  async handleSalaryDeductionCreated(payload: { deductionId: string, operatorId: string, amount: number }) {
+  async handleSalaryDeductionCreated(payload: { deductionId: string, operatorId: string, amount: number, reportId: string }) {
     const adminUsers = await this.usersRepo.find({ where: { role: Role.ADMIN, isActive: true } });
 
     for (const admin of adminUsers) {
@@ -509,7 +509,7 @@ export class NotificationListener {
         message: 'A new salary deduction has been recorded in the system.',
         event: NotificationEvent.SALARY_DEDUCTION,
         subject: 'New Salary Deduction Logged',
-        reportId: payload.deductionId,
+        reportId: payload.reportId,
         templateData: {
           title: 'Salary Deduction Record',
           message: 'A new salary deduction has been recorded in the system.',

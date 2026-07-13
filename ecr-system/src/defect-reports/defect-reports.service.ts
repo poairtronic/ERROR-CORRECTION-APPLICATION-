@@ -43,12 +43,14 @@ export class DefectReportsService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const reports = await this.reportsRepo.find({ order: { createdAt: 'ASC' } });
+    const reports = await this.reportsRepo.createQueryBuilder('r')
+      .where('r.reportNumber IS NULL OR r.reportNumber NOT LIKE :prefix', { prefix: 'AGIPL%' })
+      .orderBy('r.createdAt', 'ASC')
+      .getMany();
+
     for (const report of reports) {
-      if (!report.reportNumber || !report.reportNumber.startsWith('AGIPL')) {
-        report.reportNumber = await this.generateReportNumber();
-        await this.reportsRepo.save(report);
-      }
+      report.reportNumber = await this.generateReportNumber();
+      await this.reportsRepo.save(report);
     }
   }
 
@@ -234,15 +236,23 @@ export class DefectReportsService implements OnModuleInit {
     return report;
   }
 
-  findAll(filters: { status?: string; raisedById?: string }) {
+  findAll(filters: { status?: string; raisedById?: string; page?: number; limit?: number }) {
     const where: any = {};
     if (filters.status) where.status = filters.status;
     if (filters.raisedById) where.raisedById = filters.raisedById;
-    return this.reportsRepo.find({
+
+    const findOptions: any = {
       where,
       order: { createdAt: 'DESC' },
       relations: ['raisedBy', 'auditLogs', 'auditLogs.actor'],
-    });
+    };
+
+    if (filters.page && filters.limit) {
+      findOptions.skip = (filters.page - 1) * filters.limit;
+      findOptions.take = filters.limit;
+    }
+
+    return this.reportsRepo.find(findOptions);
   }
 
   /** Inspector reviews a report raised by an Operator. Cannot review own-raised report. */

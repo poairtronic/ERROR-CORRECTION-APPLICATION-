@@ -40,7 +40,7 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
         url: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
         autoLoadEntities: true,
-        synchronize: true, // true to auto-sync schema on Render during MVP phase
+        synchronize: process.env.NODE_ENV !== 'production', // disabled in production to protect data schema
       }),
     }),
     AuthModule,
