@@ -9,6 +9,9 @@ import { ComponentIssue } from '../component-issue/component-issue.entity';
 import { AuditLog } from '../audit-log/audit-log.entity';
 import { ReportStatus } from '../common/enums/report-status.enum';
 import { ResponsibleParty } from '../common/enums/report-status.enum';
+import { Vendor } from '../master-data/vendors/vendor.entity';
+import { Component } from '../master-data/components/component.entity';
+import { Operator } from '../master-data/operators/operator.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -25,7 +28,6 @@ export class AnalyticsService {
     const [
       totalReports,
       openReports,
-      closedReports,
       pendingInspect,
       pendingSm,
       pendingGm,
@@ -46,7 +48,6 @@ export class AnalyticsService {
           { status: ReportStatus.NEW_PRODUCTION },
         ],
       }),
-      this.reportsRepo.count({ where: { status: ReportStatus.CLOSED } }),
       this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } }),
       this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } }),
       this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } }),
@@ -58,6 +59,8 @@ export class AnalyticsService {
       this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } }),
     ]);
 
+    const closedReports = totalReports - openReports;
+
     return {
       totalReports,
       openReports,
@@ -66,8 +69,8 @@ export class AnalyticsService {
       pendingSm,
       pendingGm,
       pendingStore,
-      totalCost: costs?.totalCost || 0,
-      totalLoss: costs?.totalLoss || 0,
+      totalCost: costs?.totalCost ? parseFloat(costs.totalCost) : 0,
+      totalLoss: costs?.totalLoss ? parseFloat(costs.totalLoss) : 0,
       vendorCases,
     };
   }
@@ -116,7 +119,7 @@ export class AnalyticsService {
 
   async getVendorIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin('vendors', 'v', 'v.id = i.responsibleId')
+      .leftJoin(Vendor, 'v', 'CAST(v.id AS varchar) = i.responsibleId')
       .select('v.name', 'vendor')
       .addSelect('COUNT(i.id)', 'defects')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.VENDOR })
@@ -126,11 +129,12 @@ export class AnalyticsService {
   }
 
   async getOperatorIntelligence() {
-    return this.reportsRepo.createQueryBuilder('r')
-      .leftJoinAndSelect('r.raisedBy', 'u')
-      .select('u.username', 'operator')
-      .addSelect('COUNT(r.id)', 'reportsRaised')
-      .groupBy('u.username')
+    return this.inspectRepo.createQueryBuilder('i')
+      .leftJoin(Operator, 'o', 'CAST(o.id AS varchar) = i.responsibleId')
+      .select('o.name', 'operator')
+      .addSelect('COUNT(i.id)', 'reportsRaised')
+      .where('i.responsibleParty = :party', { party: ResponsibleParty.OPERATOR })
+      .groupBy('o.name')
       .orderBy('reportsRaised', 'DESC')
       .limit(10)
       .getRawMany();
@@ -138,7 +142,7 @@ export class AnalyticsService {
 
   async getMachineIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin('components', 'c', 'c.id = i.responsibleId')
+      .leftJoin(Component, 'c', 'CAST(c.id AS varchar) = i.responsibleId')
       .select('c.name', 'machine')
       .addSelect('COUNT(i.id)', 'failures')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.MACHINE })
