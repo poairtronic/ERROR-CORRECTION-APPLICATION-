@@ -851,13 +851,19 @@ export default function ReportDetailPage() {
         </ActionModal>
       )}
       {modal === 'sm-review' && (
-        <ActionModal title="Senior Manager Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => doAction('sm-review', { 
+        <ActionModal title="Senior Manager Review" onClose={() => setModal(null)} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={() => {
+          const body = { 
             ...smData, 
             costEstimate: Number(smData.costEstimate), 
             timeEstimateHours: Number(smData.timeEstimateHours),
             lossAmount: smData.lossAmount ? Number(smData.lossAmount) : undefined,
             forwardToGm: smData.forwardToGm === 'true'
-        })}>
+          };
+          if (body.rejectionStageCosts && Object.keys(body.rejectionStageCosts).length === 0) {
+            delete body.rejectionStageCosts;
+          }
+          doAction('sm-review', body);
+        }}>
           <div className="form-grid">
             <div className="form-group full">
               <label>Loophole Note *</label>

@@ -333,34 +333,17 @@ export class DefectReportsService implements OnModuleInit {
     await this.smReviewRepo.save(smReview);
 
     if (report.inspectionDetail) {
-      const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount', 'rejectionStageCosts'];
+      const numericFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
       let changed = false;
       const newLogs: any[] = [];
-      for (const field of inspectFields) {
+
+      for (const field of numericFields) {
         if (dto[field] !== undefined) {
-          let hasChanged = false;
-          let oldValueStr = '';
-          let newValueStr = '';
-          if (field === 'rejectionStageCosts') {
-            const oldVal = report.inspectionDetail.rejectionStageCosts;
-            const newVal = dto[field];
-            if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
-              hasChanged = true;
-              oldValueStr = JSON.stringify(oldVal);
-              newValueStr = JSON.stringify(newVal);
-              report.rejectionStageCosts = newVal;
-              report.inspectionDetail.rejectionStageCosts = newVal;
-              await this.reportsRepo.save(report);
-            }
-          } else {
-            if (dto[field] !== (report.inspectionDetail as any)[field]) {
-              hasChanged = true;
-              oldValueStr = String((report.inspectionDetail as any)[field]);
-              newValueStr = String(dto[field]);
-              (report.inspectionDetail as any)[field] = dto[field];
-            }
-          }
-          if (hasChanged) {
+          const oldVal = (report.inspectionDetail as any)[field];
+          const newVal = dto[field];
+          const oldNum = oldVal != null ? Number(oldVal) : null;
+          const newNum = newVal != null ? Number(newVal) : null;
+          if (oldNum !== newNum) {
             const log = await this.auditRepo.save(
               this.auditRepo.create({
                 reportId: report.id,
@@ -368,16 +351,43 @@ export class DefectReportsService implements OnModuleInit {
                 actorRole: actor.role,
                 actionType: AuditActionType.FIELD_EDIT,
                 fieldName: field,
-                oldValue: oldValueStr,
-                newValue: newValueStr,
+                oldValue: String(oldVal ?? ''),
+                newValue: String(newVal ?? ''),
                 note: `Senior Manager edited ${field} during review`,
               })
             );
             newLogs.push(log);
+            (report.inspectionDetail as any)[field] = newVal;
             changed = true;
           }
         }
       }
+
+      if (dto.rejectionStageCosts !== undefined) {
+        const oldVal = report.inspectionDetail.rejectionStageCosts;
+        const newVal = dto.rejectionStageCosts;
+        const oldStr = oldVal != null ? JSON.stringify(oldVal) : '';
+        const newStr = newVal != null ? JSON.stringify(newVal) : '';
+        if (oldStr !== newStr) {
+          const log = await this.auditRepo.save(
+            this.auditRepo.create({
+              reportId: report.id,
+              actorId: actor.id,
+              actorRole: actor.role,
+              actionType: AuditActionType.FIELD_EDIT,
+              fieldName: 'rejectionStageCosts',
+              oldValue: oldStr,
+              newValue: newStr,
+              note: `Senior Manager edited rejectionStageCosts during review`,
+            })
+          );
+          newLogs.push(log);
+          report.inspectionDetail.rejectionStageCosts = newVal;
+          report.rejectionStageCosts = newVal;
+          changed = true;
+        }
+      }
+
       if (changed) {
         await this.inspectionRepo.save(report.inspectionDetail);
       }
