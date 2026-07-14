@@ -16,9 +16,9 @@ const IntelligenceGridWidget = memo(({ vendorData, operatorData, machineData, de
 
   return (
     <div className="glass-card animate-slide-up" style={{ animationDelay: `${delay}ms`, padding: '24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#d1d5db', letterSpacing: '0.05em', margin: 0 }}>Entity Intelligence</h3>
-        <div className="enterprise-tabs">
+        <div className="enterprise-tabs" style={{ display: 'flex', width: '100%' }}>
           {tabs.map(tab => {
             const Icon = tab.icon;
             return (
@@ -26,7 +26,7 @@ const IntelligenceGridWidget = memo(({ vendorData, operatorData, machineData, de
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`enterprise-tab ${activeTab === tab.id ? 'active' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
                 <Icon size={14} /> <span>{tab.label}</span>
               </button>
