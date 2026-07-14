@@ -28,6 +28,15 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: (config: Record<string, any>) => {
+        const required = ['DATABASE_URL', 'JWT_SECRET', 'EMAIL_FROM', 'GMAIL_APP_PASSWORD'];
+        for (const key of required) {
+          if (!config[key]) {
+            throw new Error(`[ENVIRONMENT_ERROR] Mandatory configuration key "${key}" is missing in environment!`);
+          }
+        }
+        return config;
+      },
     }),
     ThrottlerModule.forRoot([
       {
