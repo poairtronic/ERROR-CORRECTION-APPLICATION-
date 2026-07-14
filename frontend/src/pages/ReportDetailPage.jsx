@@ -23,6 +23,8 @@ function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'succes
   );
 }
 
+const EMPTY_ARRAY = [];
+
 export default function ReportDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -38,17 +40,17 @@ export default function ReportDetailPage() {
     queryFn: async () => (await api.get(`/defect-reports/${id}`)).data
   });
 
-  const { data: notifications = [] } = useQuery({
+  const { data: notifications = EMPTY_ARRAY } = useQuery({
     queryKey: ['report-notifications', id],
     queryFn: async () => (await api.get(`/notifications/report/${id}`)).data
   });
 
-  const { data: vendors = [] } = useQuery({
+  const { data: vendors = EMPTY_ARRAY } = useQuery({
     queryKey: ['vendors'],
     queryFn: async () => (await api.get('/master-data/vendors')).data
   });
 
-  const { data: operators = [] } = useQuery({
+  const { data: operators = EMPTY_ARRAY } = useQuery({
     queryKey: ['operators'],
     queryFn: async () => {
       try {
