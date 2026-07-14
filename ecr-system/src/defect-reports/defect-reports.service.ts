@@ -294,7 +294,7 @@ export class DefectReportsService implements OnModuleInit {
 
       const report = await reportsRepo.findOne({
         where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
+        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -367,7 +367,7 @@ export class DefectReportsService implements OnModuleInit {
 
       const report = await reportsRepo.findOne({
         where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
+        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -473,7 +473,7 @@ export class DefectReportsService implements OnModuleInit {
 
       const report = await reportsRepo.findOne({
         where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
+        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -535,7 +535,7 @@ export class DefectReportsService implements OnModuleInit {
 
       const report = await reportsRepo.findOne({
         where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
+        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
