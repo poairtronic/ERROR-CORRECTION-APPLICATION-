@@ -12,6 +12,8 @@ import { NotificationsGateway } from './notifications.gateway';
 import { NotificationEvent } from '../email/enums/notification-event.enum';
 import { TemplateData } from '../email/services/email-template.service';
 
+import { SocketRegistryService } from './socket-registry.service';
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -19,6 +21,7 @@ export class NotificationsService {
   constructor(
     @InjectRepository(Notification) private repo: Repository<Notification>,
     private config: ConfigService,
+    private registry: SocketRegistryService,
     @Inject(forwardRef(() => EmailService)) private emailService: EmailService,
     @Inject(forwardRef(() => NotificationsGateway)) private gateway: NotificationsGateway,
   ) {}
@@ -35,6 +38,10 @@ export class NotificationsService {
     templateData: TemplateData;
     subject: string;
   }) {
+    const isConnected = this.registry.isUserConnected(params.userId);
+    const status = isConnected ? NotificationStatus.SENT : NotificationStatus.QUEUED;
+    const sentAt = isConnected ? new Date() : undefined;
+
     const notification = await this.repo.save(
       this.repo.create({
         userId: params.userId,
@@ -42,7 +49,8 @@ export class NotificationsService {
         channel: params.channel,
         type: params.type,
         message: params.message,
-        status: NotificationStatus.QUEUED,
+        status,
+        sentAt,
         attemptCount: 1,
       }),
     );
@@ -57,9 +65,6 @@ export class NotificationsService {
         message: params.message,
         reportId: params.reportId,
       });
-      notification.status = NotificationStatus.SENT;
-      notification.sentAt = new Date();
-      await this.repo.save(notification);
     } catch (err) {
       this.logger.warn(`Failed to emit websocket notification: ${err.message}`);
     }
