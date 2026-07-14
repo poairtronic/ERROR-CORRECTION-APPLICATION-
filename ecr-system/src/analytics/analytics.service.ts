@@ -25,39 +25,60 @@ export class AnalyticsService {
   ) {}
 
   async getExecutiveKpis() {
-    const [
-      totalReports,
-      openReports,
-      pendingInspect,
-      pendingSm,
-      pendingGm,
-      pendingStore,
-      costs,
-      vendorCases,
-    ] = await Promise.all([
-      this.reportsRepo.count(),
-      this.reportsRepo.count({
-        where: [
-          { status: ReportStatus.DRAFT },
-          { status: ReportStatus.PENDING_INSPECTION },
-          { status: ReportStatus.PENDING_SM_REVIEW },
-          { status: ReportStatus.PENDING_GM_APPROVAL },
-          { status: ReportStatus.APPROVED },
-          { status: ReportStatus.COMPONENTS_ISSUED },
-          { status: ReportStatus.REWORK_IN_PROGRESS },
-          { status: ReportStatus.NEW_PRODUCTION },
-        ],
-      }),
-      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } }),
-      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } }),
-      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } }),
-      this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } }),
+    const [statusCounts, costs, vendorCases] = await Promise.all([
+      this.reportsRepo.createQueryBuilder('r')
+        .select('r.status', 'status')
+        .addSelect('r.componentsIssued', 'componentsIssued')
+        .addSelect('COUNT(r.id)', 'count')
+        .groupBy('r.status')
+        .addGroupBy('r.componentsIssued')
+        .getRawMany(),
       this.inspectRepo.createQueryBuilder('i')
         .select('SUM(i.costEstimate)', 'totalCost')
         .addSelect('SUM(i.lossAmount)', 'totalLoss')
         .getRawOne(),
       this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } }),
     ]);
+
+    let totalReports = 0;
+    let openReports = 0;
+    let pendingInspect = 0;
+    let pendingSm = 0;
+    let pendingGm = 0;
+    let pendingStore = 0;
+
+    const openStatuses = new Set([
+      ReportStatus.DRAFT,
+      ReportStatus.PENDING_INSPECTION,
+      ReportStatus.PENDING_SM_REVIEW,
+      ReportStatus.PENDING_GM_APPROVAL,
+      ReportStatus.APPROVED,
+      ReportStatus.COMPONENTS_ISSUED,
+      ReportStatus.REWORK_IN_PROGRESS,
+      ReportStatus.NEW_PRODUCTION,
+    ]);
+
+    for (const row of statusCounts) {
+      const count = parseInt(row.count) || 0;
+      const status = row.status as ReportStatus;
+      const componentsIssued = row.componentsIssued === true || row.componentsIssued === 'true' || row.componentsIssued === 1;
+
+      totalReports += count;
+
+      if (openStatuses.has(status)) {
+        openReports += count;
+      }
+
+      if (status === ReportStatus.PENDING_INSPECTION) {
+        pendingInspect += count;
+      } else if (status === ReportStatus.PENDING_SM_REVIEW) {
+        pendingSm += count;
+      } else if (status === ReportStatus.PENDING_GM_APPROVAL) {
+        pendingGm += count;
+      } else if (status === ReportStatus.APPROVED && !componentsIssued) {
+        pendingStore += count;
+      }
+    }
 
     const closedReports = totalReports - openReports;
 
@@ -107,17 +128,22 @@ export class AnalyticsService {
 
   async getRuleBasedInsights() {
     const insights: string[] = [];
-    const recentVendorDefects = await this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } });
+
+    const [recentVendorDefects, costResult, open] = await Promise.all([
+      this.inspectRepo.count({ where: { responsibleParty: ResponsibleParty.VENDOR } }),
+      this.inspectRepo.createQueryBuilder('i').select('SUM(i.costEstimate)', 'totalCost').getRawOne(),
+      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } }),
+    ]);
+
     if (recentVendorDefects > 10) {
       insights.push(`High vendor defect rate: ${recentVendorDefects} defects attributed to vendors.`);
     }
 
-    const { totalCost } = await this.getExecutiveKpis();
+    const totalCost = costResult?.totalCost ? parseFloat(costResult.totalCost) : 0;
     if (totalCost > 10000) {
       insights.push(`Rework costs have exceeded budget thresholds (Total: $${totalCost}).`);
     }
 
-    const open = await this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } });
     if (open > 5) {
       insights.push(`Inspection bottleneck detected: ${open} reports awaiting inspection.`);
     }
@@ -127,7 +153,7 @@ export class AnalyticsService {
 
   async getVendorIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin(Vendor, 'v', 'CAST(v.id AS varchar) = i.responsibleId')
+      .leftJoin(Vendor, 'v', 'v.id = CAST(i.responsibleId AS uuid)')
       .select('v.name', 'vendor')
       .addSelect('COUNT(i.id)', 'defects')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.VENDOR })
@@ -138,7 +164,7 @@ export class AnalyticsService {
 
   async getOperatorIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin(Operator, 'o', 'CAST(o.id AS varchar) = i.responsibleId')
+      .leftJoin(Operator, 'o', 'o.id = CAST(i.responsibleId AS uuid)')
       .select('o.name', 'operator')
       .addSelect('COUNT(i.id)', 'reportsRaised')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.OPERATOR })
@@ -150,7 +176,7 @@ export class AnalyticsService {
 
   async getMachineIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin(Component, 'c', 'CAST(c.id AS varchar) = i.responsibleId')
+      .leftJoin(Component, 'c', 'c.id = CAST(i.responsibleId AS uuid)')
       .select('c.name', 'machine')
       .addSelect('COUNT(i.id)', 'failures')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.MACHINE })
@@ -160,16 +186,48 @@ export class AnalyticsService {
   }
 
   async getSlaMetrics() {
-    const [result, pendingInspect, pendingSm, pendingGm, pendingStore] = await Promise.all([
+    const [result, statusCounts] = await Promise.all([
       this.reportsRepo.createQueryBuilder('r')
         .select('AVG(EXTRACT(EPOCH FROM (r.updatedAt - r.createdAt)) / 86400.0)', 'avgResolutionDays')
         .where('r.status = :status', { status: ReportStatus.CLOSED })
         .getRawOne(),
-      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_INSPECTION } }),
-      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_SM_REVIEW } }),
-      this.reportsRepo.count({ where: { status: ReportStatus.PENDING_GM_APPROVAL } }),
-      this.reportsRepo.count({ where: { status: ReportStatus.APPROVED, componentsIssued: false } }),
+      this.reportsRepo.createQueryBuilder('r')
+        .select('r.status', 'status')
+        .addSelect('r.componentsIssued', 'componentsIssued')
+        .addSelect('COUNT(r.id)', 'count')
+        .where('r.status IN (:...statuses)', {
+          statuses: [
+            ReportStatus.PENDING_INSPECTION,
+            ReportStatus.PENDING_SM_REVIEW,
+            ReportStatus.PENDING_GM_APPROVAL,
+            ReportStatus.APPROVED
+          ]
+        })
+        .groupBy('r.status')
+        .addGroupBy('r.componentsIssued')
+        .getRawMany(),
     ]);
+
+    let pendingInspect = 0;
+    let pendingSm = 0;
+    let pendingGm = 0;
+    let pendingStore = 0;
+
+    for (const row of statusCounts) {
+      const count = parseInt(row.count) || 0;
+      const status = row.status as ReportStatus;
+      const componentsIssued = row.componentsIssued === true || row.componentsIssued === 'true' || row.componentsIssued === 1;
+
+      if (status === ReportStatus.PENDING_INSPECTION) {
+        pendingInspect = count;
+      } else if (status === ReportStatus.PENDING_SM_REVIEW) {
+        pendingSm = count;
+      } else if (status === ReportStatus.PENDING_GM_APPROVAL) {
+        pendingGm = count;
+      } else if (status === ReportStatus.APPROVED && !componentsIssued) {
+        pendingStore = count;
+      }
+    }
 
     return {
       averageResolutionDays: result?.avgResolutionDays ? parseFloat(result.avgResolutionDays).toFixed(1) : 0,

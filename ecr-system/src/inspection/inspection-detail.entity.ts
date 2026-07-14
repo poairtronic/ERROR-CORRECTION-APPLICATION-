@@ -6,12 +6,14 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { User } from '../users/user.entity';
 import { Decision, ResponsibleParty } from '../common/enums/report-status.enum';
 
 @Entity('inspection_details')
+@Index(['responsibleParty', 'responsibleId'])
 export class InspectionDetail {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -27,6 +29,7 @@ export class InspectionDetail {
   @JoinColumn({ name: 'inspector_id' })
   inspector: User;
 
+  @Index()
   @Column({ name: 'inspector_id', nullable: true })
   inspectorId: string;
 
@@ -36,10 +39,12 @@ export class InspectionDetail {
   @Column({ type: 'text', nullable: true })
   rootCause: string;
 
+  @Index()
   @Column({ type: 'simple-enum', enum: ResponsibleParty })
   responsibleParty: ResponsibleParty;
 
   // operator user id OR vendor id, resolved based on responsibleParty
+  @Index()
   @Column({ nullable: true })
   responsibleId: string;
 

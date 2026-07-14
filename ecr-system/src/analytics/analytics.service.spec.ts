@@ -22,10 +22,14 @@ describe('AnalyticsService', () => {
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
-      getRawMany: jest.fn().mockResolvedValue([]),
+      getRawMany: jest.fn().mockResolvedValue([
+        { status: 'PENDING_INSPECTION', count: '10', componentsIssued: 'false' }
+      ]),
+      getRawOne: jest.fn().mockResolvedValue({ totalCost: 5000, totalLoss: 1000 }),
     };
 
     mockInspectRepo = {
@@ -35,9 +39,11 @@ describe('AnalyticsService', () => {
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue([]),
+      getRawOne: jest.fn().mockResolvedValue({ totalCost: 5000, totalLoss: 1000 }),
     };
 
     const mockSmRepo = {

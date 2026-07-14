@@ -79,6 +79,7 @@ export class DefectReport {
   @Column({ type: 'simple-json', default: '[]' })
   images: string[];
 
+  @Index(['status', 'componentsIssued'])
   @Index()
   @Column({ type: 'simple-enum', enum: ReportStatus, default: ReportStatus.DRAFT })
   status: ReportStatus;
