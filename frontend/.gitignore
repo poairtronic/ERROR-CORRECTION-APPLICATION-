@@ -6,3 +6,5 @@ dist/
 *.log
 *.pdf
 screenshots/
+playwright-report/
+test-results/
