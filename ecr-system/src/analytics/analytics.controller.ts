@@ -11,13 +11,13 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('kpis')
-  @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER, Role.SALES)
+  @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER, Role.ACCOUNTS)
   getExecutiveKpis() {
     return this.analyticsService.getExecutiveKpis();
   }
 
   @Get('trends')
-  @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER, Role.SALES)
+  @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER, Role.ACCOUNTS)
   getTrends() {
     return this.analyticsService.getTrends();
   }

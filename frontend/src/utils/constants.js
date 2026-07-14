@@ -33,7 +33,7 @@ export const ROLES = [
   'GENERAL_MANAGER',
   'STORE_MANAGER',
   'ADMIN',
-  'SALES'
+  'ACCOUNTS'
 ];
 
 export function getActiveStages(template, failedStage) {

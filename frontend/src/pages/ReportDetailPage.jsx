@@ -84,26 +84,26 @@ export default function ReportDetailPage() {
     lossAmount: '', decisionNote: '', biasedFlag: false, forwardToGm: 'true'
   });
 
-  const [salesData, setSalesData] = useState({
+  const [accountsData, setAccountsData] = useState({
     costEstimate: '',
     lossAmount: '',
-    salesDescription: '',
+    accountsDescription: '',
     rejectionStageCosts: {}
   });
 
-  const openSalesReviewModal = () => {
-    setSalesData({
+  const openAccountsReviewModal = () => {
+    setAccountsData({
       costEstimate: report.inspectionDetail?.costEstimate ?? 0,
       lossAmount: report.inspectionDetail?.lossAmount ?? '',
-      salesDescription: report.salesDescription || '',
+      accountsDescription: report.accountsDescription || '',
       rejectionStageCosts: report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {}
     });
-    setModal('sales-review');
+    setModal('accounts-review');
   };
 
-  const handleSalesStageCostChange = (stage, val) => {
+  const handleAccountsStageCostChange = (stage, val) => {
     const numericVal = val === '' ? '' : Number(val);
-    setSalesData(d => {
+    setAccountsData(d => {
       const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
       const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
       const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
@@ -112,19 +112,19 @@ export default function ReportDetailPage() {
     });
   };
 
-  const handleSalesSave = async () => {
+  const handleAccountsSave = async () => {
     try {
-      await api.patch(`/defect-reports/${id}/field`, { field: 'costEstimate', value: String(salesData.costEstimate) });
-      await api.patch(`/defect-reports/${id}/field`, { field: 'lossAmount', value: String(salesData.lossAmount) });
-      await api.patch(`/defect-reports/${id}/field`, { field: 'salesDescription', value: salesData.salesDescription });
+      await api.patch(`/defect-reports/${id}/field`, { field: 'costEstimate', value: String(accountsData.costEstimate) });
+      await api.patch(`/defect-reports/${id}/field`, { field: 'lossAmount', value: String(accountsData.lossAmount) });
+      await api.patch(`/defect-reports/${id}/field`, { field: 'accountsDescription', value: accountsData.accountsDescription });
       if (report.inspectionType === 'REJECTION') {
-        await api.patch(`/defect-reports/${id}/field`, { field: 'rejectionStageCosts', value: JSON.stringify(salesData.rejectionStageCosts) });
+        await api.patch(`/defect-reports/${id}/field`, { field: 'rejectionStageCosts', value: JSON.stringify(accountsData.rejectionStageCosts) });
       }
-      toast.success('Sales review details saved successfully');
+      toast.success('Accounts review details saved successfully');
       setModal(null);
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save sales review details');
+      toast.error(err.response?.data?.message || 'Failed to save accounts review details');
     }
   };
 
@@ -288,9 +288,9 @@ export default function ReportDetailPage() {
       const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts'];
       return smAllowed.includes(fieldKey);
     }
-    if (role === 'SALES' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status)) {
-      const salesAllowed = ['costEstimate', 'lossAmount', 'salesDescription', 'rejectionStageCosts'];
-      return salesAllowed.includes(fieldKey);
+    if (role === 'ACCOUNTS' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status)) {
+      const accountsAllowed = ['costEstimate', 'lossAmount', 'accountsDescription', 'rejectionStageCosts'];
+      return accountsAllowed.includes(fieldKey);
     }
     return false;
   };
@@ -347,8 +347,8 @@ export default function ReportDetailPage() {
           {role === 'STORE_MANAGER' && status === 'APPROVED' && !report.componentsIssued && (
             <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
-          {role === 'SALES' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status) && (
-            <button className="btn btn-primary" onClick={openSalesReviewModal}><FiEdit2 /> Sales Review</button>
+          {role === 'ACCOUNTS' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status) && (
+            <button className="btn btn-primary" onClick={openAccountsReviewModal}><FiEdit2 /> Accounts Review</button>
           )}
         </div>
       </div>
@@ -415,8 +415,8 @@ export default function ReportDetailPage() {
               ]).concat(report.componentsIssued ? [
                 ['Components Issued On', new Date(report.componentsIssuedAt).toLocaleString('en-IN'), undefined],
                 ['Issue Remarks', report.issueRemarks || '—', undefined]
-              ] : []).concat(status === 'APPROVED' || report.salesDescription ? [
-                ['Sales Description', report.salesDescription || '—', 'salesDescription']
+              ] : []).concat(status === 'APPROVED' || report.accountsDescription ? [
+                ['Accounts Description', report.accountsDescription || '—', 'accountsDescription']
               ] : []).map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -475,7 +475,7 @@ export default function ReportDetailPage() {
                               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /> Cancel</button>
                             </div>
                           </div>
-                        ) : fieldKey === 'salesDescription' ? (
+                        ) : fieldKey === 'accountsDescription' ? (
                           <textarea className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1, minHeight: 60 }} rows={3} />
                         ) : (
                           <input className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1 }} />
@@ -915,21 +915,21 @@ export default function ReportDetailPage() {
           <div className="form-group"><label>Issue Remarks (optional)</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add any remarks regarding the issued components…" /></div>
         </ActionModal>
       )}
-      {modal === 'sales-review' && (
+      {modal === 'accounts-review' && (
         <ActionModal 
-          title="Sales Financial Review" 
+          title="Accounts Financial Review" 
           onClose={() => setModal(null)} 
           actionLabel="Save" 
           loading={actionMutation.isPending} 
-          onConfirm={handleSalesSave}
+          onConfirm={handleAccountsSave}
         >
           <div className="form-grid">
             <div className="form-group full">
-              <label>Sales Description *</label>
+              <label>Accounts Description *</label>
               <textarea 
-                value={salesData.salesDescription} 
-                onChange={e => setSalesData({...salesData, salesDescription: e.target.value})} 
-                placeholder="Enter sales review description or notes..." 
+                value={accountsData.accountsDescription} 
+                onChange={e => setAccountsData({...accountsData, accountsDescription: e.target.value})} 
+                placeholder="Enter accounts review description or notes..." 
                 required 
                 rows={3} 
               />
@@ -956,8 +956,8 @@ export default function ReportDetailPage() {
                               min="0" 
                               step="0.01" 
                               style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
-                              value={salesData.rejectionStageCosts[st] ?? ''} 
-                              onChange={e => handleSalesStageCostChange(st, e.target.value)} 
+                              value={accountsData.rejectionStageCosts[st] ?? ''} 
+                              onChange={e => handleAccountsStageCostChange(st, e.target.value)} 
                               required
                               placeholder="Enter cost ($)"
                             />
@@ -973,8 +973,8 @@ export default function ReportDetailPage() {
                     type="number" 
                     min="0" 
                     step="0.01" 
-                    value={salesData.costEstimate} 
-                    onChange={e => setSalesData({...salesData, costEstimate: Number(e.target.value)})} 
+                    value={accountsData.costEstimate} 
+                    onChange={e => setAccountsData({...accountsData, costEstimate: Number(e.target.value)})} 
                     required 
                   />
                 </div>
@@ -986,8 +986,8 @@ export default function ReportDetailPage() {
                   type="number" 
                   min="0" 
                   step="0.01" 
-                  value={salesData.costEstimate} 
-                  onChange={e => setSalesData({...salesData, costEstimate: Number(e.target.value)})} 
+                  value={accountsData.costEstimate} 
+                  onChange={e => setAccountsData({...accountsData, costEstimate: Number(e.target.value)})} 
                   required 
                 />
               </div>
@@ -999,8 +999,8 @@ export default function ReportDetailPage() {
                 type="number" 
                 min="0" 
                 step="0.01" 
-                value={salesData.lossAmount} 
-                onChange={e => setSalesData({...salesData, lossAmount: e.target.value ? Number(e.target.value) : ''})} 
+                value={accountsData.lossAmount} 
+                onChange={e => setAccountsData({...accountsData, lossAmount: e.target.value ? Number(e.target.value) : ''})} 
               />
             </div>
           </div>

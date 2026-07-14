@@ -115,7 +115,7 @@ export class DefectReport {
   issueRemarks: string;
 
   @Column({ name: 'sales_description', type: 'text', nullable: true })
-  salesDescription: string;
+  accountsDescription: string;
 
   @Column({ name: 'rejection_process_template', type: 'varchar', nullable: true })
   rejectionProcessTemplate?: string;

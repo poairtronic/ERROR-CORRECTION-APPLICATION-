@@ -5,11 +5,11 @@ import { FiTrendingUp } from 'react-icons/fi';
 import DashboardQueueTable from '../../components/dashboards/DashboardQueueTable';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
-export default function SalesDashboard() {
+export default function AccountsDashboard() {
   const { user } = useAuth();
 
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
-    queryKey: ['sales-reports'],
+    queryKey: ['accounts-reports'],
     queryFn: async () => {
       const { data } = await api.get('/defect-reports');
       return data || [];
@@ -17,7 +17,7 @@ export default function SalesDashboard() {
   });
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['analytics-kpis-sales'],
+    queryKey: ['analytics-kpis-accounts'],
     queryFn: async () => {
       const { data } = await api.get('/analytics/kpis');
       return data;
@@ -55,7 +55,7 @@ export default function SalesDashboard() {
     <>
       <div className="topbar">
         <div>
-          <h1>Sales & Financial Dashboard</h1>
+          <h1>Accounts & Financial Dashboard</h1>
           <p>Welcome back, {user?.username} · Cost Impact Overview</p>
         </div>
       </div>

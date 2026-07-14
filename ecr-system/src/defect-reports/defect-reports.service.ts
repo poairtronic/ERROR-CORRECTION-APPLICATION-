@@ -577,29 +577,29 @@ export class DefectReportsService implements OnModuleInit {
         }
       }
 
-      if (actor.role === Role.SALES) {
-        const salesAllowedFields = ['costEstimate', 'lossAmount', 'salesDescription', 'rejectionStageCosts'];
-        if (!salesAllowedFields.includes(field)) {
-          throw new BadRequestException('Sales can only edit costEstimate, lossAmount, salesDescription, or rejectionStageCosts');
+      if (actor.role === Role.ACCOUNTS) {
+        const accountsAllowedFields = ['costEstimate', 'lossAmount', 'accountsDescription', 'rejectionStageCosts'];
+        if (!accountsAllowedFields.includes(field)) {
+          throw new BadRequestException('Accounts can only edit costEstimate, lossAmount, accountsDescription, or rejectionStageCosts');
         }
-        const allowedSalesStatuses = [
+        const allowedAccountsStatuses = [
           ReportStatus.APPROVED,
           ReportStatus.COMPONENTS_ISSUED,
           ReportStatus.REWORK_IN_PROGRESS,
           ReportStatus.NEW_PRODUCTION,
           ReportStatus.CLOSED,
         ];
-        if (!allowedSalesStatuses.includes(report.status as any)) {
-          throw new BadRequestException('Sales can only edit reports that are approved or beyond');
+        if (!allowedAccountsStatuses.includes(report.status as any)) {
+          throw new BadRequestException('Accounts can only edit reports that are approved or beyond');
         }
       }
 
       if (
         actor.role !== Role.SENIOR_MANAGER &&
         actor.role !== Role.GENERAL_MANAGER &&
-        actor.role !== Role.SALES
+        actor.role !== Role.ACCOUNTS
       ) {
-        throw new BadRequestException('Only Senior Manager, General Manager, or Sales can edit report data');
+        throw new BadRequestException('Only Senior Manager, General Manager, or Accounts can edit report data');
       }
 
       if (field === 'status') {

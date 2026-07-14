@@ -23,7 +23,7 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.SALES, Role.STORE_MANAGER)
+  @Roles(Role.ADMIN, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.STORE_MANAGER)
   findAll(
     @Query('role') role?: string, 
     @Query('department') dept?: string,

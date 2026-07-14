@@ -5,7 +5,7 @@ import SeniorManagerDashboard from './dashboards/SeniorManagerDashboard';
 import GeneralManagerDashboard from './dashboards/GeneralManagerDashboard';
 import StoreManagerDashboard from './dashboards/StoreManagerDashboard';
 import AdminDashboard from './dashboards/AdminDashboard';
-import SalesDashboard from './dashboards/SalesDashboard';
+import AccountsDashboard from './dashboards/AccountsDashboard';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function Dashboard() {
     case 'GENERAL_MANAGER': return <GeneralManagerDashboard />;
     case 'STORE_MANAGER': return <StoreManagerDashboard />;
     case 'ADMIN': return <AdminDashboard />;
-    case 'SALES': return <SalesDashboard />;
+    case 'ACCOUNTS': return <AccountsDashboard />;
     default: return <OperatorDashboard />;
   }
 }

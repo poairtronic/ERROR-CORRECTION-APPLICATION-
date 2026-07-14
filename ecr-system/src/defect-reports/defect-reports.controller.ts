@@ -74,7 +74,7 @@ export class DefectReportsController {
   }
 
   @Patch(':id/field')
-  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.SALES)
+  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
   editField(
     @Param('id') id: string,
     @Body() body: { field: string; value: string },

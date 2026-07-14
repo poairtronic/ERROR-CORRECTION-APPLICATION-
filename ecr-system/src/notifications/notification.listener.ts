@@ -238,10 +238,10 @@ export class NotificationListener {
   }
 
   private async handleApproved(report: DefectReport) {
-    const salesUsers = await this.usersRepo.find({ where: { role: Role.SALES, isActive: true } });
+    const accountsUsers = await this.usersRepo.find({ where: { role: Role.ACCOUNTS, isActive: true } });
     const storeUsers = await this.usersRepo.find({ where: { role: Role.STORE_MANAGER, isActive: true } });
 
-    const salesSummary = {
+    const accountsSummary = {
       'Report Number': report.reportNumber,
       'Budget': report.gmApproval?.budgetApproved?.toString() || 'N/A',
       'Customer Impact': report.inspectionDetail?.timeEstimateHours ? 'Potential Delay' : 'Minimal',
@@ -256,10 +256,10 @@ export class NotificationListener {
     };
 
     await Promise.all([
-      ...salesUsers.map(sales =>
+      ...accountsUsers.map(accounts =>
         this.notificationsService.create({
-          userId: sales.id,
-          userEmail: sales.email,
+          userId: accounts.id,
+          userEmail: accounts.email,
           channel: NotificationChannel.APP_AND_EMAIL,
           type: 'Report Approved',
           message: 'A defect report has been fully approved by the General Manager.',
@@ -269,7 +269,7 @@ export class NotificationListener {
           templateData: {
             title: 'Defect Report Approved',
             message: 'A defect report has been fully approved by the General Manager.',
-            summaryTable: salesSummary,
+            summaryTable: accountsSummary,
             primaryButton: {
               text: 'View Details',
               url: `${this.frontendUrl}/reports/${report.id}`,
@@ -305,16 +305,16 @@ export class NotificationListener {
       'Report Approved',
       `Approved Report: ${report.reportNumber}`,
       `Defect report ${report.reportNumber} has been fully approved by the General Manager.`,
-      salesSummary,
+      accountsSummary,
     );
   }
 
   private async handleComponentsIssued(report: DefectReport) {
     const notifyIds = new Set<string>();
     
-    // Notify Sales
-    const salesUsers = await this.usersRepo.find({ where: { role: Role.SALES, isActive: true } });
-    salesUsers.forEach(u => notifyIds.add(u.id));
+    // Notify Accounts
+    const accountsUsers = await this.usersRepo.find({ where: { role: Role.ACCOUNTS, isActive: true } });
+    accountsUsers.forEach(u => notifyIds.add(u.id));
 
     // Notify Inspector who raised/inspected it
     const inspectorId = report.inspectionDetail?.inspectorId || (report.raisedByRole === RaisedByRole.INSPECTOR ? report.raisedById : null);
