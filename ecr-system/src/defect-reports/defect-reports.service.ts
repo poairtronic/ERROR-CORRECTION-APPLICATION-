@@ -310,9 +310,10 @@ export class DefectReportsService implements OnModuleInit {
         relations: ['report'],
       });
       if (!inspection) {
-        inspection = inspectionRepo.create({ report });
+        inspection = inspectionRepo.create({ report, reportId: report.id });
       } else {
         inspection.report = report;
+        inspection.reportId = report.id;
       }
       const isRejection = dto.inspectionType === 'REJECTION' || report.inspectionType === 'REJECTION';
       Object.assign(inspection, {
@@ -333,6 +334,7 @@ export class DefectReportsService implements OnModuleInit {
         rejectionDescription: dto.rejectionDescription,
       });
       await inspectionRepo.save(inspection);
+      report.inspectionDetail = inspection;
 
       // Persist the inspection type (REWORK / REJECTION) if provided
       if (dto.inspectionType) {
@@ -381,9 +383,10 @@ export class DefectReportsService implements OnModuleInit {
         relations: ['report'],
       });
       if (!smReview) {
-        smReview = smReviewRepo.create({ report });
+        smReview = smReviewRepo.create({ report, reportId: report.id });
       } else {
         smReview.report = report;
+        smReview.reportId = report.id;
       }
       Object.assign(smReview, {
         smId: actor.id,
@@ -393,6 +396,7 @@ export class DefectReportsService implements OnModuleInit {
         forwardedToGm: dto.forwardToGm,
       });
       await smReviewRepo.save(smReview);
+      report.smReview = smReview;
 
       if (report.inspectionDetail) {
         const numericFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
@@ -482,9 +486,10 @@ export class DefectReportsService implements OnModuleInit {
         relations: ['report'],
       });
       if (!gmApproval) {
-        gmApproval = gmApprovalRepo.create({ report });
+        gmApproval = gmApprovalRepo.create({ report, reportId: report.id });
       } else {
         gmApproval.report = report;
+        gmApproval.reportId = report.id;
       }
       Object.assign(gmApproval, {
         gmId: actor.id,
@@ -493,6 +498,7 @@ export class DefectReportsService implements OnModuleInit {
         budgetApproved: dto.budgetApproved,
       });
       await gmApprovalRepo.save(gmApproval);
+      report.gmApproval = gmApproval;
 
       const from = report.status;
       report.status = dto.approved ? ReportStatus.APPROVED : ReportStatus.REJECTED;
