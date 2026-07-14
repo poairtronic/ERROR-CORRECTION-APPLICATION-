@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
@@ -69,13 +69,13 @@ export default function UsersPage() {
     }
   });
 
-  const deactivate = (id) => {
+  const deactivate = useCallback((id) => {
     if (confirm('Are you sure you want to delete this user? The user account, notifications, and login history will be permanently deleted, but all defect reports and logs created by them will be preserved.')) {
       deactivateMutation.mutate(id);
     }
-  };
+  }, [deactivateMutation]);
 
-  const columns = [
+  const columns = useMemo(() => [
     { header: 'Name', render: (row) => <span style={{ fontWeight: 600 }}>{row.name}</span> },
     { header: 'Email', render: (row) => <span style={{ color: 'var(--text-muted)' }}>{row.email}</span> },
     { header: 'Role', render: (row) => <span className={`badge badge-${row.role?.toLowerCase()}`}>{row.role}</span> },
@@ -90,7 +90,7 @@ export default function UsersPage() {
         </div>
       )
     }
-  ];
+  ], [deactivate]);
 
   return (
     <>

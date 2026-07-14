@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
@@ -93,8 +93,16 @@ export function NotificationProvider({ children }) {
     };
   }, [isAuthenticated, user]);
 
+  const contextValue = useMemo(() => ({
+    unreadCount,
+    setUnreadCount,
+    notifications,
+    isConnected,
+    socket: socketRef.current
+  }), [unreadCount, notifications, isConnected]);
+
   return (
-    <NotificationContext.Provider value={{ unreadCount, setUnreadCount, notifications, isConnected, socket: socketRef.current }}>
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );

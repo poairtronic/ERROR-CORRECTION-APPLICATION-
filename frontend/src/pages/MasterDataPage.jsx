@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
@@ -56,16 +56,16 @@ function Section({ title, endpoint, fields }) {
     }
   });
 
-  const openNew = () => { setForm({}); setModal('new'); };
-  const openEdit = (item) => { setForm(item); setModal('edit'); };
+  const openNew = useCallback(() => { setForm({}); setModal('new'); }, []);
+  const openEdit = useCallback((item) => { setForm(item); setModal('edit'); }, []);
 
-  const del = (id) => {
+  const del = useCallback((id) => {
     if (confirm('Delete this item?')) {
       deleteMutation.mutate(id);
     }
-  };
+  }, [deleteMutation]);
 
-  const columns = [
+  const columns = useMemo(() => [
     ...fields.map(f => ({ header: f.label, accessor: f.key })),
     { 
       header: 'Actions', 
@@ -76,7 +76,7 @@ function Section({ title, endpoint, fields }) {
         </div>
       )
     }
-  ];
+  ], [fields, openEdit, del]);
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>

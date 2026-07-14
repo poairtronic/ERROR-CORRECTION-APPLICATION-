@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/apiClient';
 
 const AuthContext = createContext(null);
@@ -31,8 +31,15 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth-expired', handleAuthExpired);
   }, [logout]);
 
+  const contextValue = useMemo(() => ({
+    user,
+    login,
+    logout,
+    isAuthenticated: !!user
+  }), [user, login, logout]);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

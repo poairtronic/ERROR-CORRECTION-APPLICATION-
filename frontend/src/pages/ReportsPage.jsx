@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/apiClient';
@@ -31,37 +31,43 @@ export default function ReportsPage() {
 
   const debouncedSearch = useDebounce(search, 300);
 
-  const filtered = reports.filter(r => {
-    const matchSearch = !debouncedSearch || (
-      (r.reportNumber || '') +
-      (r.id || '') +
-      (r.componentName || '') +
-      (r.errorTypeName || '') +
-      (r.defectDescription || '') +
-      (r.raisedBy?.name || '') +
-      (r.raisedBy?.username || '')
-    ).toLowerCase().includes(debouncedSearch.toLowerCase());
-    const matchStatus = !filterStatus || r.status === filterStatus;
-    
-    let matchDate = true;
-    if (startDate || endDate) {
-      const createdDate = new Date(r.createdAt);
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (createdDate < start) matchDate = false;
+  const filtered = useMemo(() => {
+    return reports.filter(r => {
+      const matchSearch = !debouncedSearch || (
+        (r.reportNumber || '') +
+        (r.id || '') +
+        (r.componentName || '') +
+        (r.errorTypeName || '') +
+        (r.defectDescription || '') +
+        (r.raisedBy?.name || '') +
+        (r.raisedBy?.username || '')
+      ).toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchStatus = !filterStatus || r.status === filterStatus;
+      
+      let matchDate = true;
+      if (startDate || endDate) {
+        const createdDate = new Date(r.createdAt);
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (createdDate < start) matchDate = false;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (createdDate > end) matchDate = false;
+        }
       }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (createdDate > end) matchDate = false;
-      }
-    }
 
-    return matchSearch && matchStatus && matchDate;
-  });
+      return matchSearch && matchStatus && matchDate;
+    });
+  }, [reports, debouncedSearch, filterStatus, startDate, endDate]);
 
-  const columns = [
+  const handleNavigateReport = useCallback((id) => {
+    navigate(`/reports/${id}`);
+  }, [navigate]);
+
+  const columns = useMemo(() => [
     { header: 'Report ID', render: (row) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.reportNumber}</span> },
     { header: 'Description', render: (row) => <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.defectDescription}</div> },
     { header: 'Component', accessor: 'componentName' },
@@ -69,8 +75,8 @@ export default function ReportsPage() {
     { header: 'Status', render: (row) => <span className={`badge badge-${STATUS_COLORS[row.status] || 'draft'}`}>{STATUS_LABELS[row.status] || row.status}</span> },
     { header: 'Raised By', render: (row) => row.raisedBy?.name || '—' },
     { header: 'Date', render: (row) => <span style={{ color: 'var(--text-muted)' }}>{new Date(row.createdAt).toLocaleDateString('en-IN')}</span> },
-    { header: 'Action', render: (row) => <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/reports/${row.id}`)}>View</button> }
-  ];
+    { header: 'Action', render: (row) => <button className="btn btn-ghost btn-sm" onClick={() => handleNavigateReport(row.id)}>View</button> }
+  ], [handleNavigateReport]);
 
   return (
     <>

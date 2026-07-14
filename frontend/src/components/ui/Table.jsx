@@ -1,4 +1,6 @@
-export function Table({ columns, data = [], emptyMessage = 'No data available', loading = false }) {
+import { memo } from 'react';
+
+export const Table = memo(function Table({ columns, data = [], emptyMessage = 'No data available', loading = false }) {
   if (loading) {
     return (
       <div className="table-wrap">
@@ -56,4 +58,4 @@ export function Table({ columns, data = [], emptyMessage = 'No data available', 
       </table>
     </div>
   );
-}
+});
