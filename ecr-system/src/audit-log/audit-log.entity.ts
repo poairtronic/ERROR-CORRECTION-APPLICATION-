@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { User } from '../users/user.entity';
@@ -28,6 +29,7 @@ export class AuditLog {
   @JoinColumn({ name: 'report_id' })
   report: DefectReport;
 
+  @Index()
   @Column({ name: 'report_id' })
   reportId: string;
 
@@ -35,6 +37,7 @@ export class AuditLog {
   @JoinColumn({ name: 'actor_id' })
   actor: User;
 
+  @Index()
   @Column({ name: 'actor_id', nullable: true })
   actorId: string;
 

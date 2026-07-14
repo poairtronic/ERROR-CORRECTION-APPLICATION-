@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
   OnModuleInit,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
@@ -259,12 +260,21 @@ export class DefectReportsService implements OnModuleInit {
     throw new BadRequestException('This role cannot raise a defect report');
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actor?: any) {
     const report = await this.reportsRepo.findOne({
       where: { id },
       relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
     });
     if (!report) throw new NotFoundException('Defect report not found');
+
+    if (actor && actor.role === 'OPERATOR') {
+      const isCreator = report.raisedById === actor.id;
+      const isAssigned = report.inspectionDetail?.responsibleId === actor.id;
+      if (!isCreator && !isAssigned) {
+        throw new ForbiddenException('You do not have permission to access this report');
+      }
+    }
+
     return report;
   }
 

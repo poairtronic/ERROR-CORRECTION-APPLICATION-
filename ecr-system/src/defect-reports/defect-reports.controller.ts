@@ -51,8 +51,8 @@ export class DefectReportsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user) {
+    return this.service.findOne(id, user);
   }
 
   @Patch(':id/inspect')

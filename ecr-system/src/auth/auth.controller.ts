@@ -3,12 +3,14 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Response, Request } from 'express';
 import { LoginDto } from './dto/login.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ auth: { limit: 20, ttl: 60000 } })
   @HttpCode(200)
   login(
     @Body() body: LoginDto,

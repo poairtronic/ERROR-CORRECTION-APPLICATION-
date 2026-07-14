@@ -7,6 +7,8 @@ import { SalaryDeduction } from './salary-deduction.entity';
 import { CreateSalaryDeductionDto, UpdateSalaryDeductionStatusDto } from './dto/salary-deduction.dto';
 import { AuditLog, AuditActionType } from '../audit-log/audit-log.entity';
 
+import { User } from '../users/user.entity';
+
 @Injectable()
 export class SalaryDeductionService {
   constructor(
@@ -14,6 +16,8 @@ export class SalaryDeductionService {
     private readonly deductionRepo: Repository<SalaryDeduction>,
     @InjectRepository(AuditLog)
     private readonly auditRepo: Repository<AuditLog>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly events: EventEmitter2,
   ) {}
 
@@ -106,6 +110,39 @@ export class SalaryDeductionService {
       return;
     }
 
+    let resolvedOperatorId: string | null = null;
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    
+    if (uuidRegex.test(operatorId)) {
+      const user = await this.userRepo.findOne({ where: { id: operatorId } });
+      if (user) {
+        resolvedOperatorId = user.id;
+      }
+    }
+
+    if (!resolvedOperatorId) {
+      // 2. Email lookup
+      let user = await this.userRepo.findOne({ where: { email: operatorId } });
+      
+      // 3. Employee ID (salaryRefId) lookup
+      if (!user) {
+        user = await this.userRepo.findOne({ where: { salaryRefId: operatorId } });
+      }
+      
+      // 4 & 5. Username / Full Name lookup
+      if (!user) {
+        user = await this.userRepo.findOne({ where: { name: operatorId } });
+      }
+
+      if (user) {
+        resolvedOperatorId = user.id;
+      }
+    }
+
+    if (!resolvedOperatorId) {
+      console.warn(`[SALARY_DEDUCTION_WARN] Operator user not found for identifier: ${operatorId}. Creating deduction without operator ID.`);
+    }
+
     const amount = report.smReview?.lossAmount ?? 0;
     const reason = `Auto-created deduction for Defect Report ${report.reportNumber}. Notes: ${report.smReview?.decisionNote || ''}`;
     
@@ -119,7 +156,7 @@ export class SalaryDeductionService {
 
         const record = deductionRepo.create({
           reportId: report.id,
-          operatorId,
+          operatorId: resolvedOperatorId || undefined,
           amount,
           reason,
           monthRef,
@@ -136,7 +173,7 @@ export class SalaryDeductionService {
             actionType: AuditActionType.SALARY_DEDUCTION_CREATED,
             oldValue: '',
             newValue: saved.id,
-            note: `Auto-created salary deduction for operator ${operatorId} with amount ${amount}`,
+            note: `Auto-created salary deduction for operator ${resolvedOperatorId || 'Unknown'} with amount ${amount}`,
           }),
         );
 
