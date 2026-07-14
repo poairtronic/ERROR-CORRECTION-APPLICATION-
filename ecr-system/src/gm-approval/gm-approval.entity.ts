@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { User } from '../users/user.entity';
@@ -26,6 +27,7 @@ export class GmApproval {
   @JoinColumn({ name: 'gm_id' })
   generalManager: User;
 
+  @Index()
   @Column({ name: 'gm_id', nullable: true })
   gmId: string;
 

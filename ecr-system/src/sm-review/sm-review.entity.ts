@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { User } from '../users/user.entity';
@@ -26,6 +27,7 @@ export class SmReview {
   @JoinColumn({ name: 'sm_id' })
   seniorManager: User;
 
+  @Index()
   @Column({ name: 'sm_id', nullable: true })
   smId: string;
 
