@@ -25,9 +25,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exception.getResponse();
     }
 
+    const correlationId = request['correlationId'] || 'N/A';
+
     // Log the error detail internally
     this.logger.error(
-      `${request.method} ${request.url} - Status: ${status} - Error: ${
+      `[${correlationId}] ${request.method} ${request.url} - Status: ${status} - Error: ${
         exception instanceof Error ? exception.message : JSON.stringify(exception)
       }`,
       exception instanceof Error ? exception.stack : '',
@@ -39,6 +41,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
+      correlationId,
       message: typeof message === 'string' ? message : (message as any)?.message || 'Internal server error',
       error: typeof message === 'string' ? message : (message as any)?.message || 'Internal server error',
     });
