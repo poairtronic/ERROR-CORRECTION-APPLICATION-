@@ -41,7 +41,7 @@ test.describe('ECR System End-to-End Tests', () => {
 
     // 3. Fill admin credentials
     await page.fill('input[placeholder="admin@velan.com"]', 'admin');
-    await page.fill('input[type="password"]', 'Password@123');
+    await page.fill('input[type="password"]', 'admin123');
 
     // 4. Submit
     await page.click('button[type="submit"]');
