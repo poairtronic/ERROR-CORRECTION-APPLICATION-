@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../users/user.entity';
+import { LoginHistory } from '../users/login-history.entity';
 import * as bcrypt from 'bcrypt';
 import { UnauthorizedException } from '@nestjs/common';
 
@@ -10,6 +11,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let mockUsersRepo: any;
   let mockJwtService: any;
+  let mockLoginHistoryRepo: any;
 
   beforeEach(async () => {
     mockUsersRepo = {
@@ -20,6 +22,11 @@ describe('AuthService', () => {
       getOne: jest.fn(),
     };
 
+    mockLoginHistoryRepo = {
+      create: jest.fn().mockImplementation((dto) => dto),
+      save: jest.fn().mockImplementation((record) => Promise.resolve(record)),
+    };
+
     mockJwtService = {
       sign: jest.fn(),
     };
@@ -28,6 +35,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: mockUsersRepo },
+        { provide: getRepositoryToken(LoginHistory), useValue: mockLoginHistoryRepo },
         { provide: JwtService, useValue: mockJwtService },
       ],
     }).compile();
