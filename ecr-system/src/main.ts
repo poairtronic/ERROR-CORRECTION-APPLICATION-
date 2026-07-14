@@ -39,8 +39,13 @@ async function bootstrap() {
   // Global Interceptors for standard response and timeout protection
   const { TimeoutInterceptor } = await import('./common/interceptors/timeout.interceptor');
   const { CorrelationInterceptor } = await import('./common/interceptors/correlation.interceptor');
+  const { MetricsInterceptor } = await import('./common/interceptors/metrics.interceptor');
+  const { MonitoringService } = await import('./monitoring/monitoring.service');
+  const monitoringService = app.get(MonitoringService);
+  
   app.useGlobalInterceptors(
     new CorrelationInterceptor(),
+    new MetricsInterceptor(monitoringService),
     new TimeoutInterceptor(),
   );
 

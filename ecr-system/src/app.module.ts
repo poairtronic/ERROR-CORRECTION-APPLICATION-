@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { DefectReportsModule } from './defect-reports/defect-reports.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MasterDataModule } from './master-data/master-data.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 import { ComponentIssueModule } from './component-issue/component-issue.module';
 import { VendorFaultModule } from './vendor-fault/vendor-fault.module';
@@ -69,6 +70,7 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
     AnalyticsModule,
     EmailModule,
     EmailMonitoringModule,
+    MonitoringModule,
   ],
   providers: [
     {
