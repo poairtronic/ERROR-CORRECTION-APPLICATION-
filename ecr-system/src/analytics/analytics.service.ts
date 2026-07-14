@@ -153,7 +153,7 @@ export class AnalyticsService {
 
   async getVendorIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin(Vendor, 'v', 'v.id = CAST(i.responsibleId AS uuid)')
+      .leftJoin(Vendor, 'v', "v.id = CASE WHEN i.responsibleId ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN CAST(i.responsibleId AS uuid) ELSE NULL END")
       .select('v.name', 'vendor')
       .addSelect('COUNT(i.id)', 'defects')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.VENDOR })
@@ -164,7 +164,7 @@ export class AnalyticsService {
 
   async getOperatorIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin(Operator, 'o', 'o.id = CAST(i.responsibleId AS uuid)')
+      .leftJoin(Operator, 'o', "o.id = CASE WHEN i.responsibleId ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN CAST(i.responsibleId AS uuid) ELSE NULL END")
       .select('o.name', 'operator')
       .addSelect('COUNT(i.id)', 'reportsRaised')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.OPERATOR })
@@ -176,7 +176,7 @@ export class AnalyticsService {
 
   async getMachineIntelligence() {
     return this.inspectRepo.createQueryBuilder('i')
-      .leftJoin(Component, 'c', 'c.id = CAST(i.responsibleId AS uuid)')
+      .leftJoin(Component, 'c', "c.id = CASE WHEN i.responsibleId ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN CAST(i.responsibleId AS uuid) ELSE NULL END")
       .select('c.name', 'machine')
       .addSelect('COUNT(i.id)', 'failures')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.MACHINE })
