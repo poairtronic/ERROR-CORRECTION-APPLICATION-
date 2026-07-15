@@ -237,18 +237,6 @@ export default function ReportDetailPage() {
       return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
     });
   };
-
-  const handleSmStageCostChange = (stage, val) => {
-    const numericVal = val === '' ? '' : Math.round(Number(val));
-    setSmData(d => {
-      const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
-      const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
-      const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-      const activeStages = getActiveStages(template, failedStage);
-      return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
-    });
-  };
-
   const openSmReviewModal = () => {
     setSmData({
       loopholeNote: report.smReview?.loopholeNote || '', 

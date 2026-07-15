@@ -22,10 +22,17 @@ export class ImageUploadService {
         {
           folder: 'ecr-system',
           resource_type: 'image',
-          quality: 'auto:good', // Compression
+          quality: 'auto:good',
         },
         (error: UploadApiErrorResponse, result: UploadApiResponse) => {
-          if (error) return reject(error);
+          if (error) {
+            if (error.message?.includes?.('does not support image input')) {
+              return reject(new BadRequestException(
+                `Cannot read "${file.originalname}" (this model does not support image input). Please use a different model or upload a text-based file instead.`
+              ));
+            }
+            return reject(error);
+          }
           resolve(result.secure_url);
         },
       );
