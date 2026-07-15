@@ -22,6 +22,7 @@ export default function NewReportPage() {
   const [components, setComponents] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [operators, setOperators] = useState([]);
+  const [errorTypes, setErrorTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState(null); // 'REWORK' | 'REJECTION'
   const [form, setForm] = useState({
@@ -54,11 +55,13 @@ export default function NewReportPage() {
     Promise.all([
       api.get('/master-data/components').catch(() => ({ data: [] })),
       api.get('/master-data/vendors').catch(() => ({ data: [] })),
-      api.get('/master-data/operators').catch(() => ({ data: [] }))
-    ]).then(([c, v, o]) => { 
+      api.get('/master-data/operators').catch(() => ({ data: [] })),
+      api.get('/master-data/error-types').catch(() => ({ data: [] }))
+    ]).then(([c, v, o, et]) => { 
       setComponents(c.data || []); 
       setVendors(v.data || []); 
       setOperators(o.data || []);
+      setErrorTypes(et.data || []);
     });
   }, [user]);
 
@@ -253,6 +256,18 @@ export default function NewReportPage() {
                   </datalist>
                 </div>
                 <div className="form-group">
+                  <label>Error Type (Optional)</label>
+                  <input 
+                    list="errortype-list" 
+                    value={form.errorTypeId} 
+                    onChange={e => set('errorTypeId', e.target.value)} 
+                    placeholder="Select or type error type..." 
+                  />
+                  <datalist id="errortype-list">
+                    {errorTypes.map(et => <option key={et.id} value={et.name} />)}
+                  </datalist>
+                </div>
+                <div className="form-group">
                   <label>SC Number *</label>
                   <input value={form.scNo} onChange={e => set('scNo', e.target.value)} placeholder="e.g. SC-10294" required />
                 </div>
@@ -298,6 +313,18 @@ export default function NewReportPage() {
                   />
                   <datalist id="component-list">
                     {components.map(c => <option key={c.id} value={c.name} />)}
+                  </datalist>
+                </div>
+                <div className="form-group">
+                  <label>Error Type (Optional)</label>
+                  <input 
+                    list="errortype-list" 
+                    value={form.errorTypeId} 
+                    onChange={e => set('errorTypeId', e.target.value)} 
+                    placeholder="Select or type error type..." 
+                  />
+                  <datalist id="errortype-list">
+                    {errorTypes.map(et => <option key={et.id} value={et.name} />)}
                   </datalist>
                 </div>
                 <div className="form-group">

@@ -61,6 +61,28 @@ export default function ReportDetailPage() {
     }
   });
 
+  const { data: components = EMPTY_ARRAY } = useQuery({
+    queryKey: ['components'],
+    queryFn: async () => {
+      try {
+        return (await api.get('/master-data/components')).data || [];
+      } catch (err) {
+        return [];
+      }
+    }
+  });
+
+  const { data: errorTypes = EMPTY_ARRAY } = useQuery({
+    queryKey: ['error-types'],
+    queryFn: async () => {
+      try {
+        return (await api.get('/master-data/error-types')).data || [];
+      } catch (err) {
+        return [];
+      }
+    }
+  });
+
   const actionMutation = useMutation({
     mutationFn: async ({ endpoint, body }) => api.patch(`/defect-reports/${id}/${endpoint}`, body),
     onSuccess: () => {
@@ -303,15 +325,15 @@ export default function ReportDetailPage() {
   const canEdit = (fieldKey) => {
     if (!fieldKey) return false;
     if (role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL') {
-      const gmAllowed = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount'];
+      const gmAllowed = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
       return gmAllowed.includes(fieldKey);
     }
     if (role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW') {
-      const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts'];
+      const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
       return smAllowed.includes(fieldKey);
     }
     if (role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW') {
-      const accountsAllowed = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts'];
+      const accountsAllowed = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
       return accountsAllowed.includes(fieldKey);
     }
     return false;
@@ -383,6 +405,7 @@ export default function ReportDetailPage() {
               {(report.inspectionType === 'REWORK' ? [
                 ['Description', report.defectDescription, 'defectDescription'],
                 ['Component', report.componentName || '—', 'componentName'],
+                ['Error Type', report.errorTypeName || report.inspectionDetail?.errorType || '—', 'errorTypeName'],
                 ['SC Number', report.scNo || '—', 'scNo'],
                 ['PO Number', report.poNo || '—', 'poNo'],
                 ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
@@ -406,6 +429,7 @@ export default function ReportDetailPage() {
               ] : [
                 ['Description', report.defectDescription, 'defectDescription'],
                 ['Component', report.componentName || '—', 'componentName'],
+                ['Error Type', report.errorTypeName || report.inspectionDetail?.errorType || '—', 'errorTypeName'],
                 ['SC Number', report.scNo || '—', 'scNo'],
                 ['PO Number', report.poNo || '—', 'poNo'],
                 ['Stage of Failure', (
@@ -507,6 +531,34 @@ export default function ReportDetailPage() {
                           </div>
                         ) : fieldKey === 'accountsDescription' ? (
                           <textarea className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1, minHeight: 60 }} rows={3} />
+                        ) : fieldKey === 'componentName' ? (
+                          <div style={{ flex: 1, position: 'relative' }}>
+                            <input 
+                              list="edit-component-list" 
+                              className="form-control" 
+                              autoFocus 
+                              value={editValue} 
+                              onChange={e => setEditValue(e.target.value)} 
+                              style={{ width: '100%' }} 
+                            />
+                            <datalist id="edit-component-list">
+                              {components.map(c => <option key={c.id} value={c.name} />)}
+                            </datalist>
+                          </div>
+                        ) : fieldKey === 'errorTypeName' ? (
+                          <div style={{ flex: 1, position: 'relative' }}>
+                            <input 
+                              list="edit-errortype-list" 
+                              className="form-control" 
+                              autoFocus 
+                              value={editValue} 
+                              onChange={e => setEditValue(e.target.value)} 
+                              style={{ width: '100%' }} 
+                            />
+                            <datalist id="edit-errortype-list">
+                              {errorTypes.map(et => <option key={et.id} value={et.name} />)}
+                            </datalist>
+                          </div>
                         ) : (
                           <input className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1 }} />
                         )}
@@ -548,6 +600,80 @@ export default function ReportDetailPage() {
               ))}
             </div>
           </div>
+
+          {/* Sequential Workflow Notes Card */}
+          {(() => {
+            const commentsTimeline = [];
+
+            // 1. Inspector comments
+            const inspectorDesc = report.inspectionDetail?.reworkDescription || report.inspectionDetail?.rejectionDescription || report.reworkDescription || report.rejectionDescription;
+            if (inspectorDesc && inspectorDesc !== '—') {
+              commentsTimeline.push({
+                role: 'Inspector',
+                title: '1. Inspector Review Remarks',
+                content: inspectorDesc,
+                date: report.inspectionDetail?.reviewedAt || report.createdAt,
+              });
+            }
+
+            // 2. Accounts verification remarks
+            const accountsDesc = report.accountsDescription || report.inspectionDetail?.costRemarks;
+            const hasAccountsDesc = accountsDesc && accountsDesc !== '—' && accountsDesc !== 'Verified';
+            if (hasAccountsDesc) {
+              commentsTimeline.push({
+                role: 'Accounts',
+                title: '2. Accounts Cost Verification Remarks',
+                content: accountsDesc,
+                date: report.inspectionDetail?.reviewedAt || report.updatedAt,
+              });
+            }
+
+            // 3. Senior Manager decision note
+            const smDesc = report.smReview?.decisionNote || report.smReview?.loopholeNote;
+            const hasSmDesc = smDesc && smDesc !== '—';
+            if (hasSmDesc) {
+              const loophole = report.smReview?.loopholeNote ? `\nLoophole Identified: ${report.smReview.loopholeNote}` : '';
+              commentsTimeline.push({
+                role: 'Senior Manager',
+                title: '3. Senior Manager Decision Remarks',
+                content: `${report.smReview?.decisionNote || ''}${loophole}`,
+                date: report.smReview?.reviewedAt,
+              });
+            }
+
+            // 4. General Manager approval remarks
+            const gmDesc = report.gmApproval?.remarks;
+            const hasGmDesc = gmDesc && gmDesc !== '—';
+            if (hasGmDesc) {
+              commentsTimeline.push({
+                role: 'General Manager',
+                title: '4. General Manager Decision Remarks',
+                content: gmDesc,
+                date: report.gmApproval?.approvedAt,
+              });
+            }
+
+            if (commentsTimeline.length === 0) return null;
+
+            return (
+              <div className="card" style={{ marginTop: 20 }}>
+                <div className="card-title">Approval & Verification Comments (Sequential)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {commentsTimeline.map((c, i) => (
+                    <div key={i} style={{ borderBottom: i < commentsTimeline.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: i < commentsTimeline.length - 1 ? 16 : 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <strong style={{ fontSize: 13, color: 'var(--primary)' }}>{c.title}</strong>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {c.date ? new Date(c.date).toLocaleString('en-IN') : ''}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13, whiteSpace: 'pre-wrap', color: 'var(--text)' }}>{c.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {report.attachments?.length > 0 && (
             <div className="card" style={{ marginTop: 20 }}>
@@ -721,6 +847,18 @@ export default function ReportDetailPage() {
                 <textarea value={inspectData.reworkDescription} onChange={e => setInspectData({...inspectData, reworkDescription: e.target.value})} placeholder="Describe the rework in detail…" required rows={4} />
               </div>
               <div className="form-group">
+                <label>Error Type (Optional)</label>
+                <input 
+                  list="inspect-errortype-list" 
+                  value={inspectData.errorType || ''} 
+                  onChange={e => setInspectData({...inspectData, errorType: e.target.value})} 
+                  placeholder="Select or type error type..." 
+                />
+                <datalist id="inspect-errortype-list">
+                  {errorTypes.map(et => <option key={et.id} value={et.name} />)}
+                </datalist>
+              </div>
+              <div className="form-group">
                 <label>Cost Estimation ($) *</label>
                 <input type="number" min="0" step="1" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
               </div>
@@ -806,6 +944,18 @@ export default function ReportDetailPage() {
               <div className="form-group full">
                 <label>Rejection Description *</label>
                 <textarea value={inspectData.rejectionDescription} onChange={e => setInspectData({...inspectData, rejectionDescription: e.target.value})} placeholder="Describe the rejection reasons/details…" required rows={4} />
+              </div>
+              <div className="form-group">
+                <label>Error Type (Optional)</label>
+                <input 
+                  list="inspect-errortype-list" 
+                  value={inspectData.errorType || ''} 
+                  onChange={e => setInspectData({...inspectData, errorType: e.target.value})} 
+                  placeholder="Select or type error type..." 
+                />
+                <datalist id="inspect-errortype-list">
+                  {errorTypes.map(et => <option key={et.id} value={et.name} />)}
+                </datalist>
               </div>
 
               {/* Stage Costs Entry list */}

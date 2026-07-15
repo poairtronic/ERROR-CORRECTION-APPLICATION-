@@ -571,6 +571,8 @@ export class DefectReportsService implements OnModuleInit {
         'lossAmount',
         'decisionNote',
         'rejectionStageCosts',
+        'componentName',
+        'errorTypeName',
       ];
 
       if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
@@ -578,9 +580,9 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       if (actor.role === Role.GENERAL_MANAGER) {
-        const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount'];
+        const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
         if (!gmAllowedFields.includes(field)) {
-          throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, or lossAmount');
+          throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, lossAmount, componentName, or errorTypeName');
         }
         if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
           throw new BadRequestException('General Manager can only edit reports pending GM approval');
@@ -588,9 +590,9 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       if (actor.role === Role.ACCOUNTS) {
-        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts'];
+        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
         if (!accountsAllowedFields.includes(field)) {
-          throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, or rejectionStageCosts');
+          throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, rejectionStageCosts, componentName, or errorTypeName');
         }
         const allowedAccountsStatuses = [
           ReportStatus.PENDING_ACCOUNTS_REVIEW,
@@ -656,9 +658,14 @@ export class DefectReportsService implements OnModuleInit {
           (report as any)[field] = newValue;
           await reportsRepo.save(report);
         }
-        if (report.inspectionDetail && field in report.inspectionDetail) {
-          (report.inspectionDetail as any)[field] = newValue;
-          await inspectionRepo.save(report.inspectionDetail);
+        if (report.inspectionDetail) {
+          if (field === 'errorTypeName') {
+            report.inspectionDetail.errorType = newValue;
+            await inspectionRepo.save(report.inspectionDetail);
+          } else if (field in report.inspectionDetail) {
+            (report.inspectionDetail as any)[field] = newValue;
+            await inspectionRepo.save(report.inspectionDetail);
+          }
         }
       }
 

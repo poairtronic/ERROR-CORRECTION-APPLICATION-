@@ -289,7 +289,7 @@ describe('Defect Report Workflow Integration', () => {
 
     await expect(
       reportsService.editField('report-uuid', 'defectDescription', 'New description', accountsActor)
-    ).rejects.toThrow('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, or rejectionStageCosts');
+    ).rejects.toThrow('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, rejectionStageCosts, componentName, or errorTypeName');
   });
 
   it('should prevent Accounts from editing reports when not in PENDING_ACCOUNTS_REVIEW status', async () => {
