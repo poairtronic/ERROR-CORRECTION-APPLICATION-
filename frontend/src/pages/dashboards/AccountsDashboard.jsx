@@ -25,21 +25,22 @@ export default function AccountsDashboard() {
     staleTime: 30000
   });
 
-  const approvedReports = reports.filter(r => ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(r.status));
+  const pendingVerification = reports.filter(r => r.status === 'PENDING_ACCOUNTS_REVIEW');
+  const finalQueue = reports.filter(r => ['APPROVED', 'REJECTED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(r.status));
   
   const totalCost = kpis?.totalCost || 0;
   const vendorRecoveries = kpis?.totalLoss || 0;
   const isLoading = reportsLoading || kpisLoading;
 
-  const columns = [
+  const pendingColumns = [
     { label: 'Report ID', key: 'id' },
     { label: 'Component', key: 'componentName' },
     { 
-      label: 'Cost Impact', 
+      label: 'Initial Cost Est.', 
       key: 'costEstimate',
       render: (r) => (
-        <span style={{ color: r.inspectionDetail?.costEstimate ? '#f87171' : 'inherit' }}>
-          {r.inspectionDetail?.costEstimate ? formatCurrency(r.inspectionDetail.costEstimate) : 'Pending Inspect'}
+        <span>
+          {r.inspectionDetail?.costEstimate ? formatCurrency(r.inspectionDetail.costEstimate) : '—'}
         </span>
       )
     },
@@ -47,6 +48,26 @@ export default function AccountsDashboard() {
       label: 'Responsible Party', 
       key: 'responsibleParty',
       render: (r) => r.inspectionDetail?.responsibleParty || '—'
+    },
+    { label: 'Date Raised', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
+  ];
+
+  const finalColumns = [
+    { label: 'Report ID', key: 'id' },
+    { label: 'Component', key: 'componentName' },
+    { 
+      label: 'Cost Impact', 
+      key: 'costEstimate',
+      render: (r) => (
+        <span style={{ color: r.inspectionDetail?.costEstimate ? '#f87171' : 'inherit' }}>
+          {r.inspectionDetail?.costEstimate ? formatCurrency(r.inspectionDetail.costEstimate) : '—'}
+        </span>
+      )
+    },
+    { 
+      label: 'Status', 
+      key: 'status',
+      render: (r) => <span className={`badge badge-${r.status.toLowerCase()}`}>{r.status}</span>
     },
     { label: 'Date Closed', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
   ];
@@ -63,6 +84,11 @@ export default function AccountsDashboard() {
       <div className="page-content">
         <div className="stats-grid">
           <div className="stat-card">
+            <div className="stat-label">Pending Verification</div>
+            <div className="stat-value" style={{ color: '#fbbf24' }}>{pendingVerification.length}</div>
+            <div className="stat-desc">Awaiting cost check</div>
+          </div>
+          <div className="stat-card">
             <div className="stat-label">Total ECR Cost</div>
             <div className="stat-value" style={{ color: '#f87171' }}>{formatCurrency(totalCost)}</div>
             <div className="stat-desc">Year to Date</div>
@@ -73,19 +99,31 @@ export default function AccountsDashboard() {
             <div className="stat-desc">System wide loss</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Approved Reports</div>
-            <div className="stat-value" style={{ color: 'var(--primary-light)' }}>{approvedReports.length}</div>
-            <div className="stat-desc">Closed with costs</div>
+            <div className="stat-label">Finalized Reports</div>
+            <div className="stat-value" style={{ color: 'var(--primary-light)' }}>{finalQueue.length}</div>
+            <div className="stat-desc">Approved & Rejected</div>
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-title"><FiTrendingUp /> Recent Financial Impacts</div>
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div className="card-title"><FiTrendingUp /> Pending Cost Verification Queue</div>
           {isLoading ? <div className="spinner" /> : (
             <DashboardQueueTable 
-              data={approvedReports.slice(0, 10)} 
-              columns={columns} 
-              emptyMessage="No approved reports available."
+              data={pendingVerification} 
+              columns={pendingColumns} 
+              emptyMessage="No reports pending cost verification."
+              actionLabel="Verify" 
+            />
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-title"><FiTrendingUp /> Accounts Final Queue (Read-only)</div>
+          {isLoading ? <div className="spinner" /> : (
+            <DashboardQueueTable 
+              data={finalQueue} 
+              columns={finalColumns} 
+              emptyMessage="No finalized reports available."
               actionLabel="View" 
             />
           )}

@@ -96,7 +96,13 @@ export class DefectReportsService implements OnModuleInit {
     );
   }
 
-  private emitStatusChange(report: DefectReport) {
+  private emitStatusChange(
+    report: DefectReport,
+    fromStatus?: ReportStatus,
+    actor?: ActingUser,
+    actionTaken?: string,
+    comments?: string,
+  ) {
     // NotificationListener resolves recipients by new status and sends app+email (queued via cron retry)
     // Wrapped in try-catch so notification/email failures never crash report operations
     try {
@@ -104,6 +110,10 @@ export class DefectReportsService implements OnModuleInit {
         reportId: report.id,
         reportNumber: report.reportNumber,
         status: report.status,
+        fromStatus,
+        actor,
+        actionTaken,
+        comments,
       });
     } catch (error: any) {
       console.error(
@@ -182,7 +192,7 @@ export class DefectReportsService implements OnModuleInit {
             'inlineInspection is required when Inspector raises a report',
           );
         }
-        report.status = ReportStatus.PENDING_SM_REVIEW;
+        report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
         await reportsRepo.save(report);
         await inspectionRepo.save(
           inspectionRepo.create({
@@ -248,7 +258,7 @@ export class DefectReportsService implements OnModuleInit {
       
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 1] Report Created: ${report.reportNumber} (ID: ${report.id}, Status: ${report.status})`);
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Event Emitted: report.status.changed for status ${report.status}`);
-      this.emitStatusChange(report);
+      this.emitStatusChange(report, ReportStatus.DRAFT, actor, 'Report raised', 'Report raised');
       return report;
     });
   }
@@ -359,10 +369,10 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       const from = report.status;
-      report.status = ReportStatus.PENDING_SM_REVIEW;
+      report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
       await reportsRepo.save(report);
       await this.logStatusChange(report.id, actor, from, report.status, 'Inspection complete', manager);
-      this.emitStatusChange(report);
+      this.emitStatusChange(report, from, actor, 'Inspection complete', 'Inspection complete');
       return report;
     });
   }
@@ -471,7 +481,7 @@ export class DefectReportsService implements OnModuleInit {
       report.status = dto.forwardToGm ? ReportStatus.PENDING_GM_APPROVAL : ReportStatus.REJECTED;
       await reportsRepo.save(report);
       await this.logStatusChange(report.id, actor, from, report.status, dto.decisionNote, manager);
-      this.emitStatusChange(report);
+      this.emitStatusChange(report, from, actor, dto.forwardToGm ? 'Senior Manager Review Approved' : 'Senior Manager Review Rejected', dto.decisionNote);
       return report;
     });
   }
@@ -514,7 +524,7 @@ export class DefectReportsService implements OnModuleInit {
       report.status = dto.approved ? ReportStatus.APPROVED : ReportStatus.REJECTED;
       await reportsRepo.save(report);
       await this.logStatusChange(report.id, actor, from, report.status, dto.remarks, manager);
-      this.emitStatusChange(report);
+      this.emitStatusChange(report, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks);
 
       if (dto.approved && report.inspectionDetail) {
         if (report.inspectionDetail.responsibleParty === ResponsibleParty.OPERATOR) {
@@ -578,19 +588,15 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       if (actor.role === Role.ACCOUNTS) {
-        const accountsAllowedFields = ['costEstimate', 'lossAmount', 'accountsDescription', 'rejectionStageCosts'];
+        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks'];
         if (!accountsAllowedFields.includes(field)) {
-          throw new BadRequestException('Accounts can only edit costEstimate, lossAmount, accountsDescription, or rejectionStageCosts');
+          throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, or costRemarks');
         }
         const allowedAccountsStatuses = [
-          ReportStatus.APPROVED,
-          ReportStatus.COMPONENTS_ISSUED,
-          ReportStatus.REWORK_IN_PROGRESS,
-          ReportStatus.NEW_PRODUCTION,
-          ReportStatus.CLOSED,
+          ReportStatus.PENDING_ACCOUNTS_REVIEW,
         ];
         if (!allowedAccountsStatuses.includes(report.status as any)) {
-          throw new BadRequestException('Accounts can only edit reports that are approved or beyond');
+          throw new BadRequestException('Accounts can only edit reports that are pending accounts review');
         }
       }
 
@@ -607,9 +613,26 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
+      const accountsFields = ['materialCost', 'labourCost', 'otherCost', 'costRemarks'];
       let oldValue: any;
-      
-      if (inspectFields.includes(field)) {
+
+      if (accountsFields.includes(field)) {
+        if (report.inspectionDetail) {
+          oldValue = (report.inspectionDetail as any)[field];
+          if (field === 'costRemarks') {
+            report.inspectionDetail.costRemarks = newValue;
+          } else {
+            (report.inspectionDetail as any)[field] = Number(newValue);
+            const mat = Number(report.inspectionDetail.materialCost || 0);
+            const lab = Number(report.inspectionDetail.labourCost || 0);
+            const oth = Number(report.inspectionDetail.otherCost || 0);
+            report.inspectionDetail.costEstimate = mat + lab + oth;
+          }
+          await inspectionRepo.save(report.inspectionDetail);
+        } else {
+          throw new BadRequestException('Cannot edit cost because report has not been inspected');
+        }
+      } else if (inspectFields.includes(field)) {
         if (report.inspectionDetail) {
           oldValue = (report.inspectionDetail as any)[field];
           (report.inspectionDetail as any)[field] = Number(newValue);
@@ -735,8 +758,9 @@ export class DefectReportsService implements OnModuleInit {
       
       // Workflow State Machine rules
       const validTransitions: Record<ReportStatus, ReportStatus[]> = {
-        [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
-        [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_SM_REVIEW],
+        [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
+        [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW],
+        [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW],
         [ReportStatus.PENDING_SM_REVIEW]: [ReportStatus.PENDING_GM_APPROVAL, ReportStatus.REJECTED],
         [ReportStatus.PENDING_GM_APPROVAL]: [ReportStatus.APPROVED, ReportStatus.REJECTED],
         [ReportStatus.APPROVED]: [ReportStatus.COMPONENTS_ISSUED, ReportStatus.CLOSED],
@@ -746,6 +770,12 @@ export class DefectReportsService implements OnModuleInit {
         [ReportStatus.REJECTED]: [],
         [ReportStatus.CLOSED]: [],
       };
+
+      if (actor.role === Role.ACCOUNTS) {
+        if (report.status !== ReportStatus.PENDING_ACCOUNTS_REVIEW || newStatus !== ReportStatus.PENDING_SM_REVIEW) {
+          throw new BadRequestException('Accounts can only submit reports pending accounts review to Senior Manager review.');
+        }
+      }
 
       const allowedNext = validTransitions[report.status];
       if (!allowedNext || !allowedNext.includes(newStatus)) {
@@ -757,7 +787,7 @@ export class DefectReportsService implements OnModuleInit {
       
       await reportsRepo.save(report);
       await this.logStatusChange(report.id, actor, from, report.status, note || 'Status transitioned manually', manager);
-      this.emitStatusChange(report);
+      this.emitStatusChange(report, from, actor, 'Status transitioned manually', note);
       
       return report;
     });
@@ -800,7 +830,7 @@ export class DefectReportsService implements OnModuleInit {
         }),
       );
       
-      this.emitStatusChange(report);
+      this.emitStatusChange(report, from, actor, 'Components Issued', dto.remarks || 'Components were issued by the Store Manager.');
       
       return report;
     });

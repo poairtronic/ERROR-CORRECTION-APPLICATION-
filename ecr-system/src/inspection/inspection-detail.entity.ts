@@ -57,6 +57,18 @@ export class InspectionDetail {
   @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
   costEstimate: number;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, nullable: true })
+  materialCost: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, nullable: true })
+  labourCost: number;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0, nullable: true })
+  otherCost: number;
+
+  @Column({ type: 'text', nullable: true })
+  costRemarks: string;
+
   @Column({ type: 'decimal', precision: 8, scale: 2, default: 0, nullable: true })
   timeEstimateHours: number;
 

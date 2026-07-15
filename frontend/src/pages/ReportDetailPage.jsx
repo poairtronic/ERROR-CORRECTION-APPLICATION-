@@ -85,46 +85,51 @@ export default function ReportDetailPage() {
   });
 
   const [accountsData, setAccountsData] = useState({
-    costEstimate: '',
+    materialCost: '',
+    labourCost: '',
+    otherCost: '',
     lossAmount: '',
-    accountsDescription: '',
-    rejectionStageCosts: {}
+    costRemarks: ''
   });
 
   const openAccountsReviewModal = () => {
     setAccountsData({
-      costEstimate: report.inspectionDetail?.costEstimate ?? 0,
+      materialCost: report.inspectionDetail?.materialCost ?? 0,
+      labourCost: report.inspectionDetail?.labourCost ?? 0,
+      otherCost: report.inspectionDetail?.otherCost ?? 0,
       lossAmount: report.inspectionDetail?.lossAmount ?? '',
-      accountsDescription: report.accountsDescription || '',
-      rejectionStageCosts: report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {}
+      costRemarks: report.inspectionDetail?.costRemarks ?? ''
     });
     setModal('accounts-review');
   };
 
-  const handleAccountsStageCostChange = (stage, val) => {
-    const numericVal = val === '' ? '' : Number(val);
-    setAccountsData(d => {
-      const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
-      const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
-      const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-      const activeStages = getActiveStages(template, failedStage);
-      return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
-    });
-  };
-
   const handleAccountsSave = async () => {
     try {
-      await api.patch(`/defect-reports/${id}/field`, { field: 'costEstimate', value: String(accountsData.costEstimate) });
-      await api.patch(`/defect-reports/${id}/field`, { field: 'lossAmount', value: String(accountsData.lossAmount) });
-      await api.patch(`/defect-reports/${id}/field`, { field: 'accountsDescription', value: accountsData.accountsDescription });
-      if (report.inspectionType === 'REJECTION') {
-        await api.patch(`/defect-reports/${id}/field`, { field: 'rejectionStageCosts', value: JSON.stringify(accountsData.rejectionStageCosts) });
-      }
-      toast.success('Accounts review details saved successfully');
+      await api.patch(`/defect-reports/${id}/fields`, {
+        fields: [
+          { field: 'materialCost', value: String(accountsData.materialCost) },
+          { field: 'labourCost', value: String(accountsData.labourCost) },
+          { field: 'otherCost', value: String(accountsData.otherCost) },
+          { field: 'lossAmount', value: String(accountsData.lossAmount) },
+          { field: 'costRemarks', value: accountsData.costRemarks }
+        ]
+      });
+      toast.success('Financial verification saved successfully');
       setModal(null);
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save accounts review details');
+      toast.error(err.response?.data?.message || 'Failed to save financial verification');
+    }
+  };
+
+  const handleAccountsSubmit = async () => {
+    if (!window.confirm('Are you sure you want to submit this report to Senior Manager review? Make sure costs are verified.')) return;
+    try {
+      await api.patch(`/defect-reports/${id}/status`, { status: 'PENDING_SM_REVIEW', note: report.inspectionDetail?.costRemarks || 'Financial verification completed' });
+      toast.success('Report successfully submitted to Senior Manager');
+      queryClient.invalidateQueries({ queryKey: ['report', id] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit report');
     }
   };
 
@@ -288,8 +293,8 @@ export default function ReportDetailPage() {
       const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts'];
       return smAllowed.includes(fieldKey);
     }
-    if (role === 'ACCOUNTS' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status)) {
-      const accountsAllowed = ['costEstimate', 'lossAmount', 'accountsDescription', 'rejectionStageCosts'];
+    if (role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW') {
+      const accountsAllowed = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks'];
       return accountsAllowed.includes(fieldKey);
     }
     return false;
@@ -347,8 +352,11 @@ export default function ReportDetailPage() {
           {role === 'STORE_MANAGER' && status === 'APPROVED' && !report.componentsIssued && (
             <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
-          {role === 'ACCOUNTS' && ['APPROVED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(status) && (
-            <button className="btn btn-primary" onClick={openAccountsReviewModal}><FiEdit2 /> Accounts Review</button>
+          {role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW' && (
+            <>
+              <button className="btn btn-primary" onClick={openAccountsReviewModal}><FiEdit2 /> Cost Verification</button>
+              <button className="btn btn-success" onClick={handleAccountsSubmit}><FiCheckCircle /> Submit to SM</button>
+            </>
           )}
         </div>
       </div>
@@ -373,6 +381,10 @@ export default function ReportDetailPage() {
                 ) : '—', 'responsibleId'],
                 ['Rework Description', report.inspectionDetail?.reworkDescription || report.reworkDescription || '—', 'reworkDescription'],
                 ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
+                ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `$${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
+                ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `$${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
+                ['Cost Remarks', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
                 ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
@@ -408,6 +420,10 @@ export default function ReportDetailPage() {
                 ) : '—', 'responsibleId'],
                 ['Rejection Description', report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '—', 'rejectionDescription'],
                 ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
+                ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `$${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
+                ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `$${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
+                ['Cost Remarks', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
                 ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
@@ -917,90 +933,78 @@ export default function ReportDetailPage() {
       )}
       {modal === 'accounts-review' && (
         <ActionModal 
-          title="Accounts Financial Review" 
+          title="Accounts Cost Verification" 
           onClose={() => setModal(null)} 
-          actionLabel="Save" 
+          actionLabel="Save Financials" 
           loading={actionMutation.isPending} 
           onConfirm={handleAccountsSave}
         >
           <div className="form-grid">
-            <div className="form-group full">
-              <label>Accounts Description *</label>
-              <textarea 
-                value={accountsData.accountsDescription} 
-                onChange={e => setAccountsData({...accountsData, accountsDescription: e.target.value})} 
-                placeholder="Enter accounts review description or notes..." 
+            <div className="form-group">
+              <label>Material Cost ($) *</label>
+              <input 
+                type="number" 
+                min="0" 
+                step="0.01" 
+                value={accountsData.materialCost} 
+                onChange={e => setAccountsData({...accountsData, materialCost: Number(e.target.value) || 0})} 
                 required 
-                rows={3} 
               />
             </div>
             
-            {report.inspectionType === 'REJECTION' ? (
-              <>
-                {(() => {
-                  const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
-                  const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-                  const stages = PROCESS_TEMPLATES[template] || [];
-                  const idx = stages.indexOf(failedStage);
-                  const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-                  
-                  return activeStages.length > 0 ? (
-                    <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <h4 style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Process Flow Costs up to Failed Stage ({template})</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        {activeStages.map(st => (
-                          <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
-                            <input 
-                              type="number" 
-                              min="0" 
-                              step="0.01" 
-                              style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
-                              value={accountsData.rejectionStageCosts[st] ?? ''} 
-                              onChange={e => handleAccountsStageCostChange(st, e.target.value)} 
-                              required
-                              placeholder="Enter cost ($)"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
-                <div className="form-group">
-                  <label>Cost Estimation ($) *</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    step="0.01" 
-                    value={accountsData.costEstimate} 
-                    onChange={e => setAccountsData({...accountsData, costEstimate: Number(e.target.value)})} 
-                    required 
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="form-group">
-                <label>Cost Estimation ($) *</label>
-                <input 
-                  type="number" 
-                  min="0" 
-                  step="0.01" 
-                  value={accountsData.costEstimate} 
-                  onChange={e => setAccountsData({...accountsData, costEstimate: Number(e.target.value)})} 
-                  required 
-                />
-              </div>
-            )}
-            
             <div className="form-group">
-              <label>Loss Estimation ($) (Optional)</label>
+              <label>Labour Cost ($) *</label>
+              <input 
+                type="number" 
+                min="0" 
+                step="0.01" 
+                value={accountsData.labourCost} 
+                onChange={e => setAccountsData({...accountsData, labourCost: Number(e.target.value) || 0})} 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Other Cost ($) *</label>
+              <input 
+                type="number" 
+                min="0" 
+                step="0.01" 
+                value={accountsData.otherCost} 
+                onChange={e => setAccountsData({...accountsData, otherCost: Number(e.target.value) || 0})} 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Total Cost (Calculated) ($)</label>
+              <input 
+                type="number" 
+                readOnly
+                value={(Number(accountsData.materialCost) || 0) + (Number(accountsData.labourCost) || 0) + (Number(accountsData.otherCost) || 0)} 
+                style={{ background: 'var(--bg-app)', cursor: 'not-allowed' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Loss Amount ($) (Optional)</label>
               <input 
                 type="number" 
                 min="0" 
                 step="0.01" 
                 value={accountsData.lossAmount} 
                 onChange={e => setAccountsData({...accountsData, lossAmount: e.target.value ? Number(e.target.value) : ''})} 
+              />
+            </div>
+
+            <div className="form-group full">
+              <label>Cost Remarks *</label>
+              <textarea 
+                value={accountsData.costRemarks} 
+                onChange={e => setAccountsData({...accountsData, costRemarks: e.target.value})} 
+                placeholder="Enter cost verification remarks..." 
+                required 
+                rows={3} 
               />
             </div>
           </div>

@@ -15,6 +15,10 @@ interface StatusChangedEvent {
   reportId: string;
   reportNumber: string;
   status: ReportStatus;
+  fromStatus?: ReportStatus;
+  actor?: { id: string; role: Role };
+  actionTaken?: string;
+  comments?: string;
 }
 
 @Injectable()
@@ -36,6 +40,35 @@ export class NotificationListener {
       where: { id: reportId },
       relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval'],
     });
+  }
+
+  private async buildEmailSummary(report: DefectReport, event: StatusChangedEvent): Promise<Record<string, string>> {
+    const raiser = report.raisedBy?.name || 'Unknown';
+    let actionByName = 'System';
+    if (event.actor?.id) {
+      try {
+        const actorUser = await this.usersRepo.findOne({ where: { id: event.actor.id } });
+        if (actorUser) {
+          actionByName = actorUser.name;
+        } else {
+          actionByName = event.actor.role;
+        }
+      } catch (err) {
+        actionByName = event.actor.role;
+      }
+    }
+
+    return {
+      'Report Number': report.reportNumber || 'N/A',
+      'Current Status': report.status || 'N/A',
+      'Previous Status': event.fromStatus || 'N/A',
+      'Submitted By': raiser,
+      'Action Taken': event.actionTaken || 'Status Updated',
+      'Action By': actionByName,
+      'Timestamp': new Date().toLocaleString('en-IN'),
+      'Comments': event.comments || 'No comments provided',
+      'Direct Report Link': `${this.frontendUrl}/reports/${report.id}`,
+    };
   }
 
   private async notifyAdmins(
@@ -94,25 +127,28 @@ export class NotificationListener {
     try {
       switch (event.status) {
         case ReportStatus.PENDING_INSPECTION:
-          await this.handlePendingInspection(report);
+          await this.handlePendingInspection(report, event);
+          break;
+        case ReportStatus.PENDING_ACCOUNTS_REVIEW:
+          await this.handlePendingAccountsReview(report, event);
           break;
         case ReportStatus.PENDING_SM_REVIEW:
-          await this.handlePendingSmReview(report);
+          await this.handlePendingSmReview(report, event);
           break;
         case ReportStatus.PENDING_GM_APPROVAL:
-          await this.handlePendingGmApproval(report);
+          await this.handlePendingGmApproval(report, event);
           break;
         case ReportStatus.APPROVED:
-          await this.handleApproved(report);
+          await this.handleApproved(report, event);
           break;
         case ReportStatus.COMPONENTS_ISSUED:
-          await this.handleComponentsIssued(report);
+          await this.handleComponentsIssued(report, event);
           break;
         case ReportStatus.REJECTED:
-          await this.handleRejected(report);
+          await this.handleRejected(report, event);
           break;
         case ReportStatus.CLOSED:
-          await this.handleClosed(report);
+          await this.handleClosed(report, event);
           break;
         default:
           break;
@@ -126,17 +162,9 @@ export class NotificationListener {
     }
   }
 
-  private async handlePendingInspection(report: DefectReport) {
+  private async handlePendingInspection(report: DefectReport, event: StatusChangedEvent) {
     const inspectors = await this.usersRepo.find({ where: { role: Role.INSPECTOR, isActive: true } });
-
-    const summaryTable = {
-      'Report Number': report.reportNumber,
-      'Product': report.productId,
-      'Component': report.componentName,
-      'Error Type': report.errorTypeName || 'N/A',
-      'Raised By': report.raisedBy?.name || 'Unknown',
-      'Submission Time': report.createdAt.toISOString(),
-    };
+    const summaryTable = await this.buildEmailSummary(report, event);
 
     await Promise.all(inspectors.map(inspector =>
       this.notificationsService.create({
@@ -161,23 +189,36 @@ export class NotificationListener {
     ));
   }
 
-  private async handlePendingSmReview(report: DefectReport) {
-    const smUsers = await this.usersRepo.find({ where: { role: Role.SENIOR_MANAGER, isActive: true } });
-    const inspector = report.inspectionDetail?.inspectorId 
-      ? await this.usersRepo.findOne({ where: { id: report.inspectionDetail.inspectorId } })
-      : report.raisedBy;
+  private async handlePendingAccountsReview(report: DefectReport, event: StatusChangedEvent) {
+    const accountsUsers = await this.usersRepo.find({ where: { role: Role.ACCOUNTS, isActive: true } });
+    const summaryTable = await this.buildEmailSummary(report, event);
 
-    const summaryTable = {
-      'Report Number': report.reportNumber,
-      'Product': report.productId,
-      'Component': report.componentName,
-      'Error Type': report.inspectionDetail?.errorType || report.errorTypeName,
-      'Responsible Party': report.inspectionDetail?.responsibleParty || 'N/A',
-      'Estimated Cost': report.inspectionDetail?.costEstimate?.toString() || 'N/A',
-      'Estimated Time': report.inspectionDetail?.timeEstimateHours?.toString() || 'N/A',
-      'Inspector': inspector?.name || 'Unknown',
-      'Submission Time': report.createdAt.toISOString(),
-    };
+    await Promise.all(accountsUsers.map(accounts =>
+      this.notificationsService.create({
+        userId: accounts.id,
+        userEmail: accounts.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'New ECR Pending Verification',
+        message: 'A new Defect Report has been submitted/inspected and requires financial verification.',
+        event: NotificationEvent.REPORT_UPDATED,
+        subject: 'New ECR Pending Accounts Verification',
+        reportId: report.id,
+        templateData: {
+          title: 'ECR Pending Accounts Verification',
+          message: 'A new Defect Report has been submitted/inspected and requires financial verification.',
+          summaryTable,
+          primaryButton: {
+            text: 'Verify Cost',
+            url: `${this.frontendUrl}/reports/${report.id}`,
+          },
+        },
+      })
+    ));
+  }
+
+  private async handlePendingSmReview(report: DefectReport, event: StatusChangedEvent) {
+    const smUsers = await this.usersRepo.find({ where: { role: Role.SENIOR_MANAGER, isActive: true } });
+    const summaryTable = await this.buildEmailSummary(report, event);
 
     await Promise.all(smUsers.map(sm =>
       this.notificationsService.create({
@@ -202,17 +243,9 @@ export class NotificationListener {
     ));
   }
 
-  private async handlePendingGmApproval(report: DefectReport) {
+  private async handlePendingGmApproval(report: DefectReport, event: StatusChangedEvent) {
     const gmUsers = await this.usersRepo.find({ where: { role: Role.GENERAL_MANAGER, isActive: true } });
-    
-    const summaryTable = {
-      'Report Number': report.reportNumber,
-      'Inspector Summary': report.inspectionDetail?.errorType || 'N/A',
-      'Estimated Cost': report.inspectionDetail?.costEstimate?.toString() || 'N/A',
-      'Estimated Time': report.inspectionDetail?.timeEstimateHours?.toString() || 'N/A',
-      'Remarks': report.inspectionDetail?.alternativeNote || 'None',
-      'SM Notes': report.smReview?.decisionNote || 'None',
-    };
+    const summaryTable = await this.buildEmailSummary(report, event);
 
     await Promise.all(gmUsers.map(gm =>
       this.notificationsService.create({
@@ -237,23 +270,10 @@ export class NotificationListener {
     ));
   }
 
-  private async handleApproved(report: DefectReport) {
+  private async handleApproved(report: DefectReport, event: StatusChangedEvent) {
     const accountsUsers = await this.usersRepo.find({ where: { role: Role.ACCOUNTS, isActive: true } });
     const storeUsers = await this.usersRepo.find({ where: { role: Role.STORE_MANAGER, isActive: true } });
-
-    const accountsSummary = {
-      'Report Number': report.reportNumber,
-      'Budget': report.gmApproval?.budgetApproved?.toString() || 'N/A',
-      'Customer Impact': report.inspectionDetail?.timeEstimateHours ? 'Potential Delay' : 'Minimal',
-      'Remarks': report.gmApproval?.remarks || 'None',
-    };
-
-    const storesSummary = {
-      'Report Number': report.reportNumber,
-      'Component Details': report.componentName,
-      'Required Action': 'Prepare replacement components',
-      'Rework Information': report.defectDescription,
-    };
+    const summaryTable = await this.buildEmailSummary(report, event);
 
     await Promise.all([
       ...accountsUsers.map(accounts =>
@@ -269,7 +289,7 @@ export class NotificationListener {
           templateData: {
             title: 'Defect Report Approved',
             message: 'A defect report has been fully approved by the General Manager.',
-            summaryTable: accountsSummary,
+            summaryTable,
             primaryButton: {
               text: 'View Details',
               url: `${this.frontendUrl}/reports/${report.id}`,
@@ -290,7 +310,7 @@ export class NotificationListener {
           templateData: {
             title: 'Component Issue Request',
             message: 'A defect report has been approved and requires components to be issued.',
-            summaryTable: storesSummary,
+            summaryTable,
             primaryButton: {
               text: 'Issue Components',
               url: `${this.frontendUrl}/reports/${report.id}`,
@@ -305,11 +325,11 @@ export class NotificationListener {
       'Report Approved',
       `Approved Report: ${report.reportNumber}`,
       `Defect report ${report.reportNumber} has been fully approved by the General Manager.`,
-      accountsSummary,
+      summaryTable,
     );
   }
 
-  private async handleComponentsIssued(report: DefectReport) {
+  private async handleComponentsIssued(report: DefectReport, event: StatusChangedEvent) {
     const notifyIds = new Set<string>();
     
     // Notify Accounts
@@ -324,12 +344,7 @@ export class NotificationListener {
       where: Array.from(notifyIds).map(id => ({ id })),
     });
 
-    const summaryTable = {
-      'Report Number': report.reportNumber,
-      'Issued By': report.componentsIssuedById ? (await this.usersRepo.findOne({ where: { id: report.componentsIssuedById } }))?.name || 'Store Manager' : 'Store Manager',
-      'Issue Time': report.componentsIssuedAt ? new Date(report.componentsIssuedAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
-      'Remarks': report.issueRemarks || 'None',
-    };
+    const summaryTable = await this.buildEmailSummary(report, event);
 
     await Promise.all(usersToNotify.map(user =>
       this.notificationsService.create({
@@ -362,105 +377,59 @@ export class NotificationListener {
     );
   }
 
-  private async handleRejected(report: DefectReport) {
-    if (report.gmApproval && report.gmApproval.approved === false) {
-      const smId = report.smReview?.smId;
-      const inspectorId = report.inspectionDetail?.inspectorId || report.raisedById;
+  private async handleRejected(report: DefectReport, event: StatusChangedEvent) {
+    const inspectorId = report.inspectionDetail?.inspectorId || report.raisedById;
+    const accountsUsers = await this.usersRepo.find({ where: { role: Role.ACCOUNTS, isActive: true } });
 
-      const notifyIds = new Set<string>();
-      if (smId) notifyIds.add(smId);
-      if (inspectorId) notifyIds.add(inspectorId);
+    const notifyIds = new Set<string>();
+    if (inspectorId) notifyIds.add(inspectorId);
+    accountsUsers.forEach(accounts => notifyIds.add(accounts.id));
 
-      const usersToNotify = await this.usersRepo.find({
-        where: Array.from(notifyIds).map(id => ({ id })),
-      });
+    const usersToNotify = await this.usersRepo.find({
+      where: Array.from(notifyIds).map(id => ({ id })),
+    });
 
-      const summaryTable = {
-        'Report Number': report.reportNumber,
-        'Reason': report.gmApproval.remarks || 'No remarks provided',
-        'Remarks': 'Rejected by General Manager',
-        'Action Required': 'Review rejection and take corrective action if needed.',
-      };
+    const summaryTable = await this.buildEmailSummary(report, event);
 
-      await Promise.all(usersToNotify.map(user =>
-        this.notificationsService.create({
-          userId: user.id,
-          userEmail: user.email,
-          channel: NotificationChannel.APP_AND_EMAIL,
-          type: 'Report Rejected',
-          message: 'Your report was rejected during the final approval stage.',
-          event: NotificationEvent.REPORT_REJECTED,
-          subject: `Report Rejected: ${report.reportNumber}`,
-          reportId: report.id,
-          templateData: {
-            title: 'Report Rejected',
-            message: 'Your report was rejected during the final approval stage.',
-            summaryTable,
-            primaryButton: {
-              text: 'View Report',
-              url: `${this.frontendUrl}/reports/${report.id}`,
-            },
+    await Promise.all(usersToNotify.map(user =>
+      this.notificationsService.create({
+        userId: user.id,
+        userEmail: user.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'Report Rejected',
+        message: 'The report was rejected during the review/approval stage.',
+        event: NotificationEvent.REPORT_REJECTED,
+        subject: `Report Rejected: ${report.reportNumber}`,
+        reportId: report.id,
+        templateData: {
+          title: 'Report Rejected',
+          message: 'The report was rejected during the review/approval stage.',
+          summaryTable,
+          primaryButton: {
+            text: 'View Report',
+            url: `${this.frontendUrl}/reports/${report.id}`,
           },
-        })
-      ));
-    } 
-    else if (report.smReview && report.smReview.forwardedToGm === false) {
-      const inspectorId = report.inspectionDetail?.inspectorId || report.raisedById;
-      const inspector = await this.usersRepo.findOne({ where: { id: inspectorId } });
-
-      if (inspector) {
-        await this.notificationsService.create({
-          userId: inspector.id,
-          userEmail: inspector.email,
-          channel: NotificationChannel.APP_AND_EMAIL,
-          type: 'Report Rejected',
-          message: 'Your report was rejected during Senior Manager review.',
-          event: NotificationEvent.REPORT_REJECTED,
-          subject: `Report Rejected: ${report.reportNumber}`,
-          reportId: report.id,
-          templateData: {
-            title: 'Report Rejected',
-            message: 'Your report was rejected during Senior Manager review.',
-            summaryTable: {
-              'Report Number': report.reportNumber,
-              'Reason': report.smReview.decisionNote || 'No reason provided',
-              'Remarks': 'Please check the report for details.',
-            },
-            primaryButton: {
-              text: 'View Report',
-              url: `${this.frontendUrl}/reports/${report.id}`,
-            },
-          },
-        });
-      }
-    }
+        },
+      })
+    ));
 
     await this.notifyAdmins(
       report,
       'Report Rejected',
       `Report Rejected: ${report.reportNumber}`,
       `Defect report ${report.reportNumber} was rejected.`,
-      {
-        'Report Number': report.reportNumber,
-        'Reason': report.gmApproval?.remarks || report.smReview?.decisionNote || 'No reason provided',
-        'Remarks': 'Rejected by Manager',
-      }
+      summaryTable,
     );
   }
 
-  private async handleClosed(report: DefectReport) {
+  private async handleClosed(report: DefectReport, event: StatusChangedEvent) {
+    const summaryTable = await this.buildEmailSummary(report, event);
     await this.notifyAdmins(
       report,
       'Report Closed',
       `Completed/Closed Report: ${report.reportNumber}`,
       `Defect report ${report.reportNumber} has been fully completed and closed.`,
-      {
-        'Report Number': report.reportNumber,
-        'Status': 'CLOSED (Completed)',
-        'Cost Estimate': report.inspectionDetail?.costEstimate?.toString() || 'N/A',
-        'Loss Amount': report.inspectionDetail?.lossAmount?.toString() || 'N/A',
-        'Closing Notes': 'All operations are completed.',
-      }
+      summaryTable,
     );
   }
 

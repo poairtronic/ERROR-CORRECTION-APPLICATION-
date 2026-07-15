@@ -3,6 +3,7 @@ export const SIMPLIFIED_WORKFLOW = true;
 export const STATUS_COLORS = {
   DRAFT: 'draft',
   PENDING_INSPECTION: 'pending',
+  PENDING_ACCOUNTS_REVIEW: 'pending',
   PENDING_SM_REVIEW: 'review',
   PENDING_GM_APPROVAL: 'approval',
   APPROVED: 'approved',
@@ -16,6 +17,7 @@ export const STATUS_COLORS = {
 export const STATUS_LABELS = {
   DRAFT: 'Draft',
   PENDING_INSPECTION: 'Pending Inspection',
+  PENDING_ACCOUNTS_REVIEW: 'Pending Accounts Verification',
   PENDING_SM_REVIEW: 'SM Review',
   PENDING_GM_APPROVAL: 'GM Approval',
   APPROVED: 'Approved',

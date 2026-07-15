@@ -175,7 +175,9 @@ export class EmailService implements OnModuleInit {
       let templateName = 'system-alert';
       const event = options.event;
 
-      if (event === NotificationEvent.REPORT_CREATED) {
+      if (options.templateData.summaryTable) {
+        templateName = 'system-alert';
+      } else if (event === NotificationEvent.REPORT_CREATED) {
         templateName = 'pending-review';
       } else if (event === NotificationEvent.REPORT_APPROVED) {
         templateName = 'approved';

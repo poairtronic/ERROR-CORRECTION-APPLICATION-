@@ -75,12 +75,25 @@ export class DefectReportsController {
 
   @Patch(':id/field')
   @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
-  editField(
+  async editField(
     @Param('id') id: string,
     @Body() body: { field: string; value: string },
     @CurrentUser() user,
   ) {
     return this.service.editField(id, body.field, body.value, user);
+  }
+
+  @Patch(':id/fields')
+  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
+  async editFields(
+    @Param('id') id: string,
+    @Body() body: { fields: { field: string; value: any }[] },
+    @CurrentUser() user,
+  ) {
+    for (const item of body.fields) {
+      await this.service.editField(id, item.field, String(item.value), user);
+    }
+    return this.service.findOne(id);
   }
 
   @Post(':id/images')
@@ -105,7 +118,7 @@ export class DefectReportsController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER)
+  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
   async transitionStatus(
     @Param('id') id: string,
     @Body() body: { status: string; note: string },

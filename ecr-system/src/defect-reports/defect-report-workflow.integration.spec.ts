@@ -140,6 +140,17 @@ describe('Defect Report Workflow Integration', () => {
 
     // Mock transactional entity manager
     const mockManager = {
+      findOne: jest.fn().mockImplementation((entity, criteria) => {
+        if (entity === ReportSequence) {
+          return Promise.resolve({ id: 'AGIPL', lastValue: 1 });
+        }
+        return Promise.resolve(null);
+      }),
+      create: jest.fn().mockImplementation((entity, data) => data),
+      save: jest.fn().mockImplementation((entityOrData, data) => {
+        if (data) return Promise.resolve(data);
+        return Promise.resolve(entityOrData);
+      }),
       getRepository: jest.fn().mockImplementation((entity) => {
         if (entity === DefectReport) return mockReportRepo;
         if (entity === InspectionDetail) return mockInspectionRepo;
@@ -213,5 +224,105 @@ describe('Defect Report Workflow Integration', () => {
       amount: 200,
       status: 'PENDING',
     }));
+  });
+
+  it('should route inspector-created reports to PENDING_ACCOUNTS_REVIEW', async () => {
+    const inspectorActor = { id: 'inspector-123', role: Role.INSPECTOR };
+    const createDto = {
+      scNo: 'SC-123',
+      poNo: 'PO-123',
+      productId: 'P-123',
+      componentId: 'C-123',
+      stageOfFailure: 'DESIGN_SRG',
+      defectDescription: 'Test defect',
+      inlineInspection: {
+        costEstimate: 100,
+        lossAmount: 50,
+        responsibleParty: 'VENDOR',
+        responsibleId: 'vendor-123',
+      },
+    };
+
+    mockReportRepo.findOne.mockResolvedValue(null);
+
+    const report = await reportsService.create(createDto as any, inspectorActor);
+    expect(report.status).toBe(ReportStatus.PENDING_ACCOUNTS_REVIEW);
+  });
+
+  it('should allow Accounts to edit materialCost, labourCost, otherCost, lossAmount, costRemarks during accounts review', async () => {
+    const mockReport: Partial<DefectReport> = {
+      id: 'report-uuid',
+      status: ReportStatus.PENDING_ACCOUNTS_REVIEW,
+      inspectionDetail: {
+        id: 'inspect-uuid',
+        costEstimate: 0,
+      } as any,
+    };
+    mockReportRepo.findOne.mockResolvedValue(mockReport);
+
+    const accountsActor = { id: 'accounts-123', role: Role.ACCOUNTS };
+
+    // Accounts edits materialCost
+    await reportsService.editField('report-uuid', 'materialCost', '150', accountsActor);
+    expect(mockReport.inspectionDetail?.materialCost).toBe(150);
+
+    // Accounts edits labourCost
+    await reportsService.editField('report-uuid', 'labourCost', '50', accountsActor);
+    expect(mockReport.inspectionDetail?.labourCost).toBe(50);
+
+    // Accounts edits otherCost
+    await reportsService.editField('report-uuid', 'otherCost', '25', accountsActor);
+    expect(mockReport.inspectionDetail?.otherCost).toBe(25);
+
+    // Total cost estimate should be recalculated: 150 + 50 + 25 = 225
+    expect(mockReport.inspectionDetail?.costEstimate).toBe(225);
+  });
+
+  it('should prevent Accounts from editing non-accounts fields', async () => {
+    const mockReport: Partial<DefectReport> = {
+      id: 'report-uuid',
+      status: ReportStatus.PENDING_ACCOUNTS_REVIEW,
+    };
+    mockReportRepo.findOne.mockResolvedValue(mockReport);
+
+    const accountsActor = { id: 'accounts-123', role: Role.ACCOUNTS };
+
+    await expect(
+      reportsService.editField('report-uuid', 'defectDescription', 'New description', accountsActor)
+    ).rejects.toThrow('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, or costRemarks');
+  });
+
+  it('should prevent Accounts from editing reports when not in PENDING_ACCOUNTS_REVIEW status', async () => {
+    const mockReport: Partial<DefectReport> = {
+      id: 'report-uuid',
+      status: ReportStatus.PENDING_SM_REVIEW,
+    };
+    mockReportRepo.findOne.mockResolvedValue(mockReport);
+
+    const accountsActor = { id: 'accounts-123', role: Role.ACCOUNTS };
+
+    await expect(
+      reportsService.editField('report-uuid', 'materialCost', '150', accountsActor)
+    ).rejects.toThrow('Accounts can only edit reports that are pending accounts review');
+  });
+
+  it('should validate status transitions for Accounts', async () => {
+    const mockReport: Partial<DefectReport> = {
+      id: 'report-uuid',
+      status: ReportStatus.PENDING_ACCOUNTS_REVIEW,
+    };
+    mockReportRepo.findOne.mockResolvedValue(mockReport);
+
+    const accountsActor = { id: 'accounts-123', role: Role.ACCOUNTS };
+
+    // Valid transition: PENDING_ACCOUNTS_REVIEW -> PENDING_SM_REVIEW
+    await reportsService.transitionStatus('report-uuid', ReportStatus.PENDING_SM_REVIEW, 'cost verified', accountsActor);
+    expect(mockReport.status).toBe(ReportStatus.PENDING_SM_REVIEW);
+
+    // Invalid transition: accounts trying to transition to APPROVED directly
+    mockReport.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+    await expect(
+      reportsService.transitionStatus('report-uuid', ReportStatus.APPROVED, 'approve', accountsActor)
+    ).rejects.toThrow('Accounts can only submit reports pending accounts review to Senior Manager review.');
   });
 });
