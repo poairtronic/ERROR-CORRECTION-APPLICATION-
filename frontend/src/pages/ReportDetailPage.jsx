@@ -426,7 +426,7 @@ export default function ReportDetailPage() {
                 ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
                 ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `$${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
                 ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `$${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
-                ['Cost Remarks', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
+                ['Details Description', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
                 ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
@@ -466,7 +466,7 @@ export default function ReportDetailPage() {
                 ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
                 ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `$${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
                 ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `$${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
-                ['Cost Remarks', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
+                ['Details Description', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
                 ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
@@ -629,7 +629,7 @@ export default function ReportDetailPage() {
             if (hasAccountsDesc) {
               commentsTimeline.push({
                 role: 'Accounts',
-                title: '2. Accounts Cost Verification Remarks',
+                title: '2. Accounts Details Description',
                 content: accountsDesc,
                 date: report.inspectionDetail?.reviewedAt || report.updatedAt,
               });
@@ -1134,12 +1134,13 @@ export default function ReportDetailPage() {
             </div>
 
             <div className="form-group full">
-              <label>Cost Remarks (Optional)</label>
+              <label>Details Description *</label>
               <textarea 
                 value={accountsData.costRemarks} 
                 onChange={e => setAccountsData({...accountsData, costRemarks: e.target.value})} 
-                placeholder="Enter cost verification remarks..." 
+                placeholder="Enter detailed description/remarks..." 
                 rows={3} 
+                required
               />
             </div>
           </div>
