@@ -124,6 +124,7 @@ export default function ReportDetailPage() {
       const loss = accountsData.lossAmount === '' ? '' : Math.round(Number(accountsData.lossAmount)) || 0;
       const tot = accountsData.costEstimate === '' ? (mat + lab + oth) : Math.round(Number(accountsData.costEstimate)) || 0;
 
+      // 1. Save costs
       await api.patch(`/defect-reports/${id}/fields`, {
         fields: [
           { field: 'materialCost', value: String(mat) },
@@ -134,22 +135,18 @@ export default function ReportDetailPage() {
           { field: 'costRemarks', value: accountsData.costRemarks || 'Verified' }
         ]
       });
-      toast.success('Financial verification saved successfully');
+
+      // 2. Submit to SM directly with NO alert popup
+      await api.patch(`/defect-reports/${id}/status`, { 
+        status: 'PENDING_SM_REVIEW', 
+        note: accountsData.costRemarks || 'Financial verification completed' 
+      });
+
+      toast.success('Report verified and submitted to Senior Manager successfully');
       setModal(null);
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save financial verification');
-    }
-  };
-
-  const handleAccountsSubmit = async () => {
-    if (!window.confirm('Are you sure you want to submit this report to Senior Manager review? Make sure costs are verified.')) return;
-    try {
-      await api.patch(`/defect-reports/${id}/status`, { status: 'PENDING_SM_REVIEW', note: report.inspectionDetail?.costRemarks || 'Financial verification completed' });
-      toast.success('Report successfully submitted to Senior Manager');
-      queryClient.invalidateQueries({ queryKey: ['report', id] });
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit report');
+      toast.error(err.response?.data?.message || 'Failed to verify and submit report');
     }
   };
 
@@ -373,10 +370,7 @@ export default function ReportDetailPage() {
             <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
           {role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW' && (
-            <>
-              <button className="btn btn-primary" onClick={openAccountsReviewModal}><FiEdit2 /> Cost Verification</button>
-              <button className="btn btn-success" onClick={handleAccountsSubmit}><FiCheckCircle /> Submit to SM</button>
-            </>
+            <button className="btn btn-success" onClick={openAccountsReviewModal}><FiCheckCircle /> Verify & Submit to SM</button>
           )}
         </div>
       </div>
@@ -963,7 +957,7 @@ export default function ReportDetailPage() {
         <ActionModal 
           title="Accounts Cost Verification" 
           onClose={() => setModal(null)} 
-          actionLabel="Save Financials" 
+          actionLabel="Verify & Submit" 
           loading={actionMutation.isPending} 
           onConfirm={handleAccountsSave}
         >
