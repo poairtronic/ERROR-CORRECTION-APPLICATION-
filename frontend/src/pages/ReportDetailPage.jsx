@@ -1025,6 +1025,11 @@ export default function ReportDetailPage() {
               <textarea value={smData.loopholeNote} onChange={e => setSmData({...smData, loopholeNote: e.target.value})} placeholder="Describe systemic loopholes..." required rows={2} />
             </div>
 
+             <div className="form-group">
+              <label>Cost Estimate ($) *</label>
+              <input type="number" min="0" step="1" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
+            </div>
+
             <div className="form-group">
               <label>Time Estimate (Hours) *</label>
               <input type="number" min="0" step="1" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
