@@ -588,9 +588,9 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       if (actor.role === Role.ACCOUNTS) {
-        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks'];
+        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts'];
         if (!accountsAllowedFields.includes(field)) {
-          throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, or costRemarks');
+          throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, or rejectionStageCosts');
         }
         const allowedAccountsStatuses = [
           ReportStatus.PENDING_ACCOUNTS_REVIEW,

@@ -88,6 +88,7 @@ export default function ReportDetailPage() {
     materialCost: '',
     labourCost: '',
     otherCost: '',
+    costEstimate: '',
     lossAmount: '',
     costRemarks: ''
   });
@@ -97,21 +98,40 @@ export default function ReportDetailPage() {
       materialCost: report.inspectionDetail?.materialCost ?? 0,
       labourCost: report.inspectionDetail?.labourCost ?? 0,
       otherCost: report.inspectionDetail?.otherCost ?? 0,
+      costEstimate: report.inspectionDetail?.costEstimate ?? 0,
       lossAmount: report.inspectionDetail?.lossAmount ?? '',
       costRemarks: report.inspectionDetail?.costRemarks ?? ''
     });
     setModal('accounts-review');
   };
 
+  const handleAccountsFieldChange = (field, val) => {
+    setAccountsData(d => {
+      const updated = { ...d, [field]: val };
+      const mat = updated.materialCost === '' ? 0 : Math.round(Number(updated.materialCost)) || 0;
+      const lab = updated.labourCost === '' ? 0 : Math.round(Number(updated.labourCost)) || 0;
+      const oth = updated.otherCost === '' ? 0 : Math.round(Number(updated.otherCost)) || 0;
+      updated.costEstimate = String(mat + lab + oth);
+      return updated;
+    });
+  };
+
   const handleAccountsSave = async () => {
     try {
+      const mat = accountsData.materialCost === '' ? 0 : Math.round(Number(accountsData.materialCost)) || 0;
+      const lab = accountsData.labourCost === '' ? 0 : Math.round(Number(accountsData.labourCost)) || 0;
+      const oth = accountsData.otherCost === '' ? 0 : Math.round(Number(accountsData.otherCost)) || 0;
+      const loss = accountsData.lossAmount === '' ? '' : Math.round(Number(accountsData.lossAmount)) || 0;
+      const tot = accountsData.costEstimate === '' ? (mat + lab + oth) : Math.round(Number(accountsData.costEstimate)) || 0;
+
       await api.patch(`/defect-reports/${id}/fields`, {
         fields: [
-          { field: 'materialCost', value: String(accountsData.materialCost) },
-          { field: 'labourCost', value: String(accountsData.labourCost) },
-          { field: 'otherCost', value: String(accountsData.otherCost) },
-          { field: 'lossAmount', value: String(accountsData.lossAmount) },
-          { field: 'costRemarks', value: accountsData.costRemarks }
+          { field: 'materialCost', value: String(mat) },
+          { field: 'labourCost', value: String(lab) },
+          { field: 'otherCost', value: String(oth) },
+          { field: 'costEstimate', value: String(tot) },
+          { field: 'lossAmount', value: String(loss) },
+          { field: 'costRemarks', value: accountsData.costRemarks || 'Verified' }
         ]
       });
       toast.success('Financial verification saved successfully');
@@ -294,7 +314,7 @@ export default function ReportDetailPage() {
       return smAllowed.includes(fieldKey);
     }
     if (role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW') {
-      const accountsAllowed = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks'];
+      const accountsAllowed = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts'];
       return accountsAllowed.includes(fieldKey);
     }
     return false;
@@ -514,6 +534,14 @@ export default function ReportDetailPage() {
                         ? report.inspectionDetail?.costEstimate 
                         : fieldKey === 'lossAmount' 
                         ? report.inspectionDetail?.lossAmount 
+                        : fieldKey === 'materialCost'
+                        ? report.inspectionDetail?.materialCost
+                        : fieldKey === 'labourCost'
+                        ? report.inspectionDetail?.labourCost
+                        : fieldKey === 'otherCost'
+                        ? report.inspectionDetail?.otherCost
+                        : fieldKey === 'costRemarks'
+                        ? report.inspectionDetail?.costRemarks
                         : fieldKey === 'rejectionStageCosts'
                         ? JSON.stringify(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {})
                         : value === '—' ? '' : value;
@@ -941,48 +969,47 @@ export default function ReportDetailPage() {
         >
           <div className="form-grid">
             <div className="form-group">
-              <label>Material Cost ($) *</label>
+              <label>Material Cost ($)</label>
               <input 
                 type="number" 
                 min="0" 
                 step="1" 
                 value={accountsData.materialCost} 
-                onChange={e => setAccountsData({...accountsData, materialCost: e.target.value ? Math.round(Number(e.target.value)) : 0})} 
-                required 
+                onChange={e => handleAccountsFieldChange('materialCost', e.target.value)} 
               />
             </div>
             
             <div className="form-group">
-              <label>Labour Cost ($) *</label>
+              <label>Labour Cost ($)</label>
               <input 
                 type="number" 
                 min="0" 
                 step="1" 
                 value={accountsData.labourCost} 
-                onChange={e => setAccountsData({...accountsData, labourCost: e.target.value ? Math.round(Number(e.target.value)) : 0})} 
-                required 
+                onChange={e => handleAccountsFieldChange('labourCost', e.target.value)} 
               />
             </div>
 
             <div className="form-group">
-              <label>Other Cost ($) *</label>
+              <label>Other Cost ($)</label>
               <input 
                 type="number" 
                 min="0" 
                 step="1" 
                 value={accountsData.otherCost} 
-                onChange={e => setAccountsData({...accountsData, otherCost: e.target.value ? Math.round(Number(e.target.value)) : 0})} 
-                required 
+                onChange={e => handleAccountsFieldChange('otherCost', e.target.value)} 
               />
             </div>
 
             <div className="form-group">
-              <label>Total Cost (Calculated) ($)</label>
+              <label>Total Cost ($)</label>
               <input 
                 type="number" 
-                readOnly
-                value={Math.round((Number(accountsData.materialCost) || 0) + (Number(accountsData.labourCost) || 0) + (Number(accountsData.otherCost) || 0))} 
-                style={{ background: 'var(--bg-app)', cursor: 'not-allowed' }}
+                min="0"
+                step="1"
+                value={accountsData.costEstimate} 
+                onChange={e => setAccountsData({...accountsData, costEstimate: e.target.value})} 
+                placeholder="Calculated or manual total cost"
               />
             </div>
 
@@ -993,17 +1020,16 @@ export default function ReportDetailPage() {
                 min="0" 
                 step="1" 
                 value={accountsData.lossAmount} 
-                onChange={e => setAccountsData({...accountsData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} 
+                onChange={e => setAccountsData({...accountsData, lossAmount: e.target.value})} 
               />
             </div>
 
             <div className="form-group full">
-              <label>Cost Remarks *</label>
+              <label>Cost Remarks (Optional)</label>
               <textarea 
                 value={accountsData.costRemarks} 
                 onChange={e => setAccountsData({...accountsData, costRemarks: e.target.value})} 
                 placeholder="Enter cost verification remarks..." 
-                required 
                 rows={3} 
               />
             </div>
