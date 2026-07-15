@@ -478,6 +478,8 @@ export default function ReportDetailPage() {
                 ['Accounts Description', report.accountsDescription || '—', 'accountsDescription']
               ] : []).concat(report.smReview?.biasedFlag ? [
                 ['Biased / Conflict of Interest', <span key="biased-yes" style={{ color: 'var(--danger)', fontWeight: 'bold' }}>⚠️ Yes (Flagged)</span>, undefined]
+              ] : []).concat(report.gmApproval ? [
+                ['GM Remarks', report.gmApproval.remarks || '—', undefined]
               ] : []).map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -636,27 +638,23 @@ export default function ReportDetailPage() {
             }
 
             // 3. Senior Manager decision note
-            const smDesc = report.smReview?.decisionNote || report.smReview?.loopholeNote;
-            const hasSmDesc = smDesc && smDesc !== '—';
-            if (hasSmDesc) {
-              const loophole = report.smReview?.loopholeNote ? `\nLoophole Identified: ${report.smReview.loopholeNote}` : '';
+            if (report.smReview) {
+              const loophole = report.smReview.loopholeNote ? `\nLoophole Identified: ${report.smReview.loopholeNote}` : '';
               commentsTimeline.push({
                 role: 'Senior Manager',
                 title: '3. Senior Manager Decision Remarks',
-                content: `${report.smReview?.decisionNote || ''}${loophole}`,
-                date: report.smReview?.reviewedAt,
+                content: `${report.smReview.decisionNote || (report.smReview.forwardedToGm ? 'Forwarded to GM' : 'Rejected')}${loophole}`,
+                date: report.smReview.reviewedAt,
               });
             }
 
             // 4. General Manager approval remarks
-            const gmDesc = report.gmApproval?.remarks;
-            const hasGmDesc = gmDesc && gmDesc !== '—';
-            if (hasGmDesc) {
+            if (report.gmApproval) {
               commentsTimeline.push({
                 role: 'General Manager',
                 title: '4. General Manager Decision Remarks',
-                content: gmDesc,
-                date: report.gmApproval?.approvedAt,
+                content: report.gmApproval.remarks || (report.gmApproval.approved ? 'Approved' : 'Rejected'),
+                date: report.gmApproval.approvedAt,
               });
             }
 
