@@ -20,6 +20,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 const WorkflowAnalyticsWidget = memo(({ kpis, delay = 0 }) => {
   const data = [
     { name: 'Inspection', value: kpis?.pendingInspect || 0, fill: '#3b82f6' },
+    { name: 'Accounts Verification', value: kpis?.pendingAccounts || 0, fill: '#ec4899' },
     { name: 'SM Review', value: kpis?.pendingSm || 0, fill: '#8b5cf6' },
     { name: 'GM Approval', value: kpis?.pendingGm || 0, fill: '#f59e0b' },
   ];
@@ -40,15 +41,15 @@ const WorkflowAnalyticsWidget = memo(({ kpis, delay = 0 }) => {
       <div style={{ flex: 1, width: '100%', minHeight: '220px' }}>
         {totalPending > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
+            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
               <XAxis type="number" hide />
               <YAxis 
                 dataKey="name" 
                 type="category" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#9ca3af', fontSize: 12 }} 
-                width={80}
+                tick={{ fill: '#9ca3af', fontSize: 11 }} 
+                width={130}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
               <Bar 

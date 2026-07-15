@@ -42,35 +42,28 @@ export class AnalyticsService {
 
     let totalReports = 0;
     let openReports = 0;
+    let closedReports = 0;
     let pendingInspect = 0;
+    let pendingAccounts = 0;
     let pendingSm = 0;
     let pendingGm = 0;
     let pendingStore = 0;
 
-    const openStatuses = new Set([
-      ReportStatus.DRAFT,
-      ReportStatus.PENDING_INSPECTION,
-      ReportStatus.PENDING_SM_REVIEW,
-      ReportStatus.PENDING_GM_APPROVAL,
-      ReportStatus.APPROVED,
-      ReportStatus.COMPONENTS_ISSUED,
-      ReportStatus.REWORK_IN_PROGRESS,
-      ReportStatus.NEW_PRODUCTION,
-    ]);
-
     for (const row of statusCounts) {
       const count = parseInt(row.count) || 0;
       const status = row.status as ReportStatus;
-      const componentsIssued = row.componentsIssued === true || row.componentsIssued === 'true' || row.componentsIssued === 1;
+      const componentsIssued = row.componentsIssued === true || row.componentsIssued === 'true' || row.componentsIssued === 1 || row.componentsIssued === '1';
 
       totalReports += count;
 
-      if (openStatuses.has(status)) {
-        openReports += count;
+      if (componentsIssued) {
+        closedReports += count;
       }
 
       if (status === ReportStatus.PENDING_INSPECTION) {
         pendingInspect += count;
+      } else if (status === ReportStatus.PENDING_ACCOUNTS_REVIEW) {
+        pendingAccounts += count;
       } else if (status === ReportStatus.PENDING_SM_REVIEW) {
         pendingSm += count;
       } else if (status === ReportStatus.PENDING_GM_APPROVAL) {
@@ -80,13 +73,14 @@ export class AnalyticsService {
       }
     }
 
-    const closedReports = totalReports - openReports;
+    openReports = totalReports;
 
     return {
       totalReports,
       openReports,
       closedReports,
       pendingInspect,
+      pendingAccounts,
       pendingSm,
       pendingGm,
       pendingStore,
