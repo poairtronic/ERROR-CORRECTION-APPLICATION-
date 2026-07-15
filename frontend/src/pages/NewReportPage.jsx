@@ -134,7 +134,7 @@ export default function NewReportPage() {
             decision: 'REWORK',
             alternativeNote: body.alternativeNote,
             costEstimate: Number(body.costEstimate) || 0,
-            timeEstimateHours: 0,
+            timeEstimateHours: body.timeEstimateHours ? Number(body.timeEstimateHours) : undefined,
             lossAmount: body.lossAmount ? Number(body.lossAmount) : undefined,
             reworkDescription: body.reworkDescription
           };
@@ -147,7 +147,7 @@ export default function NewReportPage() {
             decision: 'SCRAP',
             alternativeNote: body.alternativeNote,
             costEstimate: Number(body.costEstimate) || 0,
-            timeEstimateHours: 0,
+            timeEstimateHours: body.timeEstimateHours ? Number(body.timeEstimateHours) : undefined,
             lossAmount: body.lossAmount ? Number(body.lossAmount) : undefined,
             rejectionProcessTemplate: body.rejectionProcessTemplate,
             rejectionFailedStage: body.rejectionFailedStage,

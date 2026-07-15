@@ -263,7 +263,7 @@ export default function ReportDetailPage() {
       errorType: isRework ? 'Rework' : 'Rejection',
       rootCause: isRework ? 'Rework' : 'Rejection',
       decision: isRework ? 'REWORK' : 'SCRAP',
-      timeEstimateHours: 0,
+      timeEstimateHours: inspectData.timeEstimateHours ? Number(inspectData.timeEstimateHours) : undefined,
       costEstimate: Number(inspectData.costEstimate) || 0,
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
       reworkDescription: isRework ? inspectData.reworkDescription : undefined,
@@ -1000,9 +1000,10 @@ export default function ReportDetailPage() {
             lossAmount: smData.lossAmount ? Number(smData.lossAmount) : undefined,
             forwardToGm: smData.forwardToGm === 'true'
           };
-          if (body.rejectionStageCosts && Object.keys(body.rejectionStageCosts).length === 0) {
+          if (            body.rejectionStageCosts && Object.keys(body.rejectionStageCosts).length === 0) {
             delete body.rejectionStageCosts;
           }
+          if (!body.timeEstimateHours) delete body.timeEstimateHours;
           doAction('sm-review', body);
         }}>
           <div className="form-grid">
@@ -1017,8 +1018,8 @@ export default function ReportDetailPage() {
             </div>
 
             <div className="form-group">
-              <label>Time Estimate (Hours) *</label>
-              <input type="number" min="0" step="1" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
+              <label>Time Estimate (Hours) (Optional)</label>
+              <input type="number" min="0" step="1" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value ? Math.round(Number(e.target.value)) : ''})} />
             </div>
             <div className="form-group">
               <label>Loss Amount (Optional)</label>

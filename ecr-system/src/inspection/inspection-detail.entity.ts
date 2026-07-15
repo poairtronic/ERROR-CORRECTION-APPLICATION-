@@ -70,7 +70,7 @@ export class InspectionDetail {
   costRemarks: string;
 
   @Column({ type: 'decimal', precision: 8, scale: 2, default: 0, nullable: true })
-  timeEstimateHours: number;
+  timeEstimateHours: number | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   lossAmount: number;

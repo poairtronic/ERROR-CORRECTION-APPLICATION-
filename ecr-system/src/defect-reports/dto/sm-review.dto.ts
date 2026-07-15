@@ -8,8 +8,9 @@ export class SmReviewDto {
   @IsNumber()
   costEstimate: number;
 
+  @IsOptional()
   @IsNumber()
-  timeEstimateHours: number;
+  timeEstimateHours?: number;
 
   @IsOptional()
   @IsNumber()
