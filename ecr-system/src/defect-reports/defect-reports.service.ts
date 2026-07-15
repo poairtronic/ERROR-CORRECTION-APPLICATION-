@@ -296,7 +296,7 @@ export class DefectReportsService implements OnModuleInit {
     const findOptions: any = {
       where,
       order: { createdAt: 'DESC' },
-      relations: ['raisedBy', 'auditLogs', 'auditLogs.actor'],
+      relations: ['raisedBy', 'auditLogs', 'auditLogs.actor', 'inspectionDetail'],
     };
 
     if (filters.page && filters.limit) {
