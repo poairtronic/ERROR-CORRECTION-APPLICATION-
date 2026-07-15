@@ -368,6 +368,11 @@ export default function ReportDetailPage() {
                 {report.inspectionType === 'REWORK' ? '🟢' : '🔴'} {report.inspectionType}
               </span>
             )}
+            {report.smReview?.biasedFlag && (
+              <span className="badge badge-danger" style={{ background: '#ef4444', color: '#ffffff' }}>
+                ⚠️ BIASED / CONFLICT OF INTEREST
+              </span>
+            )}
           </h1>
           <p style={{ fontFamily: 'monospace', fontSize: 12, marginTop: 4 }}>ID: {report.reportNumber}</p>
         </div>
@@ -471,6 +476,8 @@ export default function ReportDetailPage() {
                 ['Issue Remarks', report.issueRemarks || '—', undefined]
               ] : []).concat(status === 'APPROVED' || report.accountsDescription ? [
                 ['Accounts Description', report.accountsDescription || '—', 'accountsDescription']
+              ] : []).concat(report.smReview?.biasedFlag ? [
+                ['Biased / Conflict of Interest', <span key="biased-yes" style={{ color: 'var(--danger)', fontWeight: 'bold' }}>⚠️ Yes (Flagged)</span>, undefined]
               ] : []).map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1017,49 +1024,7 @@ export default function ReportDetailPage() {
               <label>Loophole Note *</label>
               <textarea value={smData.loopholeNote} onChange={e => setSmData({...smData, loopholeNote: e.target.value})} placeholder="Describe systemic loopholes..." required rows={2} />
             </div>
-            {report.inspectionType === 'REJECTION' ? (
-              <>
-                {(() => {
-                  const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
-                  const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-                  const stages = PROCESS_TEMPLATES[template] || [];
-                  const idx = stages.indexOf(failedStage);
-                  const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-                  
-                  return activeStages.length > 0 ? (
-                    <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <h4 style={{ marginBottom: 12, fontSize: 13, fontWeight: 600 }}>Process Flow Costs up to Failed Stage ({template})</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        {activeStages.map(st => (
-                          <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
-                            <input 
-                              type="number" 
-                              min="0" 
-                              step="0.01" 
-                              style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
-                              value={smData.rejectionStageCosts[st] ?? ''} 
-                              onChange={e => handleSmStageCostChange(st, e.target.value)} 
-                              required
-                              placeholder="Enter cost ($)"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
-                <div className="form-group">
-                  <label>Cost Estimate *</label>
-                  <input type="number" min="0" step="1" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
-                </div>
-              </>
-            ) : (
-              <div className="form-group">
-                <label>Cost Estimate *</label>
-                <input type="number" min="0" step="1" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
-              </div>
-            )}
+
             <div className="form-group">
               <label>Time Estimate (Hours) *</label>
               <input type="number" min="0" step="1" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
