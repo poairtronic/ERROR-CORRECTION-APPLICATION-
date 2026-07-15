@@ -45,7 +45,7 @@ export function getActiveStages(template, failedStage) {
 }
 
 export function sumStageCosts(activeStages, costs) {
-  return activeStages.reduce((sum, st) => sum + (Number(costs[st]) || 0), 0);
+  return Math.round(activeStages.reduce((sum, st) => sum + (Number(costs[st]) || 0), 0));
 }
 
 export const PROCESS_TEMPLATES = {

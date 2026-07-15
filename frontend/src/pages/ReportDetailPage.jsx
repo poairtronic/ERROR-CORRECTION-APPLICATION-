@@ -191,7 +191,7 @@ export default function ReportDetailPage() {
   };
 
   const handleInspectStageCostChange = (stage, val) => {
-    const numericVal = val === '' ? '' : Number(val);
+    const numericVal = val === '' ? '' : Math.round(Number(val));
     setInspectData(d => {
       const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
       const activeStages = getActiveStages(d.rejectionProcessTemplate, d.rejectionFailedStage);
@@ -200,7 +200,7 @@ export default function ReportDetailPage() {
   };
 
   const handleSmStageCostChange = (stage, val) => {
-    const numericVal = val === '' ? '' : Number(val);
+    const numericVal = val === '' ? '' : Math.round(Number(val));
     setSmData(d => {
       const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
       const template = report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate;
@@ -464,13 +464,13 @@ export default function ReportDetailPage() {
                                         <input 
                                           type="number" 
                                           min="0" 
-                                          step="0.01" 
+                                          step="1" 
                                           className="form-control"
                                           style={{ height: 32, padding: '4px 8px', fontSize: 12 }}
                                           value={currentCosts[st] ?? ''} 
                                           onChange={e => {
                                             const val = e.target.value;
-                                            const numericVal = val === '' ? '' : Number(val);
+                                            const numericVal = val === '' ? '' : Math.round(Number(val));
                                             const updatedCosts = { ...currentCosts, [st]: numericVal };
                                             setEditValue(JSON.stringify(updatedCosts));
                                           }}
@@ -700,11 +700,11 @@ export default function ReportDetailPage() {
               </div>
               <div className="form-group">
                 <label>Cost Estimation ($) *</label>
-                <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
+                <input type="number" min="0" step="1" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
               </div>
               <div className="form-group">
                 <label>Loss Estimation ($) (Optional)</label>
-                <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
+                <input type="number" min="0" step="1" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} />
               </div>
               <div className="form-group full">
                 <label>Alternative Notes (Optional)</label>
@@ -797,7 +797,7 @@ export default function ReportDetailPage() {
                         <input 
                           type="number" 
                           min="0" 
-                          step="0.01" 
+                          step="1" 
                           style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border-color)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
                           value={inspectData.rejectionStageCosts[st] ?? ''} 
                           onChange={e => handleInspectStageCostChange(st, e.target.value)} 
@@ -812,11 +812,11 @@ export default function ReportDetailPage() {
 
               <div className="form-group">
                 <label>Cost Estimation ($) *</label>
-                <input type="number" min="0" step="0.01" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: Number(e.target.value)})} required />
+                <input type="number" min="0" step="1" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
               </div>
               <div className="form-group">
                 <label>Loss Estimation ($) (Optional)</label>
-                <input type="number" min="0" step="0.01" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Number(e.target.value) : ''})} />
+                <input type="number" min="0" step="1" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} />
               </div>
               <div className="form-group full">
                 <label>Alternative Notes (Optional)</label>
@@ -879,22 +879,22 @@ export default function ReportDetailPage() {
                 })()}
                 <div className="form-group">
                   <label>Cost Estimate *</label>
-                  <input type="number" min="0" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value})} required />
+                  <input type="number" min="0" step="1" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
                 </div>
               </>
             ) : (
               <div className="form-group">
                 <label>Cost Estimate *</label>
-                <input type="number" min="0" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value})} required />
+                <input type="number" min="0" step="1" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
               </div>
             )}
             <div className="form-group">
               <label>Time Estimate (Hours) *</label>
-              <input type="number" min="0" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value})} required />
+              <input type="number" min="0" step="1" value={smData.timeEstimateHours} onChange={e => setSmData({...smData, timeEstimateHours: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
             </div>
             <div className="form-group">
               <label>Loss Amount (Optional)</label>
-              <input type="number" min="0" value={smData.lossAmount} onChange={e => setSmData({...smData, lossAmount: e.target.value})} />
+              <input type="number" min="0" step="1" value={smData.lossAmount} onChange={e => setSmData({...smData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} />
             </div>
             <div className="form-group">
               <label>Forward to GM?</label>
@@ -945,9 +945,9 @@ export default function ReportDetailPage() {
               <input 
                 type="number" 
                 min="0" 
-                step="0.01" 
+                step="1" 
                 value={accountsData.materialCost} 
-                onChange={e => setAccountsData({...accountsData, materialCost: Number(e.target.value) || 0})} 
+                onChange={e => setAccountsData({...accountsData, materialCost: e.target.value ? Math.round(Number(e.target.value)) : 0})} 
                 required 
               />
             </div>
@@ -957,9 +957,9 @@ export default function ReportDetailPage() {
               <input 
                 type="number" 
                 min="0" 
-                step="0.01" 
+                step="1" 
                 value={accountsData.labourCost} 
-                onChange={e => setAccountsData({...accountsData, labourCost: Number(e.target.value) || 0})} 
+                onChange={e => setAccountsData({...accountsData, labourCost: e.target.value ? Math.round(Number(e.target.value)) : 0})} 
                 required 
               />
             </div>
@@ -969,9 +969,9 @@ export default function ReportDetailPage() {
               <input 
                 type="number" 
                 min="0" 
-                step="0.01" 
+                step="1" 
                 value={accountsData.otherCost} 
-                onChange={e => setAccountsData({...accountsData, otherCost: Number(e.target.value) || 0})} 
+                onChange={e => setAccountsData({...accountsData, otherCost: e.target.value ? Math.round(Number(e.target.value)) : 0})} 
                 required 
               />
             </div>
@@ -981,7 +981,7 @@ export default function ReportDetailPage() {
               <input 
                 type="number" 
                 readOnly
-                value={(Number(accountsData.materialCost) || 0) + (Number(accountsData.labourCost) || 0) + (Number(accountsData.otherCost) || 0)} 
+                value={Math.round((Number(accountsData.materialCost) || 0) + (Number(accountsData.labourCost) || 0) + (Number(accountsData.otherCost) || 0))} 
                 style={{ background: 'var(--bg-app)', cursor: 'not-allowed' }}
               />
             </div>
@@ -991,9 +991,9 @@ export default function ReportDetailPage() {
               <input 
                 type="number" 
                 min="0" 
-                step="0.01" 
+                step="1" 
                 value={accountsData.lossAmount} 
-                onChange={e => setAccountsData({...accountsData, lossAmount: e.target.value ? Number(e.target.value) : ''})} 
+                onChange={e => setAccountsData({...accountsData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} 
               />
             </div>
 

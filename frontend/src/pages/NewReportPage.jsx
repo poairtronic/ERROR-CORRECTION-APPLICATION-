@@ -91,7 +91,7 @@ export default function NewReportPage() {
   };
 
   const handleStageCostChange = (stage, val) => {
-    const numericVal = val === '' ? '' : Number(val);
+    const numericVal = val === '' ? '' : Math.round(Number(val));
     setForm(f => {
       const newCosts = { ...f.rejectionStageCosts, [stage]: numericVal };
       const activeStages = getActiveStages(f.rejectionProcessTemplate, f.rejectionFailedStage);
@@ -398,11 +398,11 @@ export default function NewReportPage() {
                     </div>
                     <div className="form-group">
                       <label>Cost Estimation ($) *</label>
-                      <input type="number" min="0" step="0.01" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value)} required={isSimplifiedInspector} />
+                      <input type="number" min="0" step="1" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value ? Math.round(Number(e.target.value)) : '')} required={isSimplifiedInspector} />
                     </div>
                     <div className="form-group">
                       <label>Loss Estimation ($) (Optional)</label>
-                      <input type="number" min="0" step="0.01" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value)} />
+                      <input type="number" min="0" step="1" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value ? Math.round(Number(e.target.value)) : '')} />
                     </div>
                     <div className="form-group full">
                       <label>Alternative Notes (Optional)</label>
@@ -481,7 +481,7 @@ export default function NewReportPage() {
                               <input 
                                 type="number" 
                                 min="0" 
-                                step="0.01" 
+                                step="1" 
                                 style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg)', color: 'var(--text)' }}
                                 value={form.rejectionStageCosts[st] ?? ''} 
                                 onChange={e => handleStageCostChange(st, e.target.value)} 
@@ -496,11 +496,11 @@ export default function NewReportPage() {
 
                     <div className="form-group">
                       <label>Cost Estimation ($) *</label>
-                      <input type="number" min="0" step="0.01" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value)} required={isSimplifiedInspector} />
+                      <input type="number" min="0" step="1" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value ? Math.round(Number(e.target.value)) : '')} required={isSimplifiedInspector} />
                     </div>
                     <div className="form-group">
                       <label>Loss Estimation ($) (Optional)</label>
-                      <input type="number" min="0" step="0.01" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value)} />
+                      <input type="number" min="0" step="1" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value ? Math.round(Number(e.target.value)) : '')} />
                     </div>
                     <div className="form-group full">
                       <label>Alternative Notes (Optional)</label>
