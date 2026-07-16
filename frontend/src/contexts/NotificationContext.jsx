@@ -39,8 +39,6 @@ export function NotificationProvider({ children }) {
     // Initial load
     fetchUnread();
 
-    const token = localStorage.getItem('ecr_token');
-    
     // Socket.IO connects to the server origin (root), not the /api path.
     // In production (Render): same-origin monolithic deploy → window.location.origin
     // In local dev: Vite runs on 5173 but backend is on 3000, so use localhost:3000
@@ -48,9 +46,9 @@ export function NotificationProvider({ children }) {
       ? 'http://localhost:3000'
       : window.location.origin;
 
-    // Connect with Auth payload
+    // Connect – JWT is sent via HttpOnly cookie (withCredentials) or fallback auth
     const socket = io(socketUrl, {
-      auth: { token },
+      withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,

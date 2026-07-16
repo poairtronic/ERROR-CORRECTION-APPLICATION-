@@ -1,3 +1,4 @@
+import { Exclude, Expose } from 'class-transformer';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -37,6 +38,8 @@ export class GmApproval {
   @Column({ type: 'text', nullable: true })
   remarks: string;
 
+  @Exclude({ toPlainOnly: true })
+  @Expose({ groups: ['gmToSm'] })
   @Column({ type: 'text', nullable: true })
   messageToSm?: string;
 

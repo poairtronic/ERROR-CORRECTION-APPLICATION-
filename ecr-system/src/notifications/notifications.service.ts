@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Notification } from './notification.entity';
+import { DefectReport } from '../defect-reports/defect-report.entity';
 import {
   NotificationChannel,
   NotificationStatus,
@@ -11,6 +12,7 @@ import { EmailService } from '../email/services/email.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { NotificationEvent } from '../email/enums/notification-event.enum';
 import { TemplateData } from '../email/services/email-template.service';
+import { Role } from '../common/enums/role.enum';
 
 import { SocketRegistryService } from './socket-registry.service';
 
@@ -20,6 +22,7 @@ export class NotificationsService {
 
   constructor(
     @InjectRepository(Notification) private repo: Repository<Notification>,
+    @InjectRepository(DefectReport) private defectReportsRepo: Repository<DefectReport>,
     private config: ConfigService,
     private registry: SocketRegistryService,
     @Inject(forwardRef(() => EmailService)) private emailService: EmailService,
@@ -94,6 +97,27 @@ export class NotificationsService {
     const where: any = { userId };
     if (unreadOnly) where.read = false;
     return this.repo.find({ where, order: { createdAt: 'DESC' }, relations: ['report'] });
+  }
+
+  async canAccessReportNotifications(reportId: string, userId: string, userRole: string): Promise<boolean> {
+    if (userRole?.toUpperCase() === Role.ADMIN) return true;
+
+    const report = await this.defectReportsRepo.findOne({
+      where: { id: reportId },
+      relations: ['inspectionDetail'],
+    });
+    if (!report) return false;
+
+    if (report.raisedById === userId) return true;
+
+    if (report.inspectionDetail?.responsibleId === userId) return true;
+
+    const userNotif = await this.repo.findOne({
+      where: { reportId, userId },
+    });
+    if (userNotif) return true;
+
+    return false;
   }
 
   findByReport(reportId: string) {

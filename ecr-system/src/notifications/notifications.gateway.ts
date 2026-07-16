@@ -16,7 +16,7 @@ import { NotificationStatus } from '../common/enums/report-status.enum';
 
 import { OnEvent } from '@nestjs/event-emitter';
 
-@WebSocketGateway({ cors: { origin: '*' } })
+@WebSocketGateway({ cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173' } })
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -42,27 +42,28 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   async handleConnection(client: Socket) {
     try {
-      // 1. Extract Token from handshake auth or headers
-      const token = client.handshake.auth?.token || client.handshake.headers?.authorization?.split(' ')[1];
-      
+      let token = client.handshake.auth?.token || client.handshake.headers?.authorization?.split(' ')[1];
+
+      if (!token) {
+        const cookie = client.handshake.headers?.cookie || '';
+        const match = cookie.match(/(?:^|;\s*)token=([^;]*)/);
+        token = match ? match[1] : null;
+      }
+
       if (!token) {
         this.logger.warn(`Connection rejected: No token provided for socket ${client.id}`);
         client.disconnect();
         return;
       }
 
-      // 2. Validate Token
       const payload = this.jwtService.verify(token);
-      
-      // 3. Attach user info to socket
+
       client.data.user = payload;
-      
-      // 4. Auto-Join user-specific room safely
+
       client.join(payload.sub);
-      
-      // 5. Register connection
+
       this.registry.addConnection(payload.sub, payload.role, client);
-      
+
       this.logger.log(`Client ${client.id} authenticated and joined room ${payload.sub}`);
     } catch (err) {
       this.logger.warn(`Connection rejected: Invalid token for socket ${client.id} - ${err.message}`);

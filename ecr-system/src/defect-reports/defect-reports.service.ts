@@ -412,14 +412,6 @@ export class DefectReportsService implements OnModuleInit {
       }
     }
 
-    if (report.gmApproval && report.gmApproval.messageToSm) {
-      const isSm = actor?.role === 'SENIOR_MANAGER';
-      const isAdmin = actor?.role === 'ADMIN';
-      if (!isSm && !isAdmin) {
-        delete report.gmApproval.messageToSm;
-      }
-    }
-
     return report;
   }
 

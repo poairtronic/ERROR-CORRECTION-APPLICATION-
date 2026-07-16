@@ -49,9 +49,9 @@ async function bootstrap() {
     new TimeoutInterceptor(),
   );
 
-  // CORS is only needed for local development. Production is same-origin.
+  // CORS - allow frontend origin (configured via FRONTEND_URL env, falls back to localhost)
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: config.get('FRONTEND_URL') || 'http://localhost:5173',
     credentials: true,
   });
 
@@ -59,7 +59,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
     }),
   );
   app.setGlobalPrefix('api');

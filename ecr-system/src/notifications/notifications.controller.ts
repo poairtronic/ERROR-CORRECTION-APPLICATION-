@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, UseGuards, NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -14,7 +14,9 @@ export class NotificationsController {
   }
 
   @Get('report/:reportId')
-  findByReport(@Param('reportId') reportId: string) {
+  async findByReport(@Param('reportId') reportId: string, @CurrentUser() user) {
+    const hasAccess = await this.service.canAccessReportNotifications(reportId, user.id, user.role);
+    if (!hasAccess) throw new NotFoundException('Notifications not found');
     return this.service.findByReport(reportId);
   }
 

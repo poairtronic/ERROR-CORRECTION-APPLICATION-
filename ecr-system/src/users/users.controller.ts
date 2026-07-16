@@ -25,9 +25,8 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.STORE_MANAGER)
   findAll(
-    @Query('role') role?: string, 
-    @Query('department') dept?: string,
-    @Query() pagination?: import('../common/dto/pagination.dto').PaginationDto
+    @Query('role') role?: string,
+    @Query('department') dept?: string
   ) {
     return this.usersService.findAll(role, dept);
   }

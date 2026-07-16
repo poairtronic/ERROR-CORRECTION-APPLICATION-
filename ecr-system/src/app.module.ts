@@ -60,12 +60,12 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
       {
         name: 'default',
         ttl: 60000,
-        limit: 100,
+        limit: 60,
       },
       {
         name: 'auth',
         ttl: 60000,
-        limit: 20,
+        limit: 10,
       },
     ]),
     EventEmitterModule.forRoot(),

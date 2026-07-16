@@ -188,7 +188,7 @@ export default function NewReportPage() {
       };
       delete body.responsibleName;
       if (!body.vendorId) delete body.vendorId;
-      
+
       if (isSimplifiedInspector) {
         if (isRework) {
           body.inlineInspection = {
@@ -221,6 +221,17 @@ export default function NewReportPage() {
           };
         }
       }
+
+      // Strip fields not in CreateDefectReportDto
+      delete body.rootCause;
+      delete body.responsibleParty;
+      delete body.responsibleId;
+      delete body.decision;
+      delete body.alternativeNote;
+      delete body.costEstimate;
+      delete body.timeEstimateHours;
+      delete body.lossAmount;
+      delete body.isDraft;
 
       let res;
       if (isEditMode) {

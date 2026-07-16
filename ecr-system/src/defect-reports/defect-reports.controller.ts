@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { DefectReportsService } from './defect-reports.service';
+import { DefectReportSerializerInterceptor } from './defect-report-serializer.interceptor';
 import { CreateDefectReportDto } from './dto/create-defect-report.dto';
 import { InspectReportDto } from './dto/inspect-report.dto';
 import { SmReviewDto } from './dto/sm-review.dto';
@@ -25,6 +26,7 @@ import { Role } from '../common/enums/role.enum';
 
 @Controller('defect-reports')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@UseInterceptors(DefectReportSerializerInterceptor)
 export class DefectReportsController {
   constructor(private service: DefectReportsService) {}
 
@@ -49,15 +51,16 @@ export class DefectReportsController {
   findAll(
     @Query('status') status?: string,
     @Query('mine') mine?: string,
-    @Query() pagination?: import('../common/dto/pagination.dto').PaginationDto,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
     @CurrentUser() user?: any,
   ) {
     return this.service.findAll({
       status,
       raisedById: mine === 'true' ? user?.id : undefined,
-      page: pagination?.page,
-      limit: pagination?.limit,
-    }, user);
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   @Get(':id')
