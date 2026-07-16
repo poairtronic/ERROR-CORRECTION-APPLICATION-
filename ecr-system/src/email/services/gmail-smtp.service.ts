@@ -16,14 +16,20 @@ export class GmailSmtpService implements OnModuleInit {
 
   async onModuleInit() {
     this.scriptUrl = this.configService.get<string>('GMAIL_SCRIPT_URL') || null;
+    this.secretToken = this.configService.get<string>('GMAIL_SCRIPT_TOKEN');
 
-    if (this.scriptUrl) {
+    if (this.scriptUrl && this.secretToken) {
       this.logger.log('Gmail HTTP Service initialized using Google Apps Script Web App.');
       return;
     }
 
-    // SMTP Fallback for local development
-    this.logger.log('No GMAIL_SCRIPT_URL found. Initializing SMTP transport fallback for local development...');
+    if (this.scriptUrl && !this.secretToken) {
+      this.logger.warn('GMAIL_SCRIPT_URL is set but GMAIL_SCRIPT_TOKEN is missing. Falling back to SMTP.');
+      this.scriptUrl = null;
+    }
+
+    // SMTP Fallback
+    this.logger.log('Initializing SMTP transport fallback...');
     const emailFrom = this.configService.get<string>('EMAIL_FROM');
     const gmailAppPassword = this.configService.get<string>('GMAIL_APP_PASSWORD');
 

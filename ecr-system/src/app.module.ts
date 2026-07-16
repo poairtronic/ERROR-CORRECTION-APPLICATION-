@@ -43,16 +43,15 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
         }
 
         const gmailScriptUrl = config['GMAIL_SCRIPT_URL'];
+        const hasScriptToken = !!(config['GMAIL_SCRIPT_TOKEN'] && config['GMAIL_SCRIPT_TOKEN'].trim() !== '');
+        const hasAppPassword = !!(config['GMAIL_APP_PASSWORD'] && config['GMAIL_APP_PASSWORD'].trim() !== '');
+
         if (gmailScriptUrl && gmailScriptUrl.trim() !== '') {
-          const scriptToken = config['GMAIL_SCRIPT_TOKEN'];
-          if (!scriptToken || scriptToken.trim() === '') {
-            throw new Error(`[ENVIRONMENT_ERROR] "GMAIL_SCRIPT_TOKEN" is required when "GMAIL_SCRIPT_URL" is set!`);
+          if (!hasScriptToken && !hasAppPassword) {
+            throw new Error(`[ENVIRONMENT_ERROR] "GMAIL_SCRIPT_TOKEN" or "GMAIL_APP_PASSWORD" is required when "GMAIL_SCRIPT_URL" is set!`);
           }
-        } else {
-          const appPassword = config['GMAIL_APP_PASSWORD'];
-          if (!appPassword || appPassword.trim() === '') {
-            throw new Error(`[ENVIRONMENT_ERROR] "GMAIL_APP_PASSWORD" is required for SMTP email delivery when "GMAIL_SCRIPT_URL" is not set!`);
-          }
+        } else if (!hasAppPassword) {
+          throw new Error(`[ENVIRONMENT_ERROR] "GMAIL_APP_PASSWORD" is required for SMTP email delivery when "GMAIL_SCRIPT_URL" is not set!`);
         }
 
         return config;
