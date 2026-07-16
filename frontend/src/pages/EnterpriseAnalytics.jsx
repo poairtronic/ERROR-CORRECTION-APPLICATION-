@@ -22,6 +22,7 @@ export default function EnterpriseAnalytics() {
   const [selectedStage, setSelectedStage] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handlePdfExport = () => {
     const element = document.getElementById('analytics-dashboard-content');
@@ -60,6 +61,18 @@ export default function EnterpriseAnalytics() {
   const uniqueStages = Array.from(new Set(reports.map(r => r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure).filter(Boolean)));
 
   const filteredReports = reports.filter(report => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const reportNum = (report.reportNumber || '').toLowerCase();
+      const compName = (report.componentName || '').toLowerCase();
+      const errType = (report.errorTypeName || report.inspectionDetail?.errorType || '').toLowerCase();
+      const desc = (report.defectDescription || '').toLowerCase();
+      const stage = (report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure || '').toLowerCase();
+      const resp = (report.inspectionDetail?.responsibleId || '').toLowerCase();
+      if (!reportNum.includes(q) && !compName.includes(q) && !errType.includes(q) && !desc.includes(q) && !stage.includes(q) && !resp.includes(q)) {
+        return false;
+      }
+    }
     if (selectedComponent && report.componentName !== selectedComponent) {
       return false;
     }
@@ -190,7 +203,7 @@ export default function EnterpriseAnalytics() {
                   <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Defect History & Filters</h3>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Filter overall history by master data categories</p>
                 </div>
-                {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage || startDate || endDate) && (
+                {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage || startDate || endDate || searchQuery) && (
                   <button className="btn btn-ghost btn-sm" onClick={() => {
                     setSelectedComponent('');
                     setSelectedErrorType('');
@@ -199,6 +212,7 @@ export default function EnterpriseAnalytics() {
                     setSelectedStage('');
                     setStartDate('');
                     setEndDate('');
+                    setSearchQuery('');
                   }} style={{ fontSize: '12px', color: 'var(--primary-light)' }}>
                     Reset Filters
                   </button>
@@ -207,6 +221,25 @@ export default function EnterpriseAnalytics() {
 
               {/* 5 Dropdown Filters Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Search</label>
+                  <input 
+                    type="text"
+                    placeholder="Search by ID, component, desc..."
+                    style={{ 
+                      background: 'rgba(0,0,0,0.2)', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      color: 'white', 
+                      padding: '8px 12px', 
+                      borderRadius: '8px', 
+                      outline: 'none', 
+                      fontSize: '13px'
+                    }}
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component</label>
                   <select 
@@ -329,6 +362,8 @@ export default function EnterpriseAnalytics() {
                           const id = r.inspectionDetail.responsibleId;
                           if (r.inspectionDetail.responsibleParty === 'OPERATOR') {
                             respName = operators.find(o => o.id === id)?.name || id || 'Operator';
+                          } else if (r.inspectionDetail.responsibleParty === 'CUSTOMER') {
+                            respName = id || 'Customer';
                           } else {
                             respName = vendors.find(v => v.id === id)?.name || id || 'Vendor';
                           }

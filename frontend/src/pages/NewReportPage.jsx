@@ -119,6 +119,8 @@ export default function NewReportPage() {
           } else if (f.responsibleParty === 'VENDOR') {
             const match = (v.data || []).find(vn => vn.id === f.responsibleId);
             name = match ? match.name : f.responsibleId;
+          } else if (f.responsibleParty === 'CUSTOMER') {
+            name = f.responsibleId;
           }
           return { ...f, responsibleName: name };
         });
@@ -439,6 +441,7 @@ export default function NewReportPage() {
                         <option value="">Select...</option>
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
+                        <option value="CUSTOMER">Customer</option>
                       </select>
                     </div>
                     {form.responsibleParty === 'OPERATOR' && (
@@ -462,6 +465,25 @@ export default function NewReportPage() {
                         <datalist id="operator-names">
                           {operators.map(o => <option key={o.id} value={o.name} />)}
                         </datalist>
+                      </div>
+                    )}
+                    {form.responsibleParty === 'CUSTOMER' && (
+                      <div className="form-group">
+                        <label>Customer Name *</label>
+                        <input 
+                          type="text"
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: val
+                            }));
+                          }}
+                          placeholder="Enter customer name..."
+                          required={isSimplifiedInspector}
+                        />
                       </div>
                     )}
                     {form.responsibleParty === 'VENDOR' && (
@@ -512,6 +534,7 @@ export default function NewReportPage() {
                         <option value="">Select...</option>
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
+                        <option value="CUSTOMER">Customer</option>
                       </select>
                     </div>
                     {form.responsibleParty === 'OPERATOR' && (
@@ -535,6 +558,25 @@ export default function NewReportPage() {
                         <datalist id="operator-names">
                           {operators.map(o => <option key={o.id} value={o.name} />)}
                         </datalist>
+                      </div>
+                    )}
+                    {form.responsibleParty === 'CUSTOMER' && (
+                      <div className="form-group">
+                        <label>Customer Name *</label>
+                        <input 
+                          type="text"
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: val
+                            }));
+                          }}
+                          placeholder="Enter customer name..."
+                          required={isSimplifiedInspector}
+                        />
                       </div>
                     )}
                     {form.responsibleParty === 'VENDOR' && (
