@@ -396,6 +396,12 @@ export class DefectReportsService implements OnModuleInit {
     });
     if (!report) throw new NotFoundException('Defect report not found');
 
+    if (report.status === ReportStatus.DRAFT) {
+      if (!actor || report.raisedById !== actor.id) {
+        throw new ForbiddenException('You do not have permission to access this draft report');
+      }
+    }
+
     if (actor && actor.role === 'OPERATOR') {
       const isCreator = report.raisedById === actor.id;
       const isAssigned = report.inspectionDetail?.responsibleId === actor.id;
@@ -407,23 +413,34 @@ export class DefectReportsService implements OnModuleInit {
     return report;
   }
 
-  findAll(filters: { status?: string; raisedById?: string; page?: number; limit?: number }) {
-    const where: any = {};
-    if (filters.status) where.status = filters.status;
-    if (filters.raisedById) where.raisedById = filters.raisedById;
+  async findAll(filters: { status?: string; raisedById?: string; page?: number; limit?: number }, actor?: any) {
+    const qb = this.reportsRepo.createQueryBuilder('report')
+      .leftJoinAndSelect('report.raisedBy', 'raisedBy')
+      .leftJoinAndSelect('report.inspectionDetail', 'inspectionDetail')
+      .leftJoinAndSelect('report.auditLogs', 'auditLogs')
+      .leftJoinAndSelect('auditLogs.actor', 'auditActor')
+      .orderBy('report.createdAt', 'DESC');
 
-    const findOptions: any = {
-      where,
-      order: { createdAt: 'DESC' },
-      relations: ['raisedBy', 'auditLogs', 'auditLogs.actor', 'inspectionDetail'],
-    };
-
-    if (filters.page && filters.limit) {
-      findOptions.skip = (filters.page - 1) * filters.limit;
-      findOptions.take = filters.limit;
+    if (filters.status) {
+      qb.andWhere('report.status = :status', { status: filters.status });
+      if (filters.status === ReportStatus.DRAFT) {
+        const actorId = actor?.id || '';
+        qb.andWhere('report.raisedById = :actorId', { actorId });
+      }
+    } else {
+      qb.andWhere('report.status != :draft', { draft: ReportStatus.DRAFT });
     }
 
-    return this.reportsRepo.find(findOptions);
+    if (filters.raisedById) {
+      qb.andWhere('report.raisedById = :raisedById', { raisedById: filters.raisedById });
+    }
+
+    if (filters.page && filters.limit) {
+      qb.skip((filters.page - 1) * filters.limit);
+      qb.take(filters.limit);
+    }
+
+    return qb.getMany();
   }
 
   async inspect(reportId: string, dto: InspectReportDto, actor: ActingUser) {

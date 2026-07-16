@@ -11,7 +11,7 @@ export default function InspectorDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { data: reports = [], isLoading } = useQuery({
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['inspector-reports'],
     queryFn: async () => {
       const { data } = await api.get('/defect-reports');
@@ -19,11 +19,20 @@ export default function InspectorDashboard() {
     }
   });
 
+  const { data: draftReports = [], isLoading: draftsLoading } = useQuery({
+    queryKey: ['inspector-drafts'],
+    queryFn: async () => {
+      const { data } = await api.get('/defect-reports?status=DRAFT');
+      return data || [];
+    }
+  });
+
+  const isLoading = reportsLoading || draftsLoading;
+
   const pendingInspections = reports.filter(r => r.status === 'PENDING_INSPECTION');
   const completedToday = reports.filter(r => 
     r.auditLogs?.some(log => log.action === 'INSPECTED' && new Date(log.createdAt).toDateString() === new Date().toDateString())
   ).length;
-  const draftReports = reports.filter(r => r.status === 'DRAFT' && r.raisedById === user?.id);
 
   const columns = [
     { label: 'Report ID', key: 'id' },

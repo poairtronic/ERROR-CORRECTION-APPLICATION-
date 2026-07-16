@@ -57,7 +57,7 @@ export class DefectReportsController {
       raisedById: mine === 'true' ? user?.id : undefined,
       page: pagination?.page,
       limit: pagination?.limit,
-    });
+    }, user);
   }
 
   @Get(':id')
