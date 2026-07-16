@@ -33,6 +33,7 @@ export default function ReportDetailPage() {
   const queryClient = useQueryClient();
   const [modal, setModal] = useState(null); // 'inspect'|'sm-review'|'gm-approve'|'gm-reject'
   const [notes, setNotes] = useState('');
+  const [messageToSm, setMessageToSm] = useState('');
   const [inspectionMode, setInspectionMode] = useState(null); // 'REWORK' | 'REJECTION' — gates the inspection form
 
   const { data: report, isLoading: loading } = useQuery({
@@ -477,6 +478,8 @@ export default function ReportDetailPage() {
                 ['Biased / Conflict of Interest', <span key="biased-yes" style={{ color: 'var(--danger)', fontWeight: 'bold' }}>⚠️ Yes (Flagged)</span>, undefined]
               ] : []).concat(report.gmApproval ? [
                 ['GM Remarks', report.gmApproval.remarks || '—', undefined]
+              ] : []).concat(report.gmApproval?.messageToSm ? [
+                ['GM Message to SM (Private)', report.gmApproval.messageToSm, undefined]
               ] : []).map(([label, value, fieldKey]) => (
                 <div key={label} className="detail-field-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -647,10 +650,14 @@ export default function ReportDetailPage() {
 
             // 4. General Manager approval remarks
             if (report.gmApproval) {
+              let content = report.gmApproval.remarks || (report.gmApproval.approved ? 'Approved' : 'Rejected');
+              if (report.gmApproval.messageToSm) {
+                content += `\n\n[PRIVATE] Message to Senior Manager: ${report.gmApproval.messageToSm}`;
+              }
               commentsTimeline.push({
                 role: 'General Manager',
                 title: '4. General Manager Decision Remarks',
-                content: report.gmApproval.remarks || (report.gmApproval.approved ? 'Approved' : 'Rejected'),
+                content,
                 date: report.gmApproval.approvedAt,
               });
             }
@@ -1093,14 +1100,37 @@ export default function ReportDetailPage() {
         </ActionModal>
       )}
       {modal === 'gm-approve' && (
-        <ActionModal title="Approve Report" onClose={() => setModal(null)} actionLabel="Approve" loading={actionMutation.isPending} onConfirm={() => doAction('gm-approve', { approved: true, notes })}>
+        <ActionModal title="Approve Report" onClose={() => { setModal(null); setNotes(''); setMessageToSm(''); }} actionLabel="Approve" loading={actionMutation.isPending} onConfirm={() => {
+          if (!notes.trim()) {
+            toast.error('Notes / Description is compulsory.');
+            return;
+          }
+          doAction('gm-approve', { approved: true, remarks: notes, messageToSm });
+        }}>
           <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>Are you sure you want to approve this defect report?</p>
-          <div className="form-group"><label>Notes (optional)</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add approval notes…" /></div>
+          <div className="form-group" style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', marginBottom: 6 }}>Notes / Description *</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add approval notes…" required rows={3} style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: 8, borderRadius: 6 }} />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: 6 }}>Message to Senior Manager (Optional)</label>
+            <textarea value={messageToSm} onChange={e => setMessageToSm(e.target.value)} placeholder="Add a private message to Senior Manager…" rows={3} style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: 8, borderRadius: 6 }} />
+          </div>
         </ActionModal>
       )}
       {modal === 'gm-reject' && (
-        <ActionModal title="Reject Report" onClose={() => setModal(null)} actionLabel="Reject" variant="danger" loading={actionMutation.isPending} onConfirm={() => doAction('gm-approve', { approved: false, notes })}>
-          <div className="form-group"><label>Reason for Rejection *</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain why this report is being rejected…" required /></div>
+        <ActionModal title="Reject Report" onClose={() => { setModal(null); setNotes(''); setMessageToSm(''); }} actionLabel="Reject" variant="danger" loading={actionMutation.isPending} onConfirm={() => {
+          if (!notes.trim()) {
+            toast.error('Reason for Rejection is compulsory.');
+            return;
+          }
+          doAction('gm-approve', { approved: false, remarks: notes, messageToSm });
+        }}>
+          <div className="form-group" style={{ marginBottom: 16 }}><label style={{ display: 'block', marginBottom: 6 }}>Reason for Rejection *</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Explain why this report is being rejected…" required rows={3} style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: 8, borderRadius: 6 }} /></div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: 6 }}>Message to Senior Manager (Optional)</label>
+            <textarea value={messageToSm} onChange={e => setMessageToSm(e.target.value)} placeholder="Add a private message to Senior Manager…" rows={3} style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: 8, borderRadius: 6 }} />
+          </div>
         </ActionModal>
       )}
       {modal === 'issue-components' && (

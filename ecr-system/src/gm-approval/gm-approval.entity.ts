@@ -37,6 +37,9 @@ export class GmApproval {
   @Column({ type: 'text', nullable: true })
   remarks: string;
 
+  @Column({ type: 'text', nullable: true })
+  messageToSm?: string;
+
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   budgetApproved: number;
 

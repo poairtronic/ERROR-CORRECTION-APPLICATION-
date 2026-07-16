@@ -102,6 +102,7 @@ export class DefectReportsService implements OnModuleInit {
     actor?: ActingUser,
     actionTaken?: string,
     comments?: string,
+    messageToSm?: string,
   ) {
     // NotificationListener resolves recipients by new status and sends app+email (queued via cron retry)
     // Wrapped in try-catch so notification/email failures never crash report operations
@@ -114,6 +115,7 @@ export class DefectReportsService implements OnModuleInit {
         actor,
         actionTaken,
         comments,
+        messageToSm,
       });
     } catch (error: any) {
       console.error(
@@ -410,6 +412,14 @@ export class DefectReportsService implements OnModuleInit {
       }
     }
 
+    if (report.gmApproval && report.gmApproval.messageToSm) {
+      const isSm = actor?.role === 'SENIOR_MANAGER';
+      const isAdmin = actor?.role === 'ADMIN';
+      if (!isSm && !isAdmin) {
+        delete report.gmApproval.messageToSm;
+      }
+    }
+
     return report;
   }
 
@@ -652,6 +662,7 @@ export class DefectReportsService implements OnModuleInit {
         approved: dto.approved,
         remarks: dto.remarks,
         budgetApproved: dto.budgetApproved,
+        messageToSm: dto.messageToSm,
       });
       await gmApprovalRepo.save(gmApproval);
       report.gmApproval = gmApproval;
@@ -660,7 +671,7 @@ export class DefectReportsService implements OnModuleInit {
       report.status = dto.approved ? ReportStatus.APPROVED : ReportStatus.REJECTED;
       await reportsRepo.save(report);
       await this.logStatusChange(report.id, actor, from, report.status, dto.remarks, manager);
-      this.emitStatusChange(report, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks);
+      this.emitStatusChange(report, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks, dto.messageToSm);
 
       if (dto.approved && report.inspectionDetail) {
         if (report.inspectionDetail.responsibleParty === ResponsibleParty.OPERATOR) {

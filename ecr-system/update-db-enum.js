@@ -75,6 +75,8 @@ async function main() {
     await client.query(`ALTER TABLE inspection_details ADD COLUMN IF NOT EXISTS "labourCost" numeric(10,2) DEFAULT 0;`);
     await client.query(`ALTER TABLE inspection_details ADD COLUMN IF NOT EXISTS "otherCost" numeric(10,2) DEFAULT 0;`);
     await client.query(`ALTER TABLE inspection_details ADD COLUMN IF NOT EXISTS "costRemarks" text;`);
+    console.log('Adding messageToSm column to gm_approval table...');
+    await client.query(`ALTER TABLE gm_approval ADD COLUMN IF NOT EXISTS "messageToSm" text;`);
     console.log('Columns added successfully!');
     
   } catch (err) {

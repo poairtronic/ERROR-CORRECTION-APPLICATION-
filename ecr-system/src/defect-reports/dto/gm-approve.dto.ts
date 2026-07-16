@@ -11,4 +11,8 @@ export class GmApproveDto {
   @IsOptional()
   @IsNumber()
   budgetApproved?: number;
+
+  @IsOptional()
+  @IsString()
+  messageToSm?: string;
 }

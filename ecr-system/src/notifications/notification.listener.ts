@@ -19,6 +19,7 @@ interface StatusChangedEvent {
   actor?: { id: string; role: Role };
   actionTaken?: string;
   comments?: string;
+  messageToSm?: string;
 }
 
 @Injectable()
@@ -327,6 +328,8 @@ export class NotificationListener {
       `Defect report ${report.reportNumber} has been fully approved by the General Manager.`,
       summaryTable,
     );
+
+    await this.sendPrivateReportToSm(report, event);
   }
 
   private async handleComponentsIssued(report: DefectReport, event: StatusChangedEvent) {
@@ -419,6 +422,58 @@ export class NotificationListener {
       `Report Rejected: ${report.reportNumber}`,
       `Defect report ${report.reportNumber} was rejected.`,
       summaryTable,
+    );
+
+    await this.sendPrivateReportToSm(report, event);
+  }
+
+  private async sendPrivateReportToSm(report: DefectReport, event: StatusChangedEvent) {
+    const smUsers = await this.usersRepo.find({ where: { role: Role.SENIOR_MANAGER, isActive: true } });
+    if (smUsers.length === 0) return;
+
+    // Build specialized private report summary containing all fields + both GM descriptions
+    const privateSummary: Record<string, string> = {
+      'Report Number': report.reportNumber || 'N/A',
+      'Status': report.status || 'N/A',
+      'Component Name': report.componentName || '—',
+      'Error Type': report.errorTypeName || report.inspectionDetail?.errorType || '—',
+      'SC Number': report.scNo || '—',
+      'PO Number': report.poNo || '—',
+      'Stage of Failure': report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure || '—',
+      'Quantity Affected': report.quantity?.toString() || '—',
+      'Defect Description': report.defectDescription || '—',
+      'Cost Estimate': report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—',
+      'Loss Estimate': report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—',
+      'Rework Description': report.inspectionDetail?.reworkDescription || report.reworkDescription || '—',
+      'Rejection Description': report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '—',
+      'Alternative Notes': report.inspectionDetail?.alternativeNote || '—',
+      'General Manager Decision Notes': event.comments || 'No comments provided',
+      'General Manager Message to Senior Manager (Private)': event.messageToSm || 'No private message provided',
+      'Report Link': `${this.frontendUrl}/reports/${report.id}`,
+    };
+
+    await Promise.all(
+      smUsers.map(sm =>
+        this.notificationsService.create({
+          userId: sm.id,
+          userEmail: sm.email,
+          channel: NotificationChannel.APP_AND_EMAIL,
+          type: 'Private GM Report',
+          message: `General Manager has submitted a private decision report for ${report.reportNumber}.`,
+          event: NotificationEvent.REPORT_UPDATED,
+          subject: `[PRIVATE] GM Decision Report: ${report.reportNumber}`,
+          reportId: report.id,
+          templateData: {
+            title: `Private General Manager Decision Report`,
+            message: `This is a private report containing the General Manager's final decision notes and private message to the Senior Manager.`,
+            summaryTable: privateSummary,
+            primaryButton: {
+              text: 'Open Report',
+              url: `${this.frontendUrl}/reports/${report.id}`,
+            },
+          },
+        })
+      )
     );
   }
 
