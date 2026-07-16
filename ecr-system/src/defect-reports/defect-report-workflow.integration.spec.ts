@@ -3,6 +3,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { EventEmitterModule, EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { DefectReportsService } from './defect-reports.service';
+import { DefectReportsWorkflowService } from './defect-reports-workflow.service';
+import { DefectReportsImageService } from './defect-reports-image.service';
 import { DefectReport } from './defect-report.entity';
 import { ReportSequence } from './report-sequence.entity';
 import { InspectionDetail } from '../inspection/inspection-detail.entity';
@@ -97,6 +99,8 @@ describe('Defect Report Workflow Integration', () => {
       imports: [EventEmitterModule.forRoot()],
       providers: [
         DefectReportsService,
+        DefectReportsWorkflowService,
+        DefectReportsImageService,
         SalaryDeductionService,
         NotificationListener,
         { provide: getRepositoryToken(DefectReport), useValue: mockReportRepo },
