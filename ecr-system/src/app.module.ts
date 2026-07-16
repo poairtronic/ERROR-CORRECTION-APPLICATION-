@@ -29,9 +29,11 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: process.env.NODE_ENV === 'production'
-        ? '.env.production'
+        ? ['.env.production', '.env']
         : ['.env.development', '.env.local', '.env'],
-      ignoreEnvFile: process.env.NODE_ENV === 'production' && !existsSync(join(process.cwd(), '.env.production')),
+      ignoreEnvFile: process.env.NODE_ENV === 'production'
+        && !existsSync(join(process.cwd(), '.env.production'))
+        && !existsSync(join(process.cwd(), '.env')),
       validate: (config: Record<string, any>) => {
         const requiredAlways = ['DATABASE_URL', 'JWT_SECRET', 'EMAIL_FROM'];
         for (const key of requiredAlways) {
