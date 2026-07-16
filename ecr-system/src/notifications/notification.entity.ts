@@ -24,6 +24,7 @@ export class Notification {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Index()
   @Column({ name: 'user_id' })
   userId: string;
 
@@ -31,6 +32,7 @@ export class Notification {
   @JoinColumn({ name: 'report_id' })
   report: DefectReport;
 
+  @Index()
   @Column({ name: 'report_id', nullable: true })
   reportId: string;
 

@@ -7,7 +7,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { Repository, EntityManager, Not } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DefectReport } from './defect-report.entity';
 import { ReportSequence } from './report-sequence.entity';
@@ -399,7 +399,15 @@ export class DefectReportsService implements OnModuleInit {
   async findOne(id: string, actor?: any) {
     const report = await this.reportsRepo.findOne({
       where: { id },
-      relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues', 'auditLogs', 'auditLogs.actor'],
+      relations: {
+        raisedBy: true,
+        inspectionDetail: true,
+        smReview: true,
+        gmApproval: true,
+        componentIssues: true,
+        auditLogs: { actor: true },
+      },
+      relationLoadStrategy: 'query',
     });
     if (!report) throw new NotFoundException('Defect report not found');
 
@@ -421,33 +429,38 @@ export class DefectReportsService implements OnModuleInit {
   }
 
   async findAll(filters: { status?: string; raisedById?: string; page?: number; limit?: number }, actor?: any) {
-    const qb = this.reportsRepo.createQueryBuilder('report')
-      .leftJoinAndSelect('report.raisedBy', 'raisedBy')
-      .leftJoinAndSelect('report.inspectionDetail', 'inspectionDetail')
-      .leftJoinAndSelect('report.auditLogs', 'auditLogs')
-      .leftJoinAndSelect('auditLogs.actor', 'auditActor')
-      .orderBy('report.createdAt', 'DESC');
-
+    const where: any = {};
     if (filters.status) {
-      qb.andWhere('report.status = :status', { status: filters.status });
       if (filters.status === ReportStatus.DRAFT) {
-        const actorId = actor?.id || '';
-        qb.andWhere('report.raisedById = :actorId', { actorId });
+        where.status = filters.status;
+        where.raisedById = actor?.id || '';
+      } else {
+        where.status = filters.status;
       }
     } else {
-      qb.andWhere('report.status != :draft', { draft: ReportStatus.DRAFT });
+      where.status = Not(ReportStatus.DRAFT);
     }
 
     if (filters.raisedById) {
-      qb.andWhere('report.raisedById = :raisedById', { raisedById: filters.raisedById });
+      where.raisedById = filters.raisedById;
     }
 
-    if (filters.page && filters.limit) {
-      qb.skip((filters.page - 1) * filters.limit);
-      qb.take(filters.limit);
-    }
+    const limit = filters.limit ? Math.min(filters.limit, 1000) : 500;
+    const page = filters.page || 1;
+    const skip = (page - 1) * limit;
 
-    return qb.getMany();
+    return this.reportsRepo.find({
+      where,
+      relations: {
+        raisedBy: true,
+        inspectionDetail: true,
+        auditLogs: { actor: true },
+      },
+      relationLoadStrategy: 'query',
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
   }
 
   async inspect(reportId: string, dto: InspectReportDto, actor: ActingUser) {

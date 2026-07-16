@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { Role } from '../common/enums/role.enum';
 import { NotificationPreference } from '../email/entities/notification-preference.entity';
@@ -23,6 +24,7 @@ export class User {
   @Column({ select: false })
   passwordHash: string;
 
+  @Index()
   @Column({ type: 'simple-enum', enum: Role })
   role: Role;
 
@@ -30,6 +32,7 @@ export class User {
   department: string;
 
   // links to payroll record for salary deduction lookups
+  @Index()
   @Column({ nullable: true })
   salaryRefId: string;
 
