@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -17,6 +17,8 @@ import { calculateTotalCost } from './utils/cost-calculator';
 
 @Injectable()
 export class DefectReportsWorkflowService {
+  private readonly logger = new Logger(DefectReportsWorkflowService.name);
+
   constructor(
     @InjectRepository(DefectReport)
     private readonly reportsRepo: Repository<DefectReport>,
