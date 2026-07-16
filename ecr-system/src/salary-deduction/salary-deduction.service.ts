@@ -143,7 +143,7 @@ export class SalaryDeductionService {
       console.warn(`[SALARY_DEDUCTION_WARN] Operator user not found for identifier: ${operatorId}. Creating deduction without operator ID.`);
     }
 
-    const amount = report.smReview?.lossAmount ?? 0;
+    const amount = report.inspectionDetail?.lossAmount ?? 0;
     const reason = `Auto-created deduction for Defect Report ${report.reportNumber}. Notes: ${report.smReview?.decisionNote || ''}`;
     
     const now = new Date();

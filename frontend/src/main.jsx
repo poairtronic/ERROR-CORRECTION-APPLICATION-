@@ -65,7 +65,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                   </RoleGuard>
                 } />
                 <Route path="/audit" element={
-                  <RoleGuard allowedRoles={['ADMIN', 'GM', 'SM']}>
+                  <RoleGuard allowedRoles={['ADMIN', 'GENERAL_MANAGER', 'SENIOR_MANAGER']}>
                     <AuditViewerPage />
                   </RoleGuard>
                 } />

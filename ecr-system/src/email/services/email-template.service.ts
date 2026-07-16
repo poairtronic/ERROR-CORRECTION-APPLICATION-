@@ -116,7 +116,7 @@ export class EmailTemplateService {
     const context = {
       appName: this.configService.get<string>('EMAIL_FROM_NAME', 'Velan Metrology'),
       logoUrl: 'https://via.placeholder.com/150x50?text=Logo',
-      supportEmail: 'posuppportairtronic@gmail.com',
+      supportEmail: this.configService.get<string>('EMAIL_FROM'),
       currentYear: new Date().getFullYear().toString(),
       timestamp: new Date().toISOString(),
       subject,

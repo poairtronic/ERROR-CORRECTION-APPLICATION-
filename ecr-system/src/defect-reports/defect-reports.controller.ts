@@ -103,7 +103,7 @@ export class DefectReportsController {
     for (const item of body.fields) {
       await this.service.editField(id, item.field, String(item.value), user);
     }
-    return this.service.findOne(id);
+    return this.service.findOne(id, user);
   }
 
   @Post(':id/images')

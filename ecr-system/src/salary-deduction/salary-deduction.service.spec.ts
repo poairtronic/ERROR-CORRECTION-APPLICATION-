@@ -108,9 +108,9 @@ describe('SalaryDeductionService', () => {
           reportNumber: 'ERR-001',
           inspectionDetail: {
             responsibleId: validUuid,
+            lossAmount: 500,
           },
           smReview: {
-            lossAmount: 500,
             decisionNote: 'Operator error standard',
           },
         },
@@ -135,10 +135,9 @@ describe('SalaryDeductionService', () => {
           reportNumber: 'ERR-001',
           inspectionDetail: {
             responsibleId: 'operator@velan.com',
-          },
-          smReview: {
             lossAmount: 300,
           },
+          smReview: {},
         },
         gmId: 'gm-123',
       };
@@ -160,10 +159,9 @@ describe('SalaryDeductionService', () => {
           reportNumber: 'ERR-001',
           inspectionDetail: {
             responsibleId: 'unknown-operator',
-          },
-          smReview: {
             lossAmount: 100,
           },
+          smReview: {},
         },
         gmId: 'gm-123',
       };

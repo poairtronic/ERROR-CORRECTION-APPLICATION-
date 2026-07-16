@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
@@ -27,14 +28,31 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: process.env.NODE_ENV === 'production'
+        ? '.env.production'
+        : ['.env.development', '.env.local', '.env'],
+      ignoreEnvFile: process.env.NODE_ENV === 'production' && !existsSync(join(process.cwd(), '.env.production')),
       validate: (config: Record<string, any>) => {
-        const required = ['DATABASE_URL', 'JWT_SECRET', 'EMAIL_FROM', 'GMAIL_APP_PASSWORD'];
-        for (const key of required) {
-          if (!config[key]) {
-            throw new Error(`[ENVIRONMENT_ERROR] Mandatory configuration key "${key}" is missing in environment!`);
+        const requiredAlways = ['DATABASE_URL', 'JWT_SECRET', 'EMAIL_FROM'];
+        for (const key of requiredAlways) {
+          if (!config[key] || config[key].trim() === '') {
+            throw new Error(`[ENVIRONMENT_ERROR] Mandatory configuration key "${key}" is missing or empty in environment!`);
           }
         }
+
+        const gmailScriptUrl = config['GMAIL_SCRIPT_URL'];
+        if (gmailScriptUrl && gmailScriptUrl.trim() !== '') {
+          const scriptToken = config['GMAIL_SCRIPT_TOKEN'];
+          if (!scriptToken || scriptToken.trim() === '') {
+            throw new Error(`[ENVIRONMENT_ERROR] "GMAIL_SCRIPT_TOKEN" is required when "GMAIL_SCRIPT_URL" is set!`);
+          }
+        } else {
+          const appPassword = config['GMAIL_APP_PASSWORD'];
+          if (!appPassword || appPassword.trim() === '') {
+            throw new Error(`[ENVIRONMENT_ERROR] "GMAIL_APP_PASSWORD" is required for SMTP email delivery when "GMAIL_SCRIPT_URL" is not set!`);
+          }
+        }
+
         return config;
       },
     }),

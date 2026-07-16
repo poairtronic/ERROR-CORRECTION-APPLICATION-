@@ -200,7 +200,6 @@ describe('Defect Report Workflow Integration', () => {
         id: 'sm-uuid',
         loopholeNote: 'Loophole check',
         decisionNote: 'Operator error confirmed',
-        lossAmount: 200,
       } as any,
     };
 
