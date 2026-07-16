@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar } from 'react-icons/fi';
 import EnterpriseKpiCard from '../components/analytics/EnterpriseKpiCard';
@@ -14,6 +14,7 @@ import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
 export default function EnterpriseAnalytics() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [selectedComponent, setSelectedComponent] = useState('');
   const [selectedErrorType, setSelectedErrorType] = useState('');
@@ -39,83 +40,89 @@ export default function EnterpriseAnalytics() {
     });
   };
 
-  const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useQuery({ queryKey: ['analytics-kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
-  const { data: trends, isLoading: trendsLoading, refetch: refetchTrends } = useQuery({ queryKey: ['analytics-trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
-  const { data: insights, refetch: refetchInsights } = useQuery({ queryKey: ['analytics-insights'], queryFn: async () => (await api.get('/analytics/insights')).data, staleTime: 30000 });
-  const { data: slaData, refetch: refetchSla } = useQuery({ queryKey: ['analytics-sla'], queryFn: async () => (await api.get('/analytics/sla')).data, staleTime: 30000 });
-  const { data: vendorData, refetch: refetchVendor } = useQuery({ queryKey: ['analytics-vendor'], queryFn: async () => (await api.get('/analytics/vendor-intelligence')).data, staleTime: 30000 });
-  const { data: operatorData, refetch: refetchOperator } = useQuery({ queryKey: ['analytics-operator'], queryFn: async () => (await api.get('/analytics/operator-intelligence')).data, staleTime: 30000 });
-  const { data: machineData, refetch: refetchMachine } = useQuery({ queryKey: ['analytics-machine'], queryFn: async () => (await api.get('/analytics/machine-intelligence')).data, staleTime: 30000 });
+  const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
+  const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
+  const { data: insights } = useQuery({ queryKey: ['analytics', 'insights'], queryFn: async () => (await api.get('/analytics/insights')).data, staleTime: 30000 });
+  const { data: slaData } = useQuery({ queryKey: ['analytics', 'sla'], queryFn: async () => (await api.get('/analytics/sla')).data, staleTime: 30000 });
+  const { data: vendorData } = useQuery({ queryKey: ['analytics', 'vendor'], queryFn: async () => (await api.get('/analytics/vendor-intelligence')).data, staleTime: 30000 });
+  const { data: operatorData } = useQuery({ queryKey: ['analytics', 'operator'], queryFn: async () => (await api.get('/analytics/operator-intelligence')).data, staleTime: 30000 });
+  const { data: machineData } = useQuery({ queryKey: ['analytics', 'machine'], queryFn: async () => (await api.get('/analytics/machine-intelligence')).data, staleTime: 30000 });
 
-  const { data: reports = [], refetch: refetchReports } = useQuery({ queryKey: ['analytics-reports-list'], queryFn: async () => (await api.get('/defect-reports')).data || [] });
-  const { data: components = [] } = useQuery({ queryKey: ['components'], queryFn: async () => (await api.get('/master-data/components')).data || [] });
-  const { data: errorTypes = [] } = useQuery({ queryKey: ['error-types'], queryFn: async () => (await api.get('/master-data/error-types')).data || [] });
-  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await api.get('/master-data/vendors')).data || [] });
-  const { data: operators = [] } = useQuery({ queryKey: ['operators'], queryFn: async () => (await api.get('/master-data/operators')).data || [] });
+  const { data: reports = [] } = useQuery({ queryKey: ['analytics', 'reports-list'], queryFn: async () => (await api.get('/defect-reports')).data || [], staleTime: 30000 });
+  const { data: components = [] } = useQuery({ queryKey: ['components'], queryFn: async () => (await api.get('/master-data/components')).data || [], staleTime: 60000 });
+  const { data: errorTypes = [] } = useQuery({ queryKey: ['error-types'], queryFn: async () => (await api.get('/master-data/error-types')).data || [], staleTime: 60000 });
+  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await api.get('/master-data/vendors')).data || [], staleTime: 60000 });
+  const { data: operators = [] } = useQuery({ queryKey: ['operators'], queryFn: async () => (await api.get('/master-data/operators')).data || [], staleTime: 60000 });
 
-  const handleRefresh = () => { refetchKpis(); refetchTrends(); refetchInsights(); refetchSla(); refetchVendor(); refetchOperator(); refetchMachine(); refetchReports(); };
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['analytics'] });
+  };
 
   const isLoading = kpisLoading || trendsLoading;
   const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
 
-  const uniqueStages = Array.from(new Set(reports.map(r => r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure).filter(Boolean)));
+  const uniqueStages = useMemo(() => {
+    return Array.from(new Set(reports.map(r => r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure).filter(Boolean)));
+  }, [reports]);
 
-  const filteredReports = reports.filter(report => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const reportNum = (report.reportNumber || '').toLowerCase();
-      const compName = (report.componentName || '').toLowerCase();
-      const errType = (report.errorTypeName || report.inspectionDetail?.errorType || '').toLowerCase();
-      const desc = (report.defectDescription || '').toLowerCase();
-      const stage = (report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure || '').toLowerCase();
-      const resp = (report.inspectionDetail?.responsibleId || '').toLowerCase();
-      if (!reportNum.includes(q) && !compName.includes(q) && !errType.includes(q) && !desc.includes(q) && !stage.includes(q) && !resp.includes(q)) {
+  const filteredReports = useMemo(() => {
+    return reports.filter(report => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const reportNum = (report.reportNumber || '').toLowerCase();
+        const compName = (report.componentName || '').toLowerCase();
+        const errType = (report.errorTypeName || report.inspectionDetail?.errorType || '').toLowerCase();
+        const desc = (report.defectDescription || '').toLowerCase();
+        const stage = (report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure || '').toLowerCase();
+        const resp = (report.inspectionDetail?.responsibleId || '').toLowerCase();
+        if (!reportNum.includes(q) && !compName.includes(q) && !errType.includes(q) && !desc.includes(q) && !stage.includes(q) && !resp.includes(q)) {
+          return false;
+        }
+      }
+      if (selectedComponent && report.componentName !== selectedComponent) {
         return false;
       }
-    }
-    if (selectedComponent && report.componentName !== selectedComponent) {
-      return false;
-    }
-    if (selectedErrorType) {
-      const errType = report.errorTypeName || report.inspectionDetail?.errorType;
-      if (errType !== selectedErrorType) return false;
-    }
-    if (selectedVendor) {
-      const isVendor = report.inspectionDetail?.responsibleParty === 'VENDOR';
-      if (!isVendor) return false;
-      const vendorObj = vendors.find(v => v.id === report.inspectionDetail?.responsibleId);
-      const vendorName = vendorObj ? vendorObj.name : report.inspectionDetail?.responsibleId;
-      if (vendorName !== selectedVendor && report.inspectionDetail?.responsibleId !== selectedVendor) {
-        return false;
+      if (selectedErrorType) {
+        const errType = report.errorTypeName || report.inspectionDetail?.errorType;
+        if (errType !== selectedErrorType) return false;
       }
-    }
-    if (selectedOperator) {
-      const isOperator = report.inspectionDetail?.responsibleParty === 'OPERATOR';
-      if (!isOperator) return false;
-      const operatorObj = operators.find(o => o.id === report.inspectionDetail?.responsibleId);
-      const operatorName = operatorObj ? operatorObj.name : report.inspectionDetail?.responsibleId;
-      if (operatorName !== selectedOperator && report.inspectionDetail?.responsibleId !== selectedOperator) {
-        return false;
+      if (selectedVendor) {
+        const isVendor = report.inspectionDetail?.responsibleParty === 'VENDOR';
+        if (!isVendor) return false;
+        const vendorObj = vendors.find(v => v.id === report.inspectionDetail?.responsibleId);
+        const vendorName = vendorObj ? vendorObj.name : report.inspectionDetail?.responsibleId;
+        if (vendorName !== selectedVendor && report.inspectionDetail?.responsibleId !== selectedVendor) {
+          return false;
+        }
       }
-    }
-    if (selectedStage) {
-      const stage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
-      if (stage !== selectedStage) return false;
-    }
-    if (startDate) {
-      const repDate = new Date(report.createdAt);
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      if (repDate < start) return false;
-    }
-    if (endDate) {
-      const repDate = new Date(report.createdAt);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      if (repDate > end) return false;
-    }
-    return true;
-  });
+      if (selectedOperator) {
+        const isOperator = report.inspectionDetail?.responsibleParty === 'OPERATOR';
+        if (!isOperator) return false;
+        const operatorObj = operators.find(o => o.id === report.inspectionDetail?.responsibleId);
+        const operatorName = operatorObj ? operatorObj.name : report.inspectionDetail?.responsibleId;
+        if (operatorName !== selectedOperator && report.inspectionDetail?.responsibleId !== selectedOperator) {
+          return false;
+        }
+      }
+      if (selectedStage) {
+        const stage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
+        if (stage !== selectedStage) return false;
+      }
+      if (startDate) {
+        const repDate = new Date(report.createdAt);
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (repDate < start) return false;
+      }
+      if (endDate) {
+        const repDate = new Date(report.createdAt);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (repDate > end) return false;
+      }
+      return true;
+    });
+  }, [reports, searchQuery, selectedComponent, selectedErrorType, selectedVendor, selectedOperator, selectedStage, startDate, endDate, vendors, operators]);
 
   return (
     <>

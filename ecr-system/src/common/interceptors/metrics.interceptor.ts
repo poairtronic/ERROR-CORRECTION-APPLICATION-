@@ -19,10 +19,17 @@ export class MetricsInterceptor implements NestInterceptor {
     const res = ctx.getResponse<Response>();
 
     return next.handle().pipe(
-      tap(() => {
-        const duration = Date.now() - start;
-        const statusCode = res.statusCode || 200;
-        this.monitoringService.recordRequest(statusCode, duration);
+      tap({
+        next: () => {
+          const duration = Date.now() - start;
+          const statusCode = res.statusCode || 200;
+          this.monitoringService.recordRequest(statusCode, duration);
+        },
+        error: (err: any) => {
+          const duration = Date.now() - start;
+          const statusCode = err.status || err.statusCode || 500;
+          this.monitoringService.recordRequest(statusCode, duration);
+        },
       }),
     );
   }
