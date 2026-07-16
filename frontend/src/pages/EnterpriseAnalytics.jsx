@@ -20,6 +20,8 @@ export default function EnterpriseAnalytics() {
   const [selectedVendor, setSelectedVendor] = useState('');
   const [selectedOperator, setSelectedOperator] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const handlePdfExport = () => {
     const element = document.getElementById('analytics-dashboard-content');
@@ -86,6 +88,18 @@ export default function EnterpriseAnalytics() {
     if (selectedStage) {
       const stage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
       if (stage !== selectedStage) return false;
+    }
+    if (startDate) {
+      const repDate = new Date(report.createdAt);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (repDate < start) return false;
+    }
+    if (endDate) {
+      const repDate = new Date(report.createdAt);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (repDate > end) return false;
     }
     return true;
   });
@@ -176,13 +190,15 @@ export default function EnterpriseAnalytics() {
                   <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Defect History & Filters</h3>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Filter overall history by master data categories</p>
                 </div>
-                {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage) && (
+                {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage || startDate || endDate) && (
                   <button className="btn btn-ghost btn-sm" onClick={() => {
                     setSelectedComponent('');
                     setSelectedErrorType('');
                     setSelectedVendor('');
                     setSelectedOperator('');
                     setSelectedStage('');
+                    setStartDate('');
+                    setEndDate('');
                   }} style={{ fontSize: '12px', color: 'var(--primary-light)' }}>
                     Reset Filters
                   </button>
@@ -249,6 +265,44 @@ export default function EnterpriseAnalytics() {
                     <option value="" style={{ background: '#111827' }}>All Stages</option>
                     {uniqueStages.map(st => <option key={st} value={st} style={{ background: '#111827' }}>{st}</option>)}
                   </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Start Date</label>
+                  <input 
+                    type="date"
+                    style={{ 
+                      background: 'rgba(0,0,0,0.2)', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      color: 'white', 
+                      padding: '8px 12px', 
+                      borderRadius: '8px', 
+                      outline: 'none', 
+                      fontSize: '13px',
+                      colorScheme: 'dark'
+                    }}
+                    value={startDate} 
+                    onChange={e => setStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>End Date</label>
+                  <input 
+                    type="date"
+                    style={{ 
+                      background: 'rgba(0,0,0,0.2)', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      color: 'white', 
+                      padding: '8px 12px', 
+                      borderRadius: '8px', 
+                      outline: 'none', 
+                      fontSize: '13px',
+                      colorScheme: 'dark'
+                    }}
+                    value={endDate} 
+                    onChange={e => setEndDate(e.target.value)}
+                  />
                 </div>
               </div>
 
