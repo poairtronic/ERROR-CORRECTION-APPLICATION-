@@ -134,7 +134,15 @@ export default function ReportDetailPage() {
       const mat = updated.materialCost === '' ? 0 : Math.round(Number(updated.materialCost)) || 0;
       const lab = updated.labourCost === '' ? 0 : Math.round(Number(updated.labourCost)) || 0;
       const oth = updated.otherCost === '' ? 0 : Math.round(Number(updated.otherCost)) || 0;
-      updated.costEstimate = String(mat + lab + oth);
+
+      const stageCostsObj = report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {};
+      const activeStages = getActiveStages(
+        report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate, 
+        report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage
+      );
+      const stageTotal = sumStageCosts(activeStages, stageCostsObj);
+
+      updated.costEstimate = String(mat + lab + oth + stageTotal);
       return updated;
     });
   };

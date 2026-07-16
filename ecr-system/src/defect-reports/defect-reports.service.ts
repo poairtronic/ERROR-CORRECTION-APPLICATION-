@@ -373,6 +373,10 @@ export class DefectReportsService implements OnModuleInit {
         insp.rejectionFailedStage = dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage || insp.rejectionFailedStage;
         insp.rejectionStageCosts = dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts || insp.rejectionStageCosts;
         insp.rejectionDescription = dto.rejectionDescription || dto.inlineInspection?.rejectionDescription || insp.rejectionDescription;
+        
+        report.inspectionDetail = insp;
+        insp.costEstimate = this.calculateTotalCost(report);
+        
         await inspectionRepo.save(insp);
       }
 
@@ -484,7 +488,6 @@ export class DefectReportsService implements OnModuleInit {
         responsibleId: dto.responsibleId,
         decision: dto.decision || (isRejection ? 'SCRAP' : 'REWORK'),
         alternativeNote: dto.alternativeNote,
-        costEstimate: dto.costEstimate,
         timeEstimateHours: dto.timeEstimateHours,
         lossAmount: dto.lossAmount,
         reworkDescription: dto.reworkDescription,
@@ -493,8 +496,10 @@ export class DefectReportsService implements OnModuleInit {
         rejectionStageCosts: dto.rejectionStageCosts,
         rejectionDescription: dto.rejectionDescription,
       });
-      await inspectionRepo.save(inspection);
+
       report.inspectionDetail = inspection;
+      inspection.costEstimate = this.calculateTotalCost(report);
+      await inspectionRepo.save(inspection);
 
       // Persist the inspection type (REWORK / REJECTION) if provided
       if (dto.inspectionType) {
@@ -769,10 +774,6 @@ export class DefectReportsService implements OnModuleInit {
             report.inspectionDetail.costRemarks = newValue;
           } else {
             (report.inspectionDetail as any)[field] = Number(newValue);
-            const mat = Number(report.inspectionDetail.materialCost || 0);
-            const lab = Number(report.inspectionDetail.labourCost || 0);
-            const oth = Number(report.inspectionDetail.otherCost || 0);
-            report.inspectionDetail.costEstimate = parseFloat((mat + lab + oth).toFixed(2));
           }
           await inspectionRepo.save(report.inspectionDetail);
         } else {
@@ -811,6 +812,12 @@ export class DefectReportsService implements OnModuleInit {
             await inspectionRepo.save(report.inspectionDetail);
           }
         }
+      }
+
+      const costFields = ['materialCost', 'labourCost', 'otherCost', 'rejectionStageCosts', 'rejectionFailedStage', 'rejectionProcessTemplate'];
+      if (costFields.includes(field) && report.inspectionDetail) {
+        report.inspectionDetail.costEstimate = this.calculateTotalCost(report);
+        await inspectionRepo.save(report.inspectionDetail);
       }
 
       await auditRepo.save(
@@ -1006,5 +1013,40 @@ export class DefectReportsService implements OnModuleInit {
       
       return report;
     });
+  }
+
+  private readonly PROCESS_TEMPLATES: Record<string, string[]> = {
+    'APG LESS THAN 6': ['DESIGN_APG', 'RM_APG', 'OP140_CG', 'SUPER_DRILL', 'OP150_SG_JET_RECESS', 'OP170_VA'],
+    'APG SD': ['DESIGN_APG', 'RM_APG', 'OP10_TURNING', 'OP80_HT', 'OP90_SZ', 'OP100_BLK', 'OP20_JC', 'SUPER_DRILL', 'OP140_CG', 'OP150_SG_JET_RECESS', 'OP170_VA', 'OP200_MARKING'],
+    'APG JP': ['DESIGN_APG', 'RM_APG', 'OP10_TURNING', 'OP20_JC', 'OP40_50_CH', 'OP60_QC', 'OP80_HT', 'OP90_SZ', 'OP100_BLK', 'OP140_CG', 'OP150_SG_JET_RECESS', 'OP170_VA', 'OP200_MARKING'],
+    'SRG LESS THAN 6': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP100_BLK_SRG', 'OP_SG_SS', 'OP_WC', 'OP_SG_BS', 'OP_CA_SRG'],
+    'SRG_6_TO_60': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP100_BLK_SRG', 'OP_SG_SS', 'OP140_CG_SRG', 'OP_HO_SRG', 'OP_SG_BS', 'OP_CA_SRG'],
+    'SRG_ABOVE_60': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP100_BLK_K_SRG', 'OP_SG_SS', 'OP140_CG_SRG', 'OP_SG_BS', 'OP_CA_SRG'],
+    'SRG_LESS_THAN_6_DULL_CHROME': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP_SG_BS', 'OP_DCPL', 'OP_WC', 'OP_CA_SRG'],
+    'SRG_6_TO_60_DULL_CHROME': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP_SG_BS', 'OP140_CG_SRG', 'OP_DCPL', 'OP_HO_SRG', 'OP_CA_SRG'],
+    'SRG_ABOVE_60_DULL_CHROME': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP_SG_BS', 'OP_DCPL', 'OP140_CG_SRG', 'OP_CA_SRG'],
+    'SRG 20 TO 60 DIRECT FINISH': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ_SRG', 'OP100_BLK_K_SRG', 'OP_SG_SS', 'OP140_CG_SRG', 'OP_SG_BS', 'OP_CA_SRG'],
+    'SRG 20 TO 60 DIRECT FINISH DC': ['DESIGN_SRG', 'RM_SRG', 'OP10_TURNING_SRG', 'OP80_HT_SRG', 'OP90_SZ', 'OP_SG_BS', 'OP_DCPL', 'OP140_CG_SRG', 'OP_CA_SRG']
+  };
+
+  public calculateTotalCost(report: DefectReport): number {
+    const insp = report.inspectionDetail;
+    const mat = Number(insp?.materialCost || 0);
+    const lab = Number(insp?.labourCost || 0);
+    const oth = Number(insp?.otherCost || 0);
+
+    const template = report.rejectionProcessTemplate || insp?.rejectionProcessTemplate;
+    const failedStage = report.rejectionFailedStage || insp?.rejectionFailedStage;
+    const stageCosts = report.rejectionStageCosts || insp?.rejectionStageCosts || {};
+
+    let stageTotal = 0;
+    if (template && failedStage) {
+      const stages = this.PROCESS_TEMPLATES[template] || [];
+      const idx = stages.indexOf(failedStage);
+      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+      stageTotal = activeStages.reduce((sum, st) => sum + (Number(stageCosts[st]) || 0), 0);
+    }
+
+    return parseFloat((mat + lab + oth + Math.round(stageTotal)).toFixed(2));
   }
 }
