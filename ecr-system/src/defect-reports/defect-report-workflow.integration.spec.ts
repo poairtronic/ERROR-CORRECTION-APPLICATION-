@@ -309,6 +309,12 @@ describe('Defect Report Workflow Integration', () => {
     const mockReport: Partial<DefectReport> = {
       id: 'report-uuid',
       status: ReportStatus.PENDING_ACCOUNTS_REVIEW,
+      inspectionDetail: {
+        materialCost: 100,
+        labourCost: 100,
+        lossAmount: 0,
+        costEstimate: 200,
+      } as any,
     };
     mockReportRepo.findOne.mockResolvedValue(mockReport);
 

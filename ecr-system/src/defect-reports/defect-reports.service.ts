@@ -767,7 +767,7 @@ export class DefectReportsService implements OnModuleInit {
             const mat = Number(report.inspectionDetail.materialCost || 0);
             const lab = Number(report.inspectionDetail.labourCost || 0);
             const oth = Number(report.inspectionDetail.otherCost || 0);
-            report.inspectionDetail.costEstimate = mat + lab + oth;
+            report.inspectionDetail.costEstimate = parseFloat((mat + lab + oth).toFixed(2));
           }
           await inspectionRepo.save(report.inspectionDetail);
         } else {
@@ -899,7 +899,10 @@ export class DefectReportsService implements OnModuleInit {
     return this.reportsRepo.manager.transaction(async (manager) => {
       const reportsRepo = manager.getRepository(DefectReport);
 
-      const report = await reportsRepo.findOne({ where: { id: reportId } });
+      const report = await reportsRepo.findOne({
+        where: { id: reportId },
+        relations: ['inspectionDetail'],
+      });
       if (!report) throw new NotFoundException('Defect report not found');
       
       // Workflow State Machine rules
@@ -920,6 +923,14 @@ export class DefectReportsService implements OnModuleInit {
       if (actor.role === Role.ACCOUNTS) {
         if (report.status !== ReportStatus.PENDING_ACCOUNTS_REVIEW || newStatus !== ReportStatus.PENDING_SM_REVIEW) {
           throw new BadRequestException('Accounts can only submit reports pending accounts review to Senior Manager review.');
+        }
+
+        const insp = report.inspectionDetail;
+        if (!insp) {
+          throw new BadRequestException('Inspection details are missing. Cannot proceed to Senior Manager review.');
+        }
+        if (insp.materialCost == null || insp.labourCost == null || insp.lossAmount == null || insp.costEstimate == null) {
+          throw new BadRequestException('materialCost, labourCost, lossAmount, and costEstimate are required before passing to SM.');
         }
       }
 

@@ -43,6 +43,8 @@ export class AnalyticsService {
     let totalReports = 0;
     let openReports = 0;
     let closedReports = 0;
+    let rejectedReports = 0;
+    let approvedReports = 0;
     let pendingInspect = 0;
     let pendingAccounts = 0;
     let pendingSm = 0;
@@ -56,8 +58,16 @@ export class AnalyticsService {
 
       totalReports += count;
 
-      if (componentsIssued) {
+      if (componentsIssued || status === ReportStatus.CLOSED) {
         closedReports += count;
+      }
+
+      if (status === ReportStatus.REJECTED) {
+        rejectedReports += count;
+      }
+      
+      if (status === ReportStatus.APPROVED) {
+        approvedReports += count;
       }
 
       if (status === ReportStatus.PENDING_INSPECTION) {
@@ -73,12 +83,14 @@ export class AnalyticsService {
       }
     }
 
-    openReports = totalReports;
+    openReports = totalReports - closedReports - rejectedReports;
 
     return {
       totalReports,
       openReports,
       closedReports,
+      rejectedReports,
+      approvedReports,
       pendingInspect,
       pendingAccounts,
       pendingSm,
