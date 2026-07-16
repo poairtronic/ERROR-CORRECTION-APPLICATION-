@@ -293,25 +293,26 @@ export class DefectReportsService implements OnModuleInit {
   }
 
   async update(id: string, dto: CreateDefectReportDto, actor: ActingUser) {
-    const report = await this.reportsRepo.findOne({
-      where: { id },
-      relations: ['inspectionDetail'],
-    });
-    if (!report) throw new NotFoundException('Defect report not found');
-    if (report.status !== ReportStatus.DRAFT) {
-      throw new BadRequestException('Only draft reports can be updated');
-    }
-    
-    if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER) {
-      throw new ForbiddenException('You do not have permission to edit this draft report');
-    }
-
     const raisedByRole = this.mapRoleToRaisedBy(actor.role);
     const isRejection = dto.inspectionType === 'REJECTION';
 
     return this.reportsRepo.manager.transaction(async (manager) => {
       const reportsRepo = manager.getRepository(DefectReport);
       const inspectionRepo = manager.getRepository(InspectionDetail);
+
+      const report = await reportsRepo.findOne({
+        where: { id },
+        relations: ['inspectionDetail'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!report) throw new NotFoundException('Defect report not found');
+      if (report.status !== ReportStatus.DRAFT) {
+        throw new BadRequestException('Only draft reports can be updated');
+      }
+      
+      if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER) {
+        throw new ForbiddenException('You do not have permission to edit this draft report');
+      }
 
       report.scOrPoNo = dto.scNo && dto.poNo ? `${dto.scNo} / ${dto.poNo}` : (dto.scOrPoNo || report.scOrPoNo);
       report.scNo = dto.scNo ?? report.scNo;
@@ -453,6 +454,7 @@ export class DefectReportsService implements OnModuleInit {
       const report = await reportsRepo.findOne({
         where: { id: reportId },
         relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+        lock: { mode: 'pessimistic_write' },
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -526,6 +528,7 @@ export class DefectReportsService implements OnModuleInit {
       const report = await reportsRepo.findOne({
         where: { id: reportId },
         relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+        lock: { mode: 'pessimistic_write' },
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -632,6 +635,7 @@ export class DefectReportsService implements OnModuleInit {
       const report = await reportsRepo.findOne({
         where: { id: reportId },
         relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+        lock: { mode: 'pessimistic_write' },
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -695,6 +699,7 @@ export class DefectReportsService implements OnModuleInit {
       const report = await reportsRepo.findOne({
         where: { id: reportId },
         relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+        lock: { mode: 'pessimistic_write' },
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
@@ -830,7 +835,10 @@ export class DefectReportsService implements OnModuleInit {
       const reportsRepo = manager.getRepository(DefectReport);
       const auditRepo = manager.getRepository(AuditLog);
 
-      const report = await reportsRepo.findOne({ where: { id: reportId } });
+      const report = await reportsRepo.findOne({ 
+        where: { id: reportId },
+        lock: { mode: 'pessimistic_write' },
+      });
       if (!report) throw new NotFoundException('Defect report not found');
       
       // Upload files to Cloudinary
@@ -863,7 +871,10 @@ export class DefectReportsService implements OnModuleInit {
       const reportsRepo = manager.getRepository(DefectReport);
       const auditRepo = manager.getRepository(AuditLog);
 
-      const report = await reportsRepo.findOne({ where: { id: reportId } });
+      const report = await reportsRepo.findOne({ 
+        where: { id: reportId },
+        lock: { mode: 'pessimistic_write' },
+      });
       if (!report) throw new NotFoundException('Defect report not found');
       
       if (!report.images.includes(imageUrl)) {
@@ -902,6 +913,7 @@ export class DefectReportsService implements OnModuleInit {
       const report = await reportsRepo.findOne({
         where: { id: reportId },
         relations: ['inspectionDetail'],
+        lock: { mode: 'pessimistic_write' },
       });
       if (!report) throw new NotFoundException('Defect report not found');
       
@@ -955,7 +967,10 @@ export class DefectReportsService implements OnModuleInit {
       const reportsRepo = manager.getRepository(DefectReport);
       const auditRepo = manager.getRepository(AuditLog);
 
-      const report = await reportsRepo.findOne({ where: { id: reportId } });
+      const report = await reportsRepo.findOne({ 
+        where: { id: reportId },
+        lock: { mode: 'pessimistic_write' },
+      });
       if (!report) throw new NotFoundException('Defect report not found');
       
       if (report.status !== ReportStatus.APPROVED) {

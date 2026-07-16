@@ -148,6 +148,12 @@ export class NotificationListener {
         case ReportStatus.REJECTED:
           await this.handleRejected(report, event);
           break;
+        case ReportStatus.REWORK_IN_PROGRESS:
+          await this.handleReworkInProgress(report, event);
+          break;
+        case ReportStatus.NEW_PRODUCTION:
+          await this.handleNewProduction(report, event);
+          break;
         case ReportStatus.CLOSED:
           await this.handleClosed(report, event);
           break;
@@ -486,6 +492,74 @@ export class NotificationListener {
       `Defect report ${report.reportNumber} has been fully completed and closed.`,
       summaryTable,
     );
+  }
+
+  private async handleReworkInProgress(report: DefectReport, event: StatusChangedEvent) {
+    const summaryTable = await this.buildEmailSummary(report, event);
+    const notifyIds = new Set<string>();
+    
+    if (report.raisedById) notifyIds.add(report.raisedById);
+    if (report.inspectionDetail?.inspectorId) notifyIds.add(report.inspectionDetail.inspectorId);
+
+    const usersToNotify = await this.usersRepo.find({
+      where: Array.from(notifyIds).map(id => ({ id })),
+    });
+
+    await Promise.all(usersToNotify.map(user =>
+      this.notificationsService.create({
+        userId: user.id,
+        userEmail: user.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'Rework In Progress',
+        message: 'The components for this defect have been issued and physical rework has started.',
+        event: NotificationEvent.REPORT_UPDATED,
+        subject: `Rework Started: ${report.reportNumber}`,
+        reportId: report.id,
+        templateData: {
+          title: 'Physical Rework in Progress',
+          message: 'The physical rework process for this defect report has commenced.',
+          summaryTable,
+          primaryButton: {
+            text: 'View Report',
+            url: `${this.frontendUrl}/reports/${report.id}`,
+          },
+        },
+      })
+    ));
+  }
+
+  private async handleNewProduction(report: DefectReport, event: StatusChangedEvent) {
+    const summaryTable = await this.buildEmailSummary(report, event);
+    const notifyIds = new Set<string>();
+    
+    if (report.raisedById) notifyIds.add(report.raisedById);
+    if (report.inspectionDetail?.inspectorId) notifyIds.add(report.inspectionDetail.inspectorId);
+
+    const usersToNotify = await this.usersRepo.find({
+      where: Array.from(notifyIds).map(id => ({ id })),
+    });
+
+    await Promise.all(usersToNotify.map(user =>
+      this.notificationsService.create({
+        userId: user.id,
+        userEmail: user.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'New Production Started',
+        message: 'The defect report has transitioned to New Production phase.',
+        event: NotificationEvent.REPORT_UPDATED,
+        subject: `New Production: ${report.reportNumber}`,
+        reportId: report.id,
+        templateData: {
+          title: 'New Production Initiated',
+          message: 'The defect report has transitioned to New Production phase as part of resolution.',
+          summaryTable,
+          primaryButton: {
+            text: 'View Report',
+            url: `${this.frontendUrl}/reports/${report.id}`,
+          },
+        },
+      })
+    ));
   }
 
   @OnEvent('component.issued')
