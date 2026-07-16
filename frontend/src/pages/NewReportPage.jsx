@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
 import { FiArrowLeft } from 'react-icons/fi';
@@ -9,6 +9,8 @@ import { SIMPLIFIED_WORKFLOW, PROCESS_TEMPLATES, getActiveStages, sumStageCosts 
 export default function NewReportPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = !!id;
 
   useEffect(() => {
     if (user && !['OPERATOR', 'INSPECTOR', 'SENIOR_MANAGER'].includes(user.role?.toUpperCase())) {
@@ -52,6 +54,51 @@ export default function NewReportPage() {
   };
 
   useEffect(() => {
+    if (isEditMode) {
+      api.get(`/defect-reports/${id}`)
+        .then(({ data }) => {
+          if (data.status !== 'DRAFT') {
+            toast.error('Only draft reports can be edited.');
+            navigate(`/reports/${id}`, { replace: true });
+            return;
+          }
+          setType(data.inspectionType || 'REWORK');
+          setForm({
+            defectDescription: data.defectDescription || '',
+            quantity: data.quantity || 1,
+            componentId: data.componentName || '',
+            errorTypeId: data.errorTypeName || '',
+            vendorId: data.inspectionDetail?.responsibleParty === 'VENDOR' ? data.inspectionDetail.responsibleId : '',
+            batchNumber: data.batchNumber || '',
+            partNumber: data.partNumber || '',
+            scOrPoNo: data.scOrPoNo || '',
+            stageOfFailure: data.stageOfFailure || '',
+            scNo: data.scNo || '',
+            poNo: data.poNo || '',
+            reworkDescription: data.reworkDescription || '',
+            rejectionProcessTemplate: data.rejectionProcessTemplate || '',
+            rejectionFailedStage: data.rejectionFailedStage || '',
+            rejectionStageCosts: data.rejectionStageCosts || {},
+            rejectionDescription: data.rejectionDescription || '',
+            rootCause: data.inspectionDetail?.rootCause || '',
+            responsibleParty: data.inspectionDetail?.responsibleParty || '',
+            responsibleId: data.inspectionDetail?.responsibleId || '',
+            responsibleName: '',
+            decision: data.inspectionDetail?.decision || '',
+            alternativeNote: data.inspectionDetail?.alternativeNote || '',
+            costEstimate: data.inspectionDetail?.costEstimate || '',
+            timeEstimateHours: data.inspectionDetail?.timeEstimateHours || '',
+            lossAmount: data.inspectionDetail?.lossAmount || ''
+          });
+        })
+        .catch(() => {
+          toast.error('Failed to load draft report.');
+          navigate('/reports');
+        });
+    }
+  }, [id, isEditMode, navigate]);
+
+  useEffect(() => {
     Promise.all([
       api.get('/master-data/components').catch(() => ({ data: [] })),
       api.get('/master-data/vendors').catch(() => ({ data: [] })),
@@ -62,8 +109,22 @@ export default function NewReportPage() {
       setVendors(v.data || []); 
       setOperators(o.data || []);
       setErrorTypes(et.data || []);
+
+      if (isEditMode) {
+        setForm(f => {
+          let name = '';
+          if (f.responsibleParty === 'OPERATOR') {
+            const match = (o.data || []).find(op => op.id === f.responsibleId);
+            name = match ? match.name : f.responsibleId;
+          } else if (f.responsibleParty === 'VENDOR') {
+            const match = (v.data || []).find(vn => vn.id === f.responsibleId);
+            name = match ? match.name : f.responsibleId;
+          }
+          return { ...f, responsibleName: name };
+        });
+      }
     });
-  }, [user]);
+  }, [user, isEditMode]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -104,6 +165,7 @@ export default function NewReportPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const isDraftMode = e.nativeEvent?.submitter?.name === 'draft';
     setLoading(true);
     try {
       const isRework = type === 'REWORK';
@@ -120,6 +182,7 @@ export default function NewReportPage() {
         rejectionStageCosts: !isRework ? form.rejectionStageCosts : undefined,
         rejectionDescription: !isRework ? form.rejectionDescription : undefined,
         stageOfFailure: isRework ? form.stageOfFailure : form.rejectionFailedStage,
+        isDraft: isDraftMode,
       };
       delete body.responsibleName;
       if (!body.vendorId) delete body.vendorId;
@@ -157,11 +220,16 @@ export default function NewReportPage() {
         }
       }
 
-      const { data } = await api.post('/defect-reports', body);
-      toast.success('Report raised successfully!');
-      navigate(`/reports/${data.id}`);
+      let res;
+      if (isEditMode) {
+        res = await api.patch(`/defect-reports/${id}`, body);
+      } else {
+        res = await api.post('/defect-reports', body);
+      }
+      toast.success(isDraftMode ? 'Draft saved successfully!' : 'Report raised successfully!');
+      navigate(`/reports/${res.data.id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create report');
+      toast.error(err.response?.data?.message || 'Failed to submit report');
     } finally {
       setLoading(false);
     }
@@ -232,8 +300,8 @@ export default function NewReportPage() {
           <button className="btn btn-ghost btn-sm" onClick={handleBack} style={{ marginBottom: 4 }}>
             <FiArrowLeft /> Back
           </button>
-          <h1>New {type === 'REWORK' ? 'Rework' : 'Rejection'} Report</h1>
-          <p>Raise a new error correction report for component {type.toLowerCase()}</p>
+          <h1>{isEditMode ? 'Edit' : 'New'} {type === 'REWORK' ? 'Rework' : 'Rejection'} Report</h1>
+          <p>{isEditMode ? 'Update your draft error correction report' : `Raise a new error correction report for component ${type.toLowerCase()}`}</p>
         </div>
       </div>
 
@@ -540,7 +608,10 @@ export default function NewReportPage() {
 
             <div className="flex gap-8" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-ghost" onClick={handleBack}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
+              <button type="submit" name="draft" formNoValidate className="btn btn-secondary" disabled={loading}>
+                Save as Draft
+              </button>
+              <button type="submit" name="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Submitting…' : 'Submit Report'}
               </button>
             </div>

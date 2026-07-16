@@ -50,6 +50,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <Route index element={<Dashboard />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/reports/new" element={<NewReportPage />} />
+                <Route path="/reports/edit/:id" element={<NewReportPage />} />
                 <Route path="/reports/:id" element={<ReportDetailPage />} />
                 <Route path="/analytics" element={<EnterpriseAnalytics />} />
                 <Route path="/notifications" element={<NotificationsPage />} />

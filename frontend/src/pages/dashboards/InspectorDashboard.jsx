@@ -23,6 +23,7 @@ export default function InspectorDashboard() {
   const completedToday = reports.filter(r => 
     r.auditLogs?.some(log => log.action === 'INSPECTED' && new Date(log.createdAt).toDateString() === new Date().toDateString())
   ).length;
+  const draftReports = reports.filter(r => r.status === 'DRAFT' && r.raisedById === user?.id);
 
   const columns = [
     { label: 'Report ID', key: 'id' },
@@ -78,6 +79,21 @@ export default function InspectorDashboard() {
             />
           )}
         </div>
+
+        {draftReports.length > 0 && (
+          <div className="card" style={{ marginTop: 24 }}>
+            <div className="card-title">📝 Draft Reports</div>
+            {isLoading ? <div className="spinner" /> : (
+              <DashboardQueueTable 
+                data={draftReports} 
+                columns={columns} 
+                emptyMessage="No draft reports." 
+                actionLabel="Edit Draft" 
+                onActionClick={(r) => navigate(`/reports/edit/${r.id}`)}
+              />
+            )}
+          </div>
+        )}
       </div>
     </>
   );

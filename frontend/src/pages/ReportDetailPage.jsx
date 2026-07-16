@@ -366,6 +366,9 @@ export default function ReportDetailPage() {
         </div>
         <div className="flex gap-8">
           <button className="btn btn-ghost" onClick={() => window.print()}><FiPrinter /> Print</button>
+          {status === 'DRAFT' && (report.raisedById === user?.id || role === 'INSPECTOR' || role === 'SENIOR_MANAGER') && (
+            <button className="btn btn-primary" onClick={() => navigate(`/reports/edit/${report.id}`)}><FiEdit2 /> Edit Draft</button>
+          )}
           {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && !inspectionMode && (
             <button className="btn btn-success" onClick={() => setModal('inspect-decision')}><FiCheckCircle /> Begin Inspection</button>
           )}

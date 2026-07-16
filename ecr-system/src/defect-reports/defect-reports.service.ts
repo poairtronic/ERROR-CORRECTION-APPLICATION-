@@ -183,75 +183,102 @@ export class DefectReportsService implements OnModuleInit {
         inspectionType: dto.inspectionType,
       });
 
-      if (raisedByRole === RaisedByRole.OPERATOR) {
-        report.status = ReportStatus.PENDING_INSPECTION;
+      if (dto.isDraft) {
+        report.status = ReportStatus.DRAFT;
         await reportsRepo.save(report);
-      } else if (raisedByRole === RaisedByRole.INSPECTOR) {
-        if (!dto.inlineInspection) {
-          throw new BadRequestException(
-            'inlineInspection is required when Inspector raises a report',
+        if (dto.inlineInspection) {
+          await inspectionRepo.save(
+            inspectionRepo.create({
+              report,
+              inspectorId: actor.id,
+              errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
+              rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
+              responsibleParty: dto.inlineInspection.responsibleParty as any,
+              responsibleId: dto.inlineInspection.responsibleId,
+              decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
+              alternativeNote: dto.inlineInspection.alternativeNote,
+              costEstimate: dto.inlineInspection.costEstimate,
+              timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? null,
+              lossAmount: dto.inlineInspection.lossAmount,
+              reworkDescription: dto.inlineInspection.reworkDescription,
+              rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
+              rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
+              rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
+              rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
+            }),
           );
         }
-        report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
-        await reportsRepo.save(report);
-        await inspectionRepo.save(
-          inspectionRepo.create({
-            report,
-            inspectorId: actor.id,
-            errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
-            rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
-            responsibleParty: dto.inlineInspection.responsibleParty as any,
-            responsibleId: dto.inlineInspection.responsibleId,
-            decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
-            alternativeNote: dto.inlineInspection.alternativeNote,
-            costEstimate: dto.inlineInspection.costEstimate,
-            timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? null,
-            lossAmount: dto.inlineInspection.lossAmount,
-            reworkDescription: dto.inlineInspection.reworkDescription,
-            rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
-            rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
-            rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
-            rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
-          }),
-        );
-      } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
-        if (!dto.inlineInspection || !dto.inlineSmReview) {
-          throw new BadRequestException(
-            'inlineInspection and inlineSmReview are required when Senior Manager raises a report',
+      } else {
+        if (raisedByRole === RaisedByRole.OPERATOR) {
+          report.status = ReportStatus.PENDING_INSPECTION;
+          await reportsRepo.save(report);
+        } else if (raisedByRole === RaisedByRole.INSPECTOR) {
+          if (!dto.inlineInspection) {
+            throw new BadRequestException(
+              'inlineInspection is required when Inspector raises a report',
+            );
+          }
+          report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+          await reportsRepo.save(report);
+          await inspectionRepo.save(
+            inspectionRepo.create({
+              report,
+              inspectorId: actor.id,
+              errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
+              rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
+              responsibleParty: dto.inlineInspection.responsibleParty as any,
+              responsibleId: dto.inlineInspection.responsibleId,
+              decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
+              alternativeNote: dto.inlineInspection.alternativeNote,
+              costEstimate: dto.inlineInspection.costEstimate,
+              timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? null,
+              lossAmount: dto.inlineInspection.lossAmount,
+              reworkDescription: dto.inlineInspection.reworkDescription,
+              rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
+              rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
+              rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
+              rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
+            }),
+          );
+        } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
+          if (!dto.inlineInspection || !dto.inlineSmReview) {
+            throw new BadRequestException(
+              'inlineInspection and inlineSmReview are required when Senior Manager raises a report',
+            );
+          }
+          report.status = ReportStatus.PENDING_GM_APPROVAL;
+          await reportsRepo.save(report);
+          await inspectionRepo.save(
+            inspectionRepo.create({
+              report,
+              inspectorId: actor.id,
+              errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
+              rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
+              responsibleParty: dto.inlineInspection.responsibleParty as any,
+              responsibleId: dto.inlineInspection.responsibleId,
+              decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
+              alternativeNote: dto.inlineInspection.alternativeNote,
+              costEstimate: dto.inlineInspection.costEstimate,
+              timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? null,
+              lossAmount: dto.inlineInspection.lossAmount,
+              reworkDescription: dto.inlineInspection.reworkDescription,
+              rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
+              rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
+              rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
+              rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
+            }),
+          );
+          await smReviewRepo.save(
+            smReviewRepo.create({
+              report,
+              smId: actor.id,
+              loopholeNote: dto.inlineSmReview.loopholeNote,
+              decisionNote: dto.inlineSmReview.decisionNote,
+              biasedFlag: dto.inlineSmReview.biasedFlag ?? false,
+              forwardedToGm: true,
+            }),
           );
         }
-        report.status = ReportStatus.PENDING_GM_APPROVAL;
-        await reportsRepo.save(report);
-        await inspectionRepo.save(
-          inspectionRepo.create({
-            report,
-            inspectorId: actor.id, // SM stands in for inspection step
-            errorType: dto.inlineInspection.errorType || (isRejection ? 'Rejection' : 'Rework'),
-            rootCause: dto.inlineInspection.rootCause || (isRejection ? 'Rejection' : 'Rework'),
-            responsibleParty: dto.inlineInspection.responsibleParty as any,
-            responsibleId: dto.inlineInspection.responsibleId,
-            decision: (dto.inlineInspection.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any,
-            alternativeNote: dto.inlineInspection.alternativeNote,
-            costEstimate: dto.inlineInspection.costEstimate,
-            timeEstimateHours: dto.inlineInspection.timeEstimateHours ?? null,
-            lossAmount: dto.inlineInspection.lossAmount,
-            reworkDescription: dto.inlineInspection.reworkDescription,
-            rejectionProcessTemplate: dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate,
-            rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
-            rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
-            rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
-          }),
-        );
-        await smReviewRepo.save(
-          smReviewRepo.create({
-            report,
-            smId: actor.id,
-            loopholeNote: dto.inlineSmReview.loopholeNote,
-            decisionNote: dto.inlineSmReview.decisionNote,
-            biasedFlag: dto.inlineSmReview.biasedFlag ?? false,
-            forwardedToGm: true,
-          }),
-        );
       }
 
       await this.logStatusChange(report.id, actor, ReportStatus.DRAFT, report.status, 'Report raised', manager);
@@ -259,6 +286,98 @@ export class DefectReportsService implements OnModuleInit {
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 1] Report Created: ${report.reportNumber} (ID: ${report.id}, Status: ${report.status})`);
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Event Emitted: report.status.changed for status ${report.status}`);
       this.emitStatusChange(report, ReportStatus.DRAFT, actor, 'Report raised', 'Report raised');
+      return report;
+    });
+  }
+
+  async update(id: string, dto: CreateDefectReportDto, actor: ActingUser) {
+    const report = await this.reportsRepo.findOne({
+      where: { id },
+      relations: ['inspectionDetail'],
+    });
+    if (!report) throw new NotFoundException('Defect report not found');
+    if (report.status !== ReportStatus.DRAFT) {
+      throw new BadRequestException('Only draft reports can be updated');
+    }
+    
+    if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER) {
+      throw new ForbiddenException('You do not have permission to edit this draft report');
+    }
+
+    const raisedByRole = this.mapRoleToRaisedBy(actor.role);
+    const isRejection = dto.inspectionType === 'REJECTION';
+
+    return this.reportsRepo.manager.transaction(async (manager) => {
+      const reportsRepo = manager.getRepository(DefectReport);
+      const inspectionRepo = manager.getRepository(InspectionDetail);
+
+      report.scOrPoNo = dto.scNo && dto.poNo ? `${dto.scNo} / ${dto.poNo}` : (dto.scOrPoNo || report.scOrPoNo);
+      report.scNo = dto.scNo ?? report.scNo;
+      report.poNo = dto.poNo ?? report.poNo;
+      report.reworkDescription = dto.reworkDescription ?? report.reworkDescription;
+      report.rejectionProcessTemplate = dto.rejectionProcessTemplate ?? report.rejectionProcessTemplate;
+      report.rejectionFailedStage = dto.rejectionFailedStage ?? report.rejectionFailedStage;
+      report.rejectionStageCosts = dto.rejectionStageCosts ?? report.rejectionStageCosts;
+      report.rejectionDescription = dto.rejectionDescription ?? report.rejectionDescription;
+      report.productId = dto.productId ?? report.productId;
+      report.componentName = dto.componentId ?? report.componentName;
+      report.errorTypeName = dto.errorTypeId || (dto.inlineInspection?.errorType || report.errorTypeName || (isRejection ? 'Rejection' : 'Rework'));
+      report.partNumber = dto.partNumber ?? report.partNumber;
+      report.batchNumber = dto.batchNumber ?? report.batchNumber;
+      report.quantity = dto.quantity ?? report.quantity;
+      report.stageOfFailure = dto.stageOfFailure ?? report.stageOfFailure;
+      report.defectDescription = dto.defectDescription ?? report.defectDescription;
+      if (dto.images) {
+        report.images = dto.images;
+      }
+      report.inspectionType = dto.inspectionType ?? report.inspectionType;
+
+      const oldStatus = report.status;
+      if (dto.isDraft === false) {
+        if (raisedByRole === RaisedByRole.OPERATOR) {
+          report.status = ReportStatus.PENDING_INSPECTION;
+        } else if (raisedByRole === RaisedByRole.INSPECTOR) {
+          if (!dto.inlineInspection) {
+            throw new BadRequestException('inlineInspection is required to submit report');
+          }
+          report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+        } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
+          if (!dto.inlineInspection || !dto.inlineSmReview) {
+            throw new BadRequestException('inlineInspection and inlineSmReview are required to submit report');
+          }
+          report.status = ReportStatus.PENDING_GM_APPROVAL;
+        }
+      }
+
+      await reportsRepo.save(report);
+
+      if (dto.inlineInspection) {
+        let insp = report.inspectionDetail;
+        if (!insp) {
+          insp = inspectionRepo.create({ report });
+        }
+        insp.errorType = dto.inlineInspection.errorType || insp.errorType || (isRejection ? 'Rejection' : 'Rework');
+        insp.rootCause = dto.inlineInspection.rootCause || insp.rootCause || (isRejection ? 'Rejection' : 'Rework');
+        insp.responsibleParty = (dto.inlineInspection.responsibleParty || insp.responsibleParty) as any;
+        insp.responsibleId = dto.inlineInspection.responsibleId ?? insp.responsibleId;
+        insp.decision = (dto.inlineInspection.decision || insp.decision || (isRejection ? 'SCRAP' : 'REWORK')) as any;
+        insp.alternativeNote = dto.inlineInspection.alternativeNote ?? insp.alternativeNote;
+        insp.costEstimate = dto.inlineInspection.costEstimate ?? insp.costEstimate;
+        insp.timeEstimateHours = dto.inlineInspection.timeEstimateHours !== undefined ? dto.inlineInspection.timeEstimateHours : insp.timeEstimateHours;
+        insp.lossAmount = dto.inlineInspection.lossAmount ?? insp.lossAmount;
+        insp.reworkDescription = dto.inlineInspection.reworkDescription ?? insp.reworkDescription;
+        insp.rejectionProcessTemplate = dto.rejectionProcessTemplate || dto.inlineInspection?.rejectionProcessTemplate || insp.rejectionProcessTemplate;
+        insp.rejectionFailedStage = dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage || insp.rejectionFailedStage;
+        insp.rejectionStageCosts = dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts || insp.rejectionStageCosts;
+        insp.rejectionDescription = dto.rejectionDescription || dto.inlineInspection?.rejectionDescription || insp.rejectionDescription;
+        await inspectionRepo.save(insp);
+      }
+
+      if (dto.isDraft === false) {
+        await this.logStatusChange(report.id, actor, oldStatus, report.status, 'Report submitted from draft', manager);
+        this.emitStatusChange(report, oldStatus, actor, 'Report submitted from draft');
+      }
+
       return report;
     });
   }

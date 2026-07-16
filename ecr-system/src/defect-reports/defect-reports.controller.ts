@@ -34,6 +34,16 @@ export class DefectReportsController {
     return this.service.create(dto, user);
   }
 
+  @Patch(':id')
+  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER)
+  update(
+    @Param('id') id: string,
+    @Body() dto: CreateDefectReportDto,
+    @CurrentUser() user,
+  ) {
+    return this.service.update(id, dto, user);
+  }
+
   // all roles can read; row-level scoping (own vs all) applied in service/query later phases
   @Get()
   findAll(

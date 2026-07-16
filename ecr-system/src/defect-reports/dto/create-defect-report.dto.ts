@@ -157,4 +157,8 @@ export class CreateDefectReportDto {
   @ValidateNested()
   @Type(() => InlineSmReviewDto)
   inlineSmReview?: InlineSmReviewDto;
+
+  @IsOptional()
+  @IsBoolean()
+  isDraft?: boolean;
 }
