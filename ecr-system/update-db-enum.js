@@ -53,6 +53,22 @@ async function main() {
       console.log('PENDING_ACCOUNTS_REVIEW already exists in the enum type.');
     }
 
+    // 1b. Update ResponsibleParty Enum
+    const resResp = await client.query(`
+      SELECT enumlabel 
+      FROM pg_enum 
+      JOIN pg_type ON pg_enum.enumtypid = pg_type.oid 
+      WHERE typname = 'inspection_details_responsibleparty_enum' AND enumlabel = 'CUSTOMER';
+    `);
+
+    if (resResp.rows.length === 0) {
+      console.log('Altering inspection_details_responsibleparty_enum to add CUSTOMER...');
+      await client.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE 'CUSTOMER';`);
+      console.log('Enum type altered successfully!');
+    } else {
+      console.log('CUSTOMER already exists in the enum type.');
+    }
+
     // 2. Add Columns
     console.log('Adding columns to inspection_details table...');
     await client.query(`ALTER TABLE inspection_details ADD COLUMN IF NOT EXISTS "materialCost" numeric(10,2) DEFAULT 0;`);
