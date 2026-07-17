@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { Logger, Inject, forwardRef } from '@nestjs/common';
+import { Logger, Inject, forwardRef, OnApplicationShutdown } from '@nestjs/common';
 import { SocketRegistryService } from './socket-registry.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationStatus } from '../common/enums/report-status.enum';
@@ -19,7 +19,7 @@ import { runWithTraceContext } from '../common/trace-context';
 import { MonitoringService } from '../monitoring/monitoring.service';
 
 @WebSocketGateway({ cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173' } })
-export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnApplicationShutdown {
   @WebSocketServer()
   server: Server;
   private readonly logger = new Logger(NotificationsGateway.name);
@@ -104,6 +104,13 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         this.registry.removeConnection(user.sub, client.id);
       }
     });
+  }
+
+  onApplicationShutdown(signal?: string) {
+    this.logger.log(`Received shutdown signal (${signal}). Draining and closing Socket.IO connections...`);
+    if (this.server) {
+      this.server.close();
+    }
   }
 
   // Remove the old @SubscribeMessage('join') to prevent clients from arbitrarily joining rooms!

@@ -11,6 +11,10 @@ async function bootstrap() {
   const { StructuredLogger } = await import('./common/structured-logger');
   const logger = new StructuredLogger();
   const app = await NestFactory.create(AppModule, { logger });
+  
+  // Enable graceful shutdown hooks (SIGTERM, SIGINT handling)
+  app.enableShutdownHooks();
+
   const config = app.get(ConfigService);
 
   // Enable cookie parsing for HttpOnly JWT cookie auth
@@ -42,12 +46,14 @@ async function bootstrap() {
   const { TimeoutInterceptor } = await import('./common/interceptors/timeout.interceptor');
   const { CorrelationInterceptor } = await import('./common/interceptors/correlation.interceptor');
   const { MetricsInterceptor } = await import('./common/interceptors/metrics.interceptor');
+  const { IdempotencyInterceptor } = await import('./common/interceptors/idempotency.interceptor');
   const { MonitoringService } = await import('./monitoring/monitoring.service');
   const monitoringService = app.get(MonitoringService);
   
   app.useGlobalInterceptors(
     new CorrelationInterceptor(),
     new MetricsInterceptor(monitoringService),
+    new IdempotencyInterceptor(),
     new TimeoutInterceptor(),
   );
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BeforeApplicationShutdown } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,9 +12,11 @@ import { MonitoringService } from '../../monitoring/monitoring.service';
 import * as crypto from 'crypto';
 
 @Injectable()
-export class EmailQueueService {
+export class EmailQueueService implements BeforeApplicationShutdown {
   private readonly logger = new Logger(EmailQueueService.name);
   private readonly maxRetries: number;
+  private isProcessing = false;
+  private isShuttingDown = false;
 
   constructor(
     @InjectRepository(EmailLog) private emailLogRepo: Repository<EmailLog>,
@@ -26,6 +28,15 @@ export class EmailQueueService {
     this.maxRetries = 3; // Official SDK requirement: 3 retries
   }
 
+  async beforeApplicationShutdown() {
+    this.logger.log('Graceful shutdown initiated. Preventing new queue jobs and draining current email queue tasks...');
+    this.isShuttingDown = true;
+    while (this.isProcessing) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    this.logger.log('Email queue drained successfully.');
+  }
+
   @Cron(CronExpression.EVERY_MINUTE)
   async processEmailQueue() {
     const traceCtx = {
@@ -34,6 +45,11 @@ export class EmailQueueService {
     };
 
     return runWithTraceContext(traceCtx, async () => {
+      if (this.isShuttingDown) {
+        this.logger.log('Process queue requested but system is shutting down. Skipping execution.');
+        return;
+      }
+      this.isProcessing = true;
       const startTime = Date.now();
       try {
         // [STEP 5] Queue Processing
@@ -181,6 +197,8 @@ export class EmailQueueService {
         }
       } catch (cronError: any) {
         this.logger.error(`[EMAIL_QUEUE_CRASH] Critical unhandled error in email queue runner: ${cronError.message}`, cronError.stack);
+      } finally {
+        this.isProcessing = false;
       }
     });
   }

@@ -90,6 +90,13 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
           logger: new TypeOrmStructuredLogger(monitoringService),
           logging: ['query', 'error', 'schema', 'migration'],
           maxQueryExecutionTime: 1, // trigger logQuerySlow for queries > 1ms to capture database latency
+          retryAttempts: 10,
+          retryDelay: 3000,
+          extra: {
+            max: 20,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+          },
         };
       },
     }),

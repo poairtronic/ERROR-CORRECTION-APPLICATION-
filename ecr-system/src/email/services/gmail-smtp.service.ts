@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { retryWithBackoff } from '../../common/utils/retry';
 
 @Injectable()
 export class GmailSmtpService implements OnModuleInit {
@@ -77,13 +78,28 @@ export class GmailSmtpService implements OnModuleInit {
       fromName,
     };
 
-    const response = await fetch(this.scriptUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await retryWithBackoff(
+      async () => {
+        return await fetch(this.scriptUrl!, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
       },
-      body: JSON.stringify(payload),
-    });
+      {
+        maxAttempts: 3,
+        delayMs: 1000,
+        exponential: true,
+        jitter: true,
+        retryable: (error: any) => {
+          const status = error.status;
+          return !status || status === 429 || status >= 500;
+        },
+      },
+      this.logger,
+    );
 
     const responseBodyText = await response.text();
     let responseData: any;
