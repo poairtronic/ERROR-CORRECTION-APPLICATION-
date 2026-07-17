@@ -51,28 +51,40 @@ export class MonitoringService {
   }
 
   recordLoginAttempt(success: boolean) {
-    this.loginAttempts++;
+    this.loginAttempts = (this.loginAttempts || 0) + 1;
     if (!success) {
-      this.loginFailures++;
+      this.loginFailures = (this.loginFailures || 0) + 1;
     }
   }
 
   recordDbQuery(latencyMs: number) {
+    if (!this.dbLatencies) {
+      (this as any).dbLatencies = [];
+    }
     this.dbLatencies.push(latencyMs);
     if (this.dbLatencies.length > 1000) this.dbLatencies.shift();
   }
 
   recordEmailLatency(latencyMs: number) {
+    if (!this.emailLatencies) {
+      (this as any).emailLatencies = [];
+    }
     this.emailLatencies.push(latencyMs);
     if (this.emailLatencies.length > 1000) this.emailLatencies.shift();
   }
 
   recordNotificationLatency(latencyMs: number) {
+    if (!this.notificationLatencies) {
+      (this as any).notificationLatencies = [];
+    }
     this.notificationLatencies.push(latencyMs);
     if (this.notificationLatencies.length > 1000) this.notificationLatencies.shift();
   }
 
   recordQueueProcessingTime(timeMs: number) {
+    if (!this.queueProcessingTimes) {
+      (this as any).queueProcessingTimes = [];
+    }
     this.queueProcessingTimes.push(timeMs);
     if (this.queueProcessingTimes.length > 1000) this.queueProcessingTimes.shift();
   }
@@ -82,11 +94,13 @@ export class MonitoringService {
   }
 
   getAverage(arr: number[]): number {
-    return arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    if (!arr || arr.length === 0) return 0;
+    return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
   }
 
   getMax(arr: number[]): number {
-    return arr.length > 0 ? Math.max(...arr) : 0;
+    if (!arr || arr.length === 0) return 0;
+    return Math.max(...arr);
   }
 
   async checkDatabaseHealth(): Promise<{ status: string; latencyMs: number; error?: string }> {
