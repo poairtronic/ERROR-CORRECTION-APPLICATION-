@@ -622,10 +622,10 @@ export default function NewReportPage() {
                     {stagesUpToFailure.length > 0 && (
                       <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
                         <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Process Flow Costs up to Failed Stage</h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div className="stage-costs-grid">
                           {stagesUpToFailure.map(st => (
-                            <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                            <div key={st} className="stage-cost-item">
+                              <span className="stage-cost-label">{st}:</span>
                               <input 
                                 type="number" 
                                 min="0" 
