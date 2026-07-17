@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { getCorrelationId, getRequestId } from '../trace-context';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -25,25 +26,46 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = exception.getResponse();
     }
 
-    const correlationId = request['correlationId'] || 'N/A';
+    const correlationId = getCorrelationId();
+    const requestId = getRequestId();
 
-    // Log the error detail internally
-    this.logger.error(
-      `[${correlationId}] ${request.method} ${request.url} - Status: ${status} - Error: ${
-        exception instanceof Error ? exception.message : JSON.stringify(exception)
-      }`,
-      exception instanceof Error ? exception.stack : '',
-    );
+    // Check validation / database failures for diagnostic tags
+    const exceptionMessage = exception instanceof Error ? exception.message : String(exception);
+    const exceptionStack = exception instanceof Error ? exception.stack : '';
 
-    // Send standardized response
+    let failureCategory = 'UNKNOWN';
+    if (exceptionMessage.includes('validation') || (message && typeof message === 'object' && 'message' in message && Array.isArray((message as any).message))) {
+      failureCategory = 'VALIDATION_FAILURE';
+    } else if (exceptionMessage.includes('QueryFailedError') || exceptionMessage.includes('database') || exceptionMessage.includes('postgres') || exceptionMessage.includes('Neon')) {
+      failureCategory = 'DATABASE_FAILURE';
+    } else if (exceptionMessage.includes('mail') || exceptionMessage.includes('SMTP') || exceptionMessage.includes('Google Apps Script')) {
+      failureCategory = 'EMAIL_FAILURE';
+    } else if (exceptionMessage.includes('Queue') || exceptionMessage.includes('queue')) {
+      failureCategory = 'QUEUE_FAILURE';
+    } else if (exceptionMessage.includes('Socket') || exceptionMessage.includes('websocket') || exceptionMessage.includes('gateway')) {
+      failureCategory = 'SOCKET_FAILURE';
+    }
+
+    // Structured diagnostic logs
+    this.logger.error({
+      message: `Unhandled Exception captured by Filter: ${exceptionMessage}`,
+      failureCategory,
+      statusCode: status,
+      route: request.url,
+      method: request.method,
+      correlationId,
+      requestId,
+    }, exceptionStack);
+
+    // Send standardized response back to client (preserving API compatibility)
     response.status(status).json({
       success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       correlationId,
-      message: typeof message === 'string' ? message : (message as any)?.message || 'Internal server error',
-      error: typeof message === 'string' ? message : (message as any)?.message || 'Internal server error',
+      message: typeof message === 'string' ? message : (message as any)?.message || message || 'Internal server error',
+      error: typeof message === 'string' ? message : (message as any)?.message || message || 'Internal server error',
     });
   }
 }

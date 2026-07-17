@@ -8,7 +8,9 @@ import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const { StructuredLogger } = await import('./common/structured-logger');
+  const logger = new StructuredLogger();
+  const app = await NestFactory.create(AppModule, { logger });
   const config = app.get(ConfigService);
 
   // Enable cookie parsing for HttpOnly JWT cookie auth

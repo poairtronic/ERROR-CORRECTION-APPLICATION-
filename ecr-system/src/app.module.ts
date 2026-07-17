@@ -14,6 +14,7 @@ import { DefectReportsModule } from './defect-reports/defect-reports.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { MonitoringService } from './monitoring/monitoring.service';
 
 import { ComponentIssueModule } from './component-issue/component-issue.module';
 import { VendorFaultModule } from './vendor-fault/vendor-fault.module';
@@ -76,15 +77,21 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
       exclude: ['/api/(.*)'],
     }),
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        url: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-        autoLoadEntities: true,
-        synchronize: process.env.NODE_ENV !== 'production', // disabled in production to protect data schema
-      }),
+      imports: [ConfigModule, MonitoringModule],
+      inject: [ConfigService, MonitoringService],
+      useFactory: (config: ConfigService, monitoringService: MonitoringService) => {
+        const { TypeOrmStructuredLogger } = require('./common/typeorm-logger');
+        return {
+          type: 'postgres',
+          url: process.env.DATABASE_URL,
+          ssl: { rejectUnauthorized: false },
+          autoLoadEntities: true,
+          synchronize: process.env.NODE_ENV !== 'production',
+          logger: new TypeOrmStructuredLogger(monitoringService),
+          logging: ['query', 'error', 'schema', 'migration'],
+          maxQueryExecutionTime: 1, // trigger logQuerySlow for queries > 1ms to capture database latency
+        };
+      },
     }),
     AuthModule,
     UsersModule,

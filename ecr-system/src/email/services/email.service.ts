@@ -8,6 +8,7 @@ import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
 import { EmailTemplateService, TemplateData } from './email-template.service';
 import { GmailSmtpService } from './gmail-smtp.service';
+import { MonitoringService } from '../../monitoring/monitoring.service';
 
 export interface SendEmailOptions {
   notificationId?: string;
@@ -30,6 +31,7 @@ export class EmailService implements OnModuleInit {
     private templateService: EmailTemplateService,
     private eventEmitter: EventEmitter2,
     private gmailSmtpService: GmailSmtpService,
+    private monitoringService: MonitoringService,
   ) {}
 
   async onModuleInit() {
@@ -86,6 +88,7 @@ export class EmailService implements OnModuleInit {
         );
 
         const duration = Date.now() - startTime;
+        this.recordEmailDuration(duration, emailLog, 'Google Apps Script');
 
         console.log(
           `[EMAIL] [HTTP Response] [${new Date().toISOString()}] ` +
@@ -97,6 +100,7 @@ export class EmailService implements OnModuleInit {
         return result;
       } catch (error: any) {
         const duration = Date.now() - startTime;
+        this.recordEmailDuration(duration, emailLog, 'Google Apps Script');
         console.error(
           `[EMAIL] [HTTP Error] [${new Date().toISOString()}] ` +
           `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
@@ -134,6 +138,7 @@ export class EmailService implements OnModuleInit {
         const info = await transporter.sendMail(mailOptions);
         
         const duration = Date.now() - startTime;
+        this.recordEmailDuration(duration, emailLog, 'Gmail SMTP Fallback');
         const messageId = info.messageId || '';
 
         console.log(
@@ -150,6 +155,7 @@ export class EmailService implements OnModuleInit {
         };
       } catch (error: any) {
         const duration = Date.now() - startTime;
+        this.recordEmailDuration(duration, emailLog, 'Gmail SMTP Fallback');
         console.error(
           `[EMAIL] [SMTP Error] [${new Date().toISOString()}] ` +
           `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
@@ -256,6 +262,19 @@ export class EmailService implements OnModuleInit {
     const saved = await this.emailLogRepo.save(email);
     this.eventEmitter.emit('email.logs.updated');
     return saved;
+  }
+
+  private recordEmailDuration(duration: number, emailLog: EmailLog, provider: string) {
+    this.monitoringService.recordEmailLatency(duration);
+    const slowEmailThreshold = Number(process.env.SLOW_EMAIL_THRESHOLD_MS) || 3000;
+    if (duration > slowEmailThreshold) {
+      this.logger.warn({
+        message: `[SLOW_OPERATION] Slow email delivery detected (${duration}ms): Provider: ${provider}, Recipient: ${emailLog.recipient}, Subject: ${emailLog.subject}`,
+        recipient: emailLog.recipient,
+        executionTimeMs: duration,
+        thresholdMs: slowEmailThreshold,
+      });
+    }
   }
 
   getTemplateService() {
