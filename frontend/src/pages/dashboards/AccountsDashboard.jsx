@@ -34,6 +34,7 @@ export default function AccountsDashboard() {
 
   const pendingColumns = [
     { label: 'Report ID', key: 'id' },
+    { label: 'SC / PO Number', key: 'scOrPoNo', render: (r) => `${r.scNo || '—'} / ${r.poNo || '—'}` },
     { label: 'Component', key: 'componentName' },
     { 
       label: 'Initial Cost Est.', 
@@ -54,6 +55,7 @@ export default function AccountsDashboard() {
 
   const finalColumns = [
     { label: 'Report ID', key: 'id' },
+    { label: 'SC / PO Number', key: 'scOrPoNo', render: (r) => `${r.scNo || '—'} / ${r.poNo || '—'}` },
     { label: 'Component', key: 'componentName' },
     { 
       label: 'Cost Impact', 

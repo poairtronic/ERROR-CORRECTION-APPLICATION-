@@ -352,6 +352,7 @@ export default function EnterpriseAnalytics() {
                   <thead>
                     <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' }}>
                       <th style={{ padding: '12px 8px', fontWeight: 600, color: '#9ca3af' }}>Report No</th>
+                      <th style={{ padding: '12px 8px', fontWeight: 600, color: '#9ca3af' }}>SC / PO Number</th>
                       <th style={{ padding: '12px 8px', fontWeight: 600, color: '#9ca3af' }}>Component</th>
                       <th style={{ padding: '12px 8px', fontWeight: 600, color: '#9ca3af' }}>Error Type</th>
                       <th style={{ padding: '12px 8px', fontWeight: 600, color: '#9ca3af' }}>Responsible Party</th>
@@ -385,6 +386,7 @@ export default function EnterpriseAnalytics() {
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <td style={{ padding: '12px 8px', color: 'var(--primary-light)', fontWeight: 600 }}>{r.reportNumber}</td>
+                            <td style={{ padding: '12px 8px' }}>{`${r.scNo || '—'} / ${r.poNo || '—'}`}</td>
                             <td style={{ padding: '12px 8px' }}>{r.componentName || '—'}</td>
                             <td style={{ padding: '12px 8px' }}>{r.errorTypeName || r.inspectionDetail?.errorType || '—'}</td>
                             <td style={{ padding: '12px 8px' }}>{respName}</td>
@@ -405,7 +407,7 @@ export default function EnterpriseAnalytics() {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={8} style={{ padding: '40px 0', textAlign: 'center', color: '#6b7280' }}>
+                        <td colSpan={9} style={{ padding: '40px 0', textAlign: 'center', color: '#6b7280' }}>
                           No reports match the selected filters.
                         </td>
                       </tr>

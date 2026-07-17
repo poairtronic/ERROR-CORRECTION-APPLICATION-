@@ -23,6 +23,7 @@ export default function OperatorDashboard() {
 
   const columns = [
     { label: 'Report ID', key: 'id' },
+    { label: 'SC / PO Number', key: 'scOrPoNo', render: (r) => `${r.scNo || '—'} / ${r.poNo || '—'}` },
     { label: 'Component', key: 'componentName' },
     { label: 'Error Type', key: 'errorTypeName' },
     { label: 'Date Raised', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) },

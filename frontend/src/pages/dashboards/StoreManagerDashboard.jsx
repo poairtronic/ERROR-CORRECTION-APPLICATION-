@@ -21,6 +21,7 @@ export default function StoreManagerDashboard() {
 
   const columns = [
     { label: 'Report ID', key: 'id' },
+    { label: 'SC / PO Number', key: 'scOrPoNo', render: (r) => `${r.scNo || '—'} / ${r.poNo || '—'}` },
     { label: 'Component', key: 'componentName' },
     { label: 'Error Type', key: 'errorTypeName' },
     { label: 'Store Decision', key: 'storeDecision' },

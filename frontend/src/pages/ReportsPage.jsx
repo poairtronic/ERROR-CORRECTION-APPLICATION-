@@ -69,6 +69,7 @@ export default function ReportsPage() {
 
   const columns = useMemo(() => [
     { header: 'Report ID', render: (row) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.reportNumber}</span> },
+    { header: 'SC / PO Number', render: (row) => `${row.scNo || '—'} / ${row.poNo || '—'}` },
     { header: 'Description', render: (row) => <div style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.defectDescription}</div> },
     { header: 'Component', accessor: 'componentName' },
     { header: 'Error Type', accessor: 'errorTypeName' },

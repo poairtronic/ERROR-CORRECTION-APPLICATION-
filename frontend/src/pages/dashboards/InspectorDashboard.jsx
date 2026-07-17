@@ -36,6 +36,7 @@ export default function InspectorDashboard() {
 
   const columns = [
     { label: 'Report ID', key: 'id' },
+    { label: 'SC / PO Number', key: 'scOrPoNo', render: (r) => `${r.scNo || '—'} / ${r.poNo || '—'}` },
     { label: 'Component', key: 'componentName' },
     { label: 'Error Type', key: 'errorTypeName' },
     { label: 'Raised By', key: 'raisedBy', render: (r) => r.raisedBy?.name || '—' },
