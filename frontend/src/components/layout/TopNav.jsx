@@ -1,9 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiSearch, FiUser, FiX } from 'react-icons/fi';
+import { FiSearch, FiUser, FiX, FiMenu } from 'react-icons/fi';
 import { useState } from 'react';
 
-export function TopNav() {
+export function TopNav({ onMenuToggle }) {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,8 +23,12 @@ export function TopNav() {
   
   return (
     <header className="topbar topbar-global">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <div style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', gap: '8px', textTransform: 'capitalize' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Mobile hamburger button */}
+        <button className="mobile-menu-btn" onClick={onMenuToggle} aria-label="Toggle menu">
+          <FiMenu size={22} />
+        </button>
+        <div className="breadcrumb-trail">
           <span>Home</span>
           {pathnames.map((name, index) => (
             <span key={index} style={{ display: 'flex', gap: '8px' }}>
@@ -37,8 +41,8 @@ export function TopNav() {
         </div>
       </div>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <form onSubmit={handleSearch} style={{ position: 'relative', width: 250 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <form onSubmit={handleSearch} className="topbar-search">
           <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
           <input 
             placeholder="Global search..." 

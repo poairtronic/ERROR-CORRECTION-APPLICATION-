@@ -28,7 +28,7 @@ export default function Dialog({ open, onClose, title, children, footer, maxWidt
           </button>
         </div>
         
-        <div>
+        <div className="modal-body-responsive">
           {children}
         </div>
 

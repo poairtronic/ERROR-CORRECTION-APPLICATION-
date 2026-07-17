@@ -9,7 +9,7 @@ import Dialog from '../components/ui/Dialog';
 function SimpleModal({ title, fields, values, onChange, onClose, onSave, loading }) {
   return (
     <Dialog open={true} onClose={onClose} title={title}>
-      <div style={{ minWidth: 400 }}>
+      <div className="modal-form-responsive">
         {fields.map(f => (
           <div key={f.key} className="form-group" style={{ marginBottom: 14 }}>
             <label>{f.label}</label>

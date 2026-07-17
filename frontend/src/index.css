@@ -831,6 +831,93 @@ select option { background: var(--bg-card); color: var(--text); }
   color: #fff;
 }
 
+/* ================================================================
+   TOPBAR SEARCH & BREADCRUMB
+   ================================================================ */
+.topbar-search {
+  position: relative;
+  width: 250px;
+}
+
+.breadcrumb-trail {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  gap: 8px;
+  text-transform: capitalize;
+}
+
+/* ================================================================
+   MOBILE HAMBURGER BUTTON (hidden on desktop)
+   ================================================================ */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.mobile-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-strong);
+  color: #fff;
+}
+
+/* ================================================================
+   SIDEBAR CLOSE BUTTON (hidden on desktop)
+   ================================================================ */
+.sidebar-close-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.sidebar-close-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+/* ================================================================
+   SIDEBAR OVERLAY (hidden on desktop)
+   ================================================================ */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 99;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* ================================================================
+   MODAL FORM RESPONSIVE
+   ================================================================ */
+.modal-form-responsive {
+  width: 100%;
+  min-width: 0;
+}
+
+.modal-body-responsive {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 /* Print Stylesheet */
 @media print {
   /* Hide UI wrapper and layout elements */
@@ -933,4 +1020,316 @@ select option { background: var(--bg-card); color: var(--text); }
   }
 }
 
+
+/* ==========================================================================
+   MOBILE RESPONSIVE STYLES
+   ========================================================================== */
+
+/* ---- Tablet breakpoint: 768px ---- */
+@media (max-width: 768px) {
+  /* Show mobile hamburger menu button */
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  /* Show sidebar close button */
+  .sidebar-close-btn {
+    display: flex;
+  }
+
+  /* Enable sidebar overlay */
+  .sidebar-overlay {
+    display: block;
+  }
+  .sidebar-overlay.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Sidebar: off-canvas on mobile */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 200;
+  }
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* Main content: remove sidebar margin */
+  .main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* Topbar: reduce padding */
+  .topbar {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Hide search bar on mobile (accessible via Reports page) */
+  .topbar-search {
+    display: none;
+  }
+
+  /* Breadcrumb: truncate on mobile */
+  .breadcrumb-trail {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+  }
+
+  /* Page content: reduce padding */
+  .page-content {
+    padding: 16px;
+  }
+
+  /* Cards: reduce padding */
+  .card {
+    padding: 16px;
+  }
+
+  /* Stat cards */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    padding: 14px;
+  }
+  .stat-value {
+    font-size: 22px;
+  }
+
+  /* Tables: make scrollable and readable */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  table {
+    min-width: 600px;
+  }
+  th, td {
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Forms: single column on mobile */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* Detail grid: single column */
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Report meta: stack vertically */
+  .report-meta {
+    gap: 12px;
+  }
+
+  /* Modal: full width on mobile */
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+  .modal {
+    padding: 20px;
+    max-width: 100% !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 85vh;
+  }
+  .modal-form-responsive {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  /* Modal footer: stack buttons if needed */
+  .modal-footer {
+    margin-top: 20px;
+    padding-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* Profile drawer: full width on mobile */
+  .profile-drawer {
+    width: 100vw;
+    right: -100vw;
+    padding: 24px 20px;
+  }
+  .profile-drawer.open {
+    right: 0;
+  }
+
+  /* Dashboard grid: single column */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .col-span-3, .col-span-4, .col-span-6, .col-span-8, .col-span-12 {
+    grid-column: span 1;
+  }
+
+  /* Enterprise tabs: scrollable */
+  .enterprise-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  .enterprise-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* KPI values */
+  .kpi-value-lg {
+    font-size: 24px;
+  }
+  .kpi-value-md {
+    font-size: 20px;
+  }
+
+  /* Login card */
+  .login-card {
+    padding: 32px 24px;
+    margin: 16px;
+  }
+
+  /* Inner page topbar (page-level topbars within pages like UsersPage, ReportsPage) */
+  .topbar h1 {
+    font-size: 16px;
+  }
+  .topbar p {
+    font-size: 12px;
+  }
+
+  /* Flex utilities: allow wrapping */
+  .flex {
+    flex-wrap: wrap;
+  }
+
+  /* Buttons in topbar */
+  .btn {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  /* Timeline */
+  .timeline-item {
+    gap: 12px;
+  }
+  .timeline-note {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+}
+
+/* ---- Small mobile breakpoint: 480px ---- */
+@media (max-width: 480px) {
+  /* Stats grid: single column */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Breadcrumb: hide on very small screens */
+  .breadcrumb-trail {
+    max-width: 140px;
+    font-size: 12px;
+  }
+
+  /* Page content: tighter padding */
+  .page-content {
+    padding: 12px;
+  }
+
+  /* Cards */
+  .card {
+    padding: 12px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Stat values */
+  .stat-value {
+    font-size: 20px;
+  }
+
+  /* Modal */
+  .modal {
+    padding: 16px;
+    max-height: 90vh;
+  }
+  .modal-title {
+    font-size: 15px;
+  }
+
+  /* Topbar */
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .topbar h1 {
+    font-size: 14px;
+  }
+
+  /* Table: allow very tight layout */
+  th, td {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  /* Login */
+  .login-card {
+    padding: 24px 16px;
+    margin: 12px;
+  }
+  .login-logo h1 {
+    font-size: 18px;
+  }
+
+  /* Profile drawer */
+  .profile-avatar-large {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .btn-sm {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  /* Badge */
+  .badge {
+    font-size: 10px;
+    padding: 3px 7px;
+  }
+
+  /* Form group labels */
+  label {
+    font-size: 11px;
+  }
+  input, select, textarea {
+    font-size: 13px;
+    padding: 8px 10px;
+  }
+}
 

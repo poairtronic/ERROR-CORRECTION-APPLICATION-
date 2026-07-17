@@ -12,7 +12,7 @@ import { STATUS_COLORS, STATUS_LABELS, PROCESS_TEMPLATES, getActiveStages, sumSt
 function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false }) {
   return (
     <Dialog open={true} onClose={onClose} title={title}>
-      <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }} style={{ minWidth: 400 }}>
+      <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }} className="modal-form-responsive">
         {children}
         <div className="modal-footer" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>

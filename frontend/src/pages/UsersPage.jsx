@@ -29,7 +29,7 @@ function UserModal({ user, onClose, onSave }) {
 
   return (
     <Dialog open={true} onClose={onClose} title={user ? 'Edit User' : 'Create User'}>
-      <form onSubmit={handleSubmit} style={{ minWidth: 400 }}>
+      <form onSubmit={handleSubmit} className="modal-form-responsive">
           <div className="form-grid">
             <div className="form-group"><label>Full Name *</label><input value={form.name} onChange={e => set('name', e.target.value)} required /></div>
             <div className="form-group"><label>Email / Username *</label><input value={form.email} onChange={e => set('email', e.target.value)} required /></div>

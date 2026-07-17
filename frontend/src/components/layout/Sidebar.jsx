@@ -1,11 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
-import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut, FiPieChart } from 'react-icons/fi';
+import { FiHome, FiFileText, FiUsers, FiDatabase, FiBell, FiLogOut, FiPieChart, FiX } from 'react-icons/fi';
 
 const roleLabels = { ADMIN: 'Administrator', OPERATOR: 'Operator', INSPECTOR: 'Inspector', SENIOR_MANAGER: 'Senior Manager', GENERAL_MANAGER: 'General Manager', STORE_MANAGER: 'Store Manager', ACCOUNTS: 'Accounts' };
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth();
   const { unreadCount: notifCount, isConnected } = useNotifications();
   const navigate = useNavigate();
@@ -16,31 +16,44 @@ export default function Sidebar() {
     navigate('/login');
   };
 
+  const handleNavClick = () => {
+    // Close sidebar on mobile when navigating
+    if (onClose) onClose();
+  };
+
   const initials = user?.username?.slice(0, 2).toUpperCase() || 'U';
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
       <div className="sidebar-logo">
-        <h2>ECR SYSTEM</h2>
-        <p>Error Correction Reports</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2>ECR SYSTEM</h2>
+            <p>Error Correction Reports</p>
+          </div>
+          {/* Mobile close button */}
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">
+            <FiX size={20} />
+          </button>
+        </div>
       </div>
 
       <nav className="sidebar-nav">
         <div className="nav-section-title">Main</div>
-        <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        <NavLink to="/" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
           <FiHome className="icon" /> Dashboard
         </NavLink>
-        <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
           <FiFileText className="icon" /> Reports
         </NavLink>
-        <NavLink to="/notifications" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        <NavLink to="/notifications" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
           <FiBell className="icon" />
           Notifications
           {notifCount > 0 && <span className="notif-badge">{notifCount}</span>}
         </NavLink>
 
         {['ADMIN', 'GENERAL_MANAGER', 'SENIOR_MANAGER'].includes(role) && (
-          <NavLink to="/analytics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/analytics" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
             <FiPieChart className="icon" /> Analytics
           </NavLink>
         )}
@@ -48,16 +61,16 @@ export default function Sidebar() {
         {(role === 'ADMIN') && (
           <>
             <div className="nav-section-title" style={{ marginTop: 12 }}>Admin</div>
-            <NavLink to="/users" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink to="/users" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
               <FiUsers className="icon" /> Users
             </NavLink>
-            <NavLink to="/master-data" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink to="/master-data" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
               <FiDatabase className="icon" /> Master Data
             </NavLink>
-            <NavLink to="/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink to="/audit" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
               <FiFileText className="icon" /> System Audit
             </NavLink>
-            <NavLink to="/admin/emails" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink to="/admin/emails" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={handleNavClick}>
               <FiBell className="icon" /> Email Queue
             </NavLink>
           </>
