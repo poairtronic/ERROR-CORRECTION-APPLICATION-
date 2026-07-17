@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX } from 'react-icons/fi';
 
 export default function Dialog({ open, onClose, title, children, footer, maxWidth = '500px' }) {
@@ -13,7 +14,7 @@ export default function Dialog({ open, onClose, title, children, footer, maxWidt
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div 
         className="modal"
@@ -37,6 +38,7 @@ export default function Dialog({ open, onClose, title, children, footer, maxWidt
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
