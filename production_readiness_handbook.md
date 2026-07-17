@@ -13,8 +13,9 @@ The following configuration variables must be populated on Render (or alternativ
 | `DATABASE_URL` | String (URI) | Connection string for Neon PostgreSQL database. |
 | `JWT_SECRET` | String | Cryptographic secret for signing session tokens. |
 | `EMAIL_FROM` | String (Email) | Sender address for system notifications (e.g. gmail). |
-| `GMAIL_APP_PASSWORD` | String | SMTP application-specific password for the email account. |
-| `FRONTEND_URL` | String (URL) | Public web address of the client application. |
+| `GMAIL_APP_PASSWORD` | String | SMTP application-specific password for the email account (used locally). |
+| `GMAIL_SCRIPT_URL` | String (URL) | Google Apps Script HTTP Web App proxy URL (Required for Render production deployment to bypass SMTP blocking). |
+| `GMAIL_SCRIPT_TOKEN` | String | Secure authorization token matching the Google Apps Script Web App. |
 
 ---
 
