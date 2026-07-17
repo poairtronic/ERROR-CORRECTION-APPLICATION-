@@ -9,6 +9,7 @@ import { ReportSequence } from './report-sequence.entity';
 import { DefectReportsService } from './defect-reports.service';
 import { DefectReportsWorkflowService } from './defect-reports-workflow.service';
 import { DefectReportsImageService } from './defect-reports-image.service';
+import { DefectReportsMutationService } from './defect-reports-mutation.service';
 import { DefectReportsController } from './defect-reports.controller';
 
 import { ImageUploadModule } from '../image-upload/image-upload.module';
@@ -30,11 +31,13 @@ import { ImageUploadModule } from '../image-upload/image-upload.module';
     DefectReportsService,
     DefectReportsWorkflowService,
     DefectReportsImageService,
+    DefectReportsMutationService,
   ],
   exports: [
     DefectReportsService,
     DefectReportsWorkflowService,
     DefectReportsImageService,
+    DefectReportsMutationService,
   ],
 })
 export class DefectReportsModule {}

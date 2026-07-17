@@ -12,7 +12,7 @@ import { SmReviewDto } from './dto/sm-review.dto';
 import { GmApproveDto } from './dto/gm-approve.dto';
 import { ReportStatus, RaisedByRole, ResponsibleParty } from '../common/enums/report-status.enum';
 import { Role } from '../common/enums/role.enum';
-import { ActingUser } from './defect-reports.service';
+import { ActingUser } from './defect-reports.types';
 import { calculateTotalCost } from './utils/cost-calculator';
 
 @Injectable()

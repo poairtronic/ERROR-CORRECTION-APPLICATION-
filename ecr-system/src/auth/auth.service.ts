@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
 import { LoginHistory } from '../users/login-history.entity';
+import { MonitoringService } from '../monitoring/monitoring.service';
 import { Response } from 'express';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AuthService {
     @InjectRepository(User) private usersRepo: Repository<User>,
     @InjectRepository(LoginHistory) private loginHistoryRepo: Repository<LoginHistory>,
     private jwtService: JwtService,
+    private monitoringService: MonitoringService,
   ) {}
 
   async login(username: string, password: string, res: Response, ipAddress?: string, userAgent?: string) {
@@ -24,10 +26,16 @@ export class AuthService {
       .andWhere('user.isActive = :active', { active: true })
       .getOne();
 
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      this.monitoringService.recordLoginAttempt(false);
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      this.monitoringService.recordLoginAttempt(false);
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const payload = { sub: user.id, email: user.email, role: user.role.toUpperCase() };
     const token = this.jwtService.sign(payload);
@@ -45,6 +53,7 @@ export class AuthService {
     history.ipAddress = ipAddress || '';
     history.userAgent = userAgent || '';
     this.loginHistoryRepo.save(history).catch(err => console.error('Failed to log login history:', err));
+    this.monitoringService.recordLoginAttempt(true);
 
     return {
       id: user.id,

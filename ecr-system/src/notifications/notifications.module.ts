@@ -6,6 +6,8 @@ import { DefectReport } from '../defect-reports/defect-report.entity';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationListener } from './notification.listener';
+import { StatusNotificationHandler } from './handlers/status-notification.handler';
+import { EventNotificationHandler } from './handlers/event-notification.handler';
 import { NotificationRetryCron } from './notification-retry.cron';
 import { NotificationsGateway } from './notifications.gateway';
 import { SocketRegistryService } from './socket-registry.service';
@@ -22,6 +24,8 @@ import { AuthModule } from '../auth/auth.module';
   providers: [
     NotificationsService,
     NotificationListener,
+    StatusNotificationHandler,
+    EventNotificationHandler,
     NotificationRetryCron,
     NotificationsGateway,
     SocketRegistryService,

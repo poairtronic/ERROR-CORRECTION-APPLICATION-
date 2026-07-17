@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { DefectReport } from './defect-report.entity';
 import { AuditLog, AuditActionType } from '../audit-log/audit-log.entity';
 import { ImageUploadService } from '../image-upload/image-upload.service';
-import { ActingUser } from './defect-reports.service';
+import { ActingUser } from './defect-reports.types';
 
 @Injectable()
 export class DefectReportsImageService {

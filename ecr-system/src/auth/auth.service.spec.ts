@@ -6,12 +6,14 @@ import { User } from '../users/user.entity';
 import { LoginHistory } from '../users/login-history.entity';
 import * as bcrypt from 'bcrypt';
 import { UnauthorizedException } from '@nestjs/common';
+import { MonitoringService } from '../monitoring/monitoring.service';
 
 describe('AuthService', () => {
   let service: AuthService;
   let mockUsersRepo: any;
   let mockJwtService: any;
   let mockLoginHistoryRepo: any;
+  let mockMonitoringService: any;
 
   beforeEach(async () => {
     mockUsersRepo = {
@@ -31,12 +33,17 @@ describe('AuthService', () => {
       sign: jest.fn(),
     };
 
+    mockMonitoringService = {
+      recordLoginAttempt: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: mockUsersRepo },
         { provide: getRepositoryToken(LoginHistory), useValue: mockLoginHistoryRepo },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: MonitoringService, useValue: mockMonitoringService },
       ],
     }).compile();
 

@@ -6,6 +6,15 @@ export default defineConfig({
   build: {
     outDir: '../ecr-system/public',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['@tanstack/react-query', 'react-hot-toast', 'react-icons', 'recharts'],
+          'network-vendor': ['axios', 'socket.io-client'],
+        },
+      },
+    },
   },
   server: {
     port: 5173,
