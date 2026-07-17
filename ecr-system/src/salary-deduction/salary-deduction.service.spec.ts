@@ -15,9 +15,11 @@ describe('SalaryDeductionService', () => {
   let userRepo: Repository<User>;
   let eventEmitter: EventEmitter2;
 
-  const mockDeductionRepo = {
+  const mockDeductionRepo: any = {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockImplementation((record) => Promise.resolve({ id: 'deduction-uuid', ...record })),
+    findOne: jest.fn(),
+    find: jest.fn(),
     manager: {
       transaction: jest.fn(),
     },
@@ -96,6 +98,39 @@ describe('SalaryDeductionService', () => {
       expect(result.id).toBe('deduction-uuid');
       expect(result.amount).toBe(250);
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('salary.deduction.created', expect.any(Object));
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update status and save audit', async () => {
+      const record = { id: 'd1', reportId: 'r1', status: 'PENDING' };
+      mockDeductionRepo.findOne = jest.fn().mockResolvedValue(record);
+      mockDeductionRepo.save = jest.fn().mockResolvedValue({ ...record, status: 'PAID' });
+      
+      const result = await service.updateStatus('d1', { status: 'PAID', note: 'test' } as any, 'a1', 'GM');
+      
+      expect(mockDeductionRepo.save).toHaveBeenCalled();
+      expect(mockAuditRepo.save).toHaveBeenCalled();
+      expect(result.status).toBe('PAID');
+    });
+
+    it('should throw if not found', async () => {
+      mockDeductionRepo.findOne = jest.fn().mockResolvedValue(null);
+      await expect(service.updateStatus('d1', {} as any, 'a1', 'GM')).rejects.toThrow();
+    });
+  });
+
+  describe('getByReport and getByOperator', () => {
+    it('should get by report', async () => {
+      mockDeductionRepo.find = jest.fn().mockResolvedValue([]);
+      await service.getByReport('r1');
+      expect(mockDeductionRepo.find).toHaveBeenCalledWith({ where: { reportId: 'r1' }, relations: ['operator'] });
+    });
+
+    it('should get by operator', async () => {
+      mockDeductionRepo.find = jest.fn().mockResolvedValue([]);
+      await service.getByOperator('o1');
+      expect(mockDeductionRepo.find).toHaveBeenCalledWith({ where: { operatorId: 'o1' }, relations: ['report'] });
     });
   });
 

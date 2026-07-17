@@ -10,6 +10,9 @@ import { ReportSequence } from './report-sequence.entity';
 import { InspectionDetail } from '../inspection/inspection-detail.entity';
 import { SmReview } from '../sm-review/sm-review.entity';
 import { GmApproval } from '../gm-approval/gm-approval.entity';
+import { DefectReportsMutationService } from './defect-reports-mutation.service';
+import { StatusNotificationHandler } from '../notifications/handlers/status-notification.handler';
+import { EventNotificationHandler } from '../notifications/handlers/event-notification.handler';
 import { ComponentIssue } from '../component-issue/component-issue.entity';
 import { AuditLog, AuditActionType } from '../audit-log/audit-log.entity';
 import { User } from '../users/user.entity';
@@ -101,8 +104,11 @@ describe('Defect Report Workflow Integration', () => {
         DefectReportsService,
         DefectReportsWorkflowService,
         DefectReportsImageService,
+        DefectReportsMutationService,
         SalaryDeductionService,
         NotificationListener,
+        StatusNotificationHandler,
+        EventNotificationHandler,
         { provide: getRepositoryToken(DefectReport), useValue: mockReportRepo },
         { provide: getRepositoryToken(ReportSequence), useValue: mockSequenceRepo },
         { provide: getRepositoryToken(InspectionDetail), useValue: mockInspectionRepo },
