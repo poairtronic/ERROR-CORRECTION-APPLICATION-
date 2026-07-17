@@ -131,7 +131,7 @@ export class DefectReportsWorkflowService {
       });
 
       report.inspectionDetail = inspection;
-      inspection.costEstimate = calculateTotalCost(report);
+      inspection.costEstimate = dto.costEstimate ?? calculateTotalCost(report);
       await inspectionRepo.save(inspection);
 
       if (dto.inspectionType) {
@@ -397,6 +397,11 @@ export class DefectReportsWorkflowService {
       const accountsFields = ['materialCost', 'labourCost', 'otherCost', 'costRemarks'];
       let oldValue: any;
 
+      let oldCalculatedTotal = 0;
+      if (report.inspectionDetail) {
+        oldCalculatedTotal = calculateTotalCost(report);
+      }
+
       if (accountsFields.includes(field)) {
         if (report.inspectionDetail) {
           oldValue = (report.inspectionDetail as any)[field];
@@ -446,7 +451,10 @@ export class DefectReportsWorkflowService {
 
       const costFields = ['materialCost', 'labourCost', 'otherCost', 'rejectionStageCosts', 'rejectionFailedStage', 'rejectionProcessTemplate'];
       if (costFields.includes(field) && report.inspectionDetail) {
-        report.inspectionDetail.costEstimate = calculateTotalCost(report);
+        const newCalculatedTotal = calculateTotalCost(report);
+        const diff = newCalculatedTotal - oldCalculatedTotal;
+        const currentCostEstimate = Number(report.inspectionDetail.costEstimate || 0);
+        report.inspectionDetail.costEstimate = parseFloat((currentCostEstimate + diff).toFixed(2));
         await inspectionRepo.save(report.inspectionDetail);
       }
 

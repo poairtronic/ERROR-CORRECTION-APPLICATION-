@@ -131,18 +131,18 @@ export default function ReportDetailPage() {
   const handleAccountsFieldChange = (field, val) => {
     setAccountsData(d => {
       const updated = { ...d, [field]: val };
+      const oldMat = d.materialCost === '' ? 0 : Math.round(Number(d.materialCost)) || 0;
+      const oldLab = d.labourCost === '' ? 0 : Math.round(Number(d.labourCost)) || 0;
+      const oldOth = d.otherCost === '' ? 0 : Math.round(Number(d.otherCost)) || 0;
+
       const mat = updated.materialCost === '' ? 0 : Math.round(Number(updated.materialCost)) || 0;
       const lab = updated.labourCost === '' ? 0 : Math.round(Number(updated.labourCost)) || 0;
       const oth = updated.otherCost === '' ? 0 : Math.round(Number(updated.otherCost)) || 0;
 
-      const stageCostsObj = report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {};
-      const activeStages = getActiveStages(
-        report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate, 
-        report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage
-      );
-      const stageTotal = sumStageCosts(activeStages, stageCostsObj);
+      const diff = (mat + lab + oth) - (oldMat + oldLab + oldOth);
+      const currentCost = d.costEstimate === '' ? 0 : Math.round(Number(d.costEstimate)) || 0;
 
-      updated.costEstimate = String(mat + lab + oth + stageTotal);
+      updated.costEstimate = String(currentCost + diff);
       return updated;
     });
   };
