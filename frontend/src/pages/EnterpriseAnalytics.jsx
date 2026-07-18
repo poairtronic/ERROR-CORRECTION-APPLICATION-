@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar } from 'react-icons/fi';
+import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar, FiFileText } from 'react-icons/fi';
 import EnterpriseKpiCard from '../components/analytics/EnterpriseKpiCard';
 import TrendChartWidget from '../components/analytics/TrendChartWidget';
 import ReportStatusWidget from '../components/analytics/ReportStatusWidget';
@@ -9,6 +9,7 @@ import WorkflowAnalyticsWidget from '../components/analytics/WorkflowAnalyticsWi
 import IntelligenceGridWidget from '../components/analytics/IntelligenceGridWidget';
 import IntegratedAuditLog from '../components/analytics/IntegratedAuditLog';
 import InsightsListWidget from '../components/analytics/InsightsListWidget';
+import AnalyticsReportPDF from '../components/analytics/AnalyticsReportPDF';
 import { useNavigate } from 'react-router-dom';
 import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
@@ -24,21 +25,43 @@ export default function EnterpriseAnalytics() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [exporting, setExporting] = useState(false);
 
-  const handlePdfExport = () => {
-    const element = document.getElementById('analytics-dashboard-content');
-    if (!element) return;
-    import('html2pdf.js').then((html2pdf) => {
-      const opt = {
-        margin: 0.5,
-        filename: 'Enterprise-Intelligence-Report.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
-      };
-      html2pdf.default().set(opt).from(element).save();
-    });
-  };
+  const handlePdfExport = useCallback(() => {
+    setExporting(true);
+    setTimeout(() => {
+      const element = document.getElementById('pdf-report-container');
+      if (!element) {
+        setExporting(false);
+        return;
+      }
+      import('html2pdf.js').then((html2pdf) => {
+        const opt = {
+          margin: 0,
+          filename: `Enterprise-Intelligence-Report-${Date.now()}.pdf`,
+          image: { type: 'jpeg', quality: 1 },
+          html2canvas: {
+            scale: 4,
+            useCORS: true,
+            logging: false,
+            letterRendering: true,
+            width: element.scrollWidth,
+            height: element.scrollHeight,
+            windowWidth: element.scrollWidth,
+          },
+          jsPDF: { unit: 'px', format: [1056, 746], orientation: 'landscape' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        };
+        html2pdf.default().set(opt).from(element).save().then(() => {
+          setExporting(false);
+        }).catch(() => {
+          setExporting(false);
+        });
+      }).catch(() => {
+        setExporting(false);
+      });
+    }, 100);
+  }, []);
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
   const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
@@ -420,6 +443,26 @@ export default function EnterpriseAnalytics() {
           </div>
         )}
       </div>
+
+      {exporting && (
+        <div id="pdf-report-container" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1056px', background: '#ffffff', zIndex: -1 }}>
+          <AnalyticsReportPDF
+            kpis={kpis}
+            trends={trends}
+            insights={insights}
+            slaData={slaData}
+            vendorData={vendorData}
+            operatorData={operatorData}
+            machineData={machineData}
+            reports={reports}
+            components={components}
+            errorTypes={errorTypes}
+            vendors={vendors}
+            operators={operators}
+            formatCurrency={formatCurrency}
+          />
+        </div>
+      )}
     </>
   );
 }
