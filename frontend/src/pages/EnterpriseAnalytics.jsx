@@ -27,6 +27,20 @@ export default function EnterpriseAnalytics() {
   const [searchQuery, setSearchQuery] = useState('');
   const [exporting, setExporting] = useState(false);
 
+  const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
+  const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
+  const { data: insights } = useQuery({ queryKey: ['analytics', 'insights'], queryFn: async () => (await api.get('/analytics/insights')).data, staleTime: 30000 });
+  const { data: slaData } = useQuery({ queryKey: ['analytics', 'sla'], queryFn: async () => (await api.get('/analytics/sla')).data, staleTime: 30000 });
+  const { data: vendorData } = useQuery({ queryKey: ['analytics', 'vendor'], queryFn: async () => (await api.get('/analytics/vendor-intelligence')).data, staleTime: 30000 });
+  const { data: operatorData } = useQuery({ queryKey: ['analytics', 'operator'], queryFn: async () => (await api.get('/analytics/operator-intelligence')).data, staleTime: 30000 });
+  const { data: machineData } = useQuery({ queryKey: ['analytics', 'machine'], queryFn: async () => (await api.get('/analytics/machine-intelligence')).data, staleTime: 30000 });
+
+  const { data: reports = [] } = useQuery({ queryKey: ['analytics', 'reports-list'], queryFn: async () => (await api.get('/defect-reports')).data || [], staleTime: 30000 });
+  const { data: components = [] } = useQuery({ queryKey: ['components'], queryFn: async () => (await api.get('/master-data/components')).data || [], staleTime: 60000 });
+  const { data: errorTypes = [] } = useQuery({ queryKey: ['error-types'], queryFn: async () => (await api.get('/master-data/error-types')).data || [], staleTime: 60000 });
+  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await api.get('/master-data/vendors')).data || [], staleTime: 60000 });
+  const { data: operators = [] } = useQuery({ queryKey: ['operators'], queryFn: async () => (await api.get('/master-data/operators')).data || [], staleTime: 60000 });
+
   const handlePdfExport = useCallback(() => {
     if (!kpis || !trends) return;
     setExporting(true);
@@ -63,20 +77,6 @@ export default function EnterpriseAnalytics() {
       });
     }, 100);
   }, [kpis, trends]);
-
-  const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
-  const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
-  const { data: insights } = useQuery({ queryKey: ['analytics', 'insights'], queryFn: async () => (await api.get('/analytics/insights')).data, staleTime: 30000 });
-  const { data: slaData } = useQuery({ queryKey: ['analytics', 'sla'], queryFn: async () => (await api.get('/analytics/sla')).data, staleTime: 30000 });
-  const { data: vendorData } = useQuery({ queryKey: ['analytics', 'vendor'], queryFn: async () => (await api.get('/analytics/vendor-intelligence')).data, staleTime: 30000 });
-  const { data: operatorData } = useQuery({ queryKey: ['analytics', 'operator'], queryFn: async () => (await api.get('/analytics/operator-intelligence')).data, staleTime: 30000 });
-  const { data: machineData } = useQuery({ queryKey: ['analytics', 'machine'], queryFn: async () => (await api.get('/analytics/machine-intelligence')).data, staleTime: 30000 });
-
-  const { data: reports = [] } = useQuery({ queryKey: ['analytics', 'reports-list'], queryFn: async () => (await api.get('/defect-reports')).data || [], staleTime: 30000 });
-  const { data: components = [] } = useQuery({ queryKey: ['components'], queryFn: async () => (await api.get('/master-data/components')).data || [], staleTime: 60000 });
-  const { data: errorTypes = [] } = useQuery({ queryKey: ['error-types'], queryFn: async () => (await api.get('/master-data/error-types')).data || [], staleTime: 60000 });
-  const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await api.get('/master-data/vendors')).data || [], staleTime: 60000 });
-  const { data: operators = [] } = useQuery({ queryKey: ['operators'], queryFn: async () => (await api.get('/master-data/operators')).data || [], staleTime: 60000 });
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['analytics'] });
