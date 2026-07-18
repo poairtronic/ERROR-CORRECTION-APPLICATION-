@@ -28,6 +28,7 @@ export default function EnterpriseAnalytics() {
   const [exporting, setExporting] = useState(false);
 
   const handlePdfExport = useCallback(() => {
+    if (!kpis || !trends) return;
     setExporting(true);
     setTimeout(() => {
       const element = document.getElementById('pdf-report-container');
@@ -61,7 +62,7 @@ export default function EnterpriseAnalytics() {
         setExporting(false);
       });
     }, 100);
-  }, []);
+  }, [kpis, trends]);
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
   const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
@@ -444,23 +445,9 @@ export default function EnterpriseAnalytics() {
         )}
       </div>
 
-      {exporting && (
+      {exporting && !isLoading && (
         <div id="pdf-report-container" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1056px', background: '#ffffff', zIndex: -1 }}>
-          <AnalyticsReportPDF
-            kpis={kpis}
-            trends={trends}
-            insights={insights}
-            slaData={slaData}
-            vendorData={vendorData}
-            operatorData={operatorData}
-            machineData={machineData}
-            reports={reports}
-            components={components}
-            errorTypes={errorTypes}
-            vendors={vendors}
-            operators={operators}
-            formatCurrency={formatCurrency}
-          />
+          <AnalyticsReportPDF data={{ kpis, trends, insights, slaData, vendorData, operatorData, machineData, reports, components, errorTypes, vendors, operators, formatCurrency }} />
         </div>
       )}
     </>

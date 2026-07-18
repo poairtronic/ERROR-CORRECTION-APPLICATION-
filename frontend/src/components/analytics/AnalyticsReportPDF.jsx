@@ -78,6 +78,14 @@ function KpiCard({ label, value, sub, color, icon }) {
 }
 
 export default function AnalyticsReportPDF({ data }) {
+  if (!data) {
+    return (
+      <div style={{ width: PDF_WIDTH, height: PDF_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+        <div style={{ textAlign: 'center', color: GRAY_400, fontSize: 14 }}>Loading report data...</div>
+      </div>
+    );
+  }
+
   const {
     kpis, trends, slaData, vendorData, operatorData, machineData, insights,
   } = data;
