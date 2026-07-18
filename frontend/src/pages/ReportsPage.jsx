@@ -2,10 +2,13 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { FiPlus, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiDownload } from 'react-icons/fi';
 import { Table } from '../components/ui/Table';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../contexts/AuthContext';
+import ExportCenterModal from '../components/export/ExportCenterModal';
+import { exportToExcel } from '../services/excelExportService';
+import { exportToPDF } from '../services/pdfExportService';
 
 import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
@@ -17,6 +20,7 @@ export default function ReportsPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('search')) {
@@ -62,6 +66,24 @@ export default function ReportsPage() {
       return matchSearch && matchStatus && matchDate;
     });
   }, [reports, debouncedSearch, filterStatus, startDate, endDate]);
+
+  const filters = useMemo(() => ({
+    search: debouncedSearch,
+    status: filterStatus,
+    startDate,
+    endDate,
+  }), [debouncedSearch, filterStatus, startDate, endDate]);
+
+  const handleExport = useCallback(({ format, options }) => {
+    setExportModalOpen(false);
+    setTimeout(() => {
+      if (format === 'excel') {
+        exportToExcel(filtered, filters, user);
+      } else if (format === 'pdf') {
+        exportToPDF(filtered, filters, user);
+      }
+    }, 200);
+  }, [filtered, filters, user]);
 
   const handleNavigateReport = useCallback((id) => {
     navigate(`/reports/${id}`);
@@ -135,11 +157,22 @@ export default function ReportsPage() {
               <option value="">All Statuses</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
+
+            <button className="btn btn-primary" onClick={() => setExportModalOpen(true)} style={{ height: 38, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', fontSize: 13 }}>
+              <FiDownload size={14} /> Export
+            </button>
           </div>
 
           <Table columns={columns} data={filtered} loading={isLoading} emptyMessage="No reports found." />
         </div>
       </div>
+
+      <ExportCenterModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleExport}
+        reportCount={filtered.length}
+      />
     </>
   );
 }
