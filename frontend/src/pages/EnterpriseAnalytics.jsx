@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar, FiFileText } from 'react-icons/fi';
+import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar, FiFileText, FiDownload } from 'react-icons/fi';
 import EnterpriseKpiCard from '../components/analytics/EnterpriseKpiCard';
 import TrendChartWidget from '../components/analytics/TrendChartWidget';
 import ReportStatusWidget from '../components/analytics/ReportStatusWidget';
@@ -10,12 +10,17 @@ import IntelligenceGridWidget from '../components/analytics/IntelligenceGridWidg
 import IntegratedAuditLog from '../components/analytics/IntegratedAuditLog';
 import InsightsListWidget from '../components/analytics/InsightsListWidget';
 import AnalyticsReportPDF from '../components/analytics/AnalyticsReportPDF';
+import ExportCenterModal from '../components/export/ExportCenterModal';
+import { exportToExcel } from '../services/excelExportService';
+import { exportToPDF } from '../services/pdfExportService';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { STATUS_COLORS, STATUS_LABELS } from '../utils/constants';
 
 export default function EnterpriseAnalytics() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const [selectedComponent, setSelectedComponent] = useState('');
   const [selectedErrorType, setSelectedErrorType] = useState('');
@@ -26,6 +31,7 @@ export default function EnterpriseAnalytics() {
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
   const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends'], queryFn: async () => (await api.get('/analytics/trends')).data, staleTime: 30000 });
@@ -148,6 +154,28 @@ export default function EnterpriseAnalytics() {
     });
   }, [reports, searchQuery, selectedComponent, selectedErrorType, selectedVendor, selectedOperator, selectedStage, startDate, endDate, vendors, operators]);
 
+  const tableFilters = useMemo(() => ({
+    search: searchQuery,
+    component: selectedComponent,
+    vendor: selectedVendor,
+    operator: selectedOperator,
+    errorType: selectedErrorType,
+    stage: selectedStage,
+    startDate,
+    endDate,
+  }), [searchQuery, selectedComponent, selectedVendor, selectedOperator, selectedErrorType, selectedStage, startDate, endDate]);
+
+  const handleTableExport = useCallback(({ format, options }) => {
+    setExportModalOpen(false);
+    setTimeout(() => {
+      if (format === 'excel') {
+        exportToExcel(filteredReports, tableFilters, user);
+      } else if (format === 'pdf') {
+        exportToPDF(filteredReports, tableFilters, user);
+      }
+    }, 200);
+  }, [filteredReports, tableFilters, user]);
+
   return (
     <>
       <div className="topbar" style={{ backgroundColor: 'rgba(13, 15, 18, 0.9)', borderBottom: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(16px)' }}>
@@ -234,6 +262,10 @@ export default function EnterpriseAnalytics() {
                   <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Defect History & Filters</h3>
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Filter overall history by master data categories</p>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button className="btn btn-primary" onClick={() => setExportModalOpen(true)} style={{ height: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', fontSize: 12 }}>
+                  <FiDownload size={13} /> Export
+                </button>
                 {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage || startDate || endDate || searchQuery) && (
                   <button className="btn btn-ghost btn-sm" onClick={() => {
                     setSelectedComponent('');
@@ -248,6 +280,7 @@ export default function EnterpriseAnalytics() {
                     Reset Filters
                   </button>
                 )}
+                </div>
               </div>
 
               {/* 5 Dropdown Filters Grid */}
@@ -444,6 +477,13 @@ export default function EnterpriseAnalytics() {
           </div>
         )}
       </div>
+
+      <ExportCenterModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleTableExport}
+        reportCount={filteredReports.length}
+      />
 
       {exporting && !isLoading && (
         <div id="pdf-report-container" style={{ position: 'absolute', left: '-9999px', top: 0, width: '1056px', background: '#ffffff', zIndex: -1 }}>
