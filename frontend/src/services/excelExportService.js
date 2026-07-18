@@ -31,6 +31,7 @@ function buildFilterSummary(filters) {
 }
 
 function flattenReports(reports) {
+  if (!Array.isArray(reports)) return [];
   return reports.map(r => ({
     'Report No': r.reportNumber || '—',
     'SC / PO Number': `${r.scNo || '—'} / ${r.poNo || '—'}`,
@@ -45,6 +46,7 @@ function flattenReports(reports) {
 }
 
 function computeSummary(reports) {
+  if (!Array.isArray(reports)) return { total: 0, open: 0, closed: 0, pending: 0, vendorCases: 0, operatorCases: 0, totalCost: 0, avgCost: 0 };
   const total = reports.length;
   const open = reports.filter(r => !['CLOSED', 'APPROVED', 'REJECTED'].includes(r?.status)).length;
   const closed = reports.filter(r => r?.status === 'CLOSED').length;

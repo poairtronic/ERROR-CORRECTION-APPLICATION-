@@ -36,6 +36,7 @@ function buildFilterSummary(filters) {
 }
 
 function computeSummary(reports) {
+  if (!Array.isArray(reports)) return { total: 0, open: 0, closed: 0, pending: 0, vendorCases: 0, operatorCases: 0, totalCost: 0, avgCost: 0 };
   const total = reports.length;
   const open = reports.filter(r => !['CLOSED', 'APPROVED', 'REJECTED'].includes(r?.status)).length;
   const closed = reports.filter(r => r?.status === 'CLOSED').length;
@@ -87,14 +88,15 @@ export function exportToPDF(reports, filters, user) {
     format: 'a4',
   });
 
-  const summary = computeSummary(reports);
+  const safeReports = Array.isArray(reports) ? reports : [];
+  const summary = computeSummary(safeReports);
   const now = new Date();
 
   const tableHeaders = [
     ['Report No', 'SC / PO Number', 'Component', 'Error Type', 'Responsible', 'Stage of Failure', 'Status', 'Total Cost', 'Date'],
   ];
 
-  const tableData = reports.map(r => [
+  const tableData = safeReports.map(r => [
     r.reportNumber || '—',
     `${r.scNo || '—'} / ${r.poNo || '—'}`,
     r.componentName || '—',

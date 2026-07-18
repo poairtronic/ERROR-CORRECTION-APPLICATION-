@@ -90,6 +90,10 @@ export default function AnalyticsReportPDF({ data }) {
     kpis, trends, slaData, vendorData, operatorData, machineData, insights,
   } = data;
 
+  const trendData = useMemo(() => {
+    return Array.isArray(trends) ? trends : (trends?.monthly || trends?.daily || []);
+  }, [trends]);
+
   const resolutionRate = useMemo(() => {
     if (!kpis?.totalReports) return 0;
     return Math.round((kpis.closedReports / kpis.totalReports) * 100);
@@ -212,7 +216,7 @@ export default function AnalyticsReportPDF({ data }) {
           </div>
           <div style={{ height: 220, marginBottom: 28 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trends || []} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+              <AreaChart data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={BRAND_LIGHT} stopOpacity={0.2} />
