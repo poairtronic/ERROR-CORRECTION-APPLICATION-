@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { autoTable } from 'jspdf-autotable';
 
 const COMPANY_NAME = 'Velan Metrology';
 const REPORT_TITLE = 'Enterprise Error Correction Report';
@@ -210,7 +210,7 @@ export function exportToPDF(reports, filters, user) {
 
   addWatermark(doc);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: MARGIN + 34 + (summary.total > 0 ? 36 : 0),
     head: tableHeaders,
     body: tableData,
