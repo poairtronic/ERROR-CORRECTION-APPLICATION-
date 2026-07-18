@@ -52,7 +52,7 @@ export default function EnterpriseAnalytics() {
     setExporting(true);
     setTimeout(() => {
       const element = document.getElementById('pdf-report-container');
-      if (!element) {
+      if (!element || element.scrollHeight === 0) {
         setExporting(false);
         return;
       }
@@ -67,8 +67,6 @@ export default function EnterpriseAnalytics() {
             logging: false,
             letterRendering: true,
             width: element.scrollWidth,
-            height: element.scrollHeight,
-            windowWidth: element.scrollWidth,
           },
           jsPDF: { unit: 'px', format: [1056, 746], orientation: 'landscape' },
           pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
@@ -81,7 +79,7 @@ export default function EnterpriseAnalytics() {
       }).catch(() => {
         setExporting(false);
       });
-    }, 100);
+    }, 3000);
   }, [kpis, trends]);
 
   const handleRefresh = () => {
