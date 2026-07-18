@@ -5,7 +5,22 @@ module.exports = {
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
-  collectCoverageFrom: ['**/*.(t|j)s'],
+  collectCoverageFrom: [
+    '**/*.(t|j)s',
+    '!**/*.module.(t|j)s',
+    '!**/*.entity.(t|j)s',
+    '!**/*.dto.(t|j)s',
+    '!**/dto/**',
+    '!**/enums/**',
+    '!**/entities/**',
+    '!**/*.types.(t|j)s',
+    '!**/main.ts',
+    '!**/main.hmr.ts',
+    '!**/*.spec.ts',
+    '!**/*.test.ts',
+    '!**/migrations/**',
+    '!**/report-sequence.entity.ts',
+  ],
   coverageDirectory: '../coverage',
   coverageThreshold: {
     global: {

@@ -53,7 +53,6 @@ export class NotificationListener {
       'Current Status': report.status || 'N/A',
       'Previous Status': event.fromStatus || 'N/A',
       'Submitted By': raiser,
-      'Action Taken': event.actionTaken || 'Status Updated',
       'Action By': actionByName,
       'Timestamp': new Date().toLocaleString('en-IN'),
       'Comments': event.comments || 'No comments provided',

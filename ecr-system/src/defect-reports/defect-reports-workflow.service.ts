@@ -525,8 +525,8 @@ export class DefectReportsWorkflowService {
       report.status = newStatus;
       
       await reportsRepo.save(report);
-      await this.logStatusChange(report.id, actor, from, report.status, note || 'Status transitioned manually', manager);
-      this.emitStatusChange(report, from, actor, 'Status transitioned manually', note);
+      await this.logStatusChange(report.id, actor, from, report.status, note || 'Status updated', manager);
+      this.emitStatusChange(report, from, actor, 'Status updated', note);
       
       return report;
     });

@@ -106,4 +106,106 @@ describe('EmailService', () => {
     expect(email.retryCount).toBe(0);
     expect(mockEmailLogRepo.save).toHaveBeenCalled();
   });
+
+  it('sendEmailViaApi should throw if recipient is missing', async () => {
+    const emailLog = { id: '1', recipient: '', subject: 'subj', content: 'body' } as any;
+    await expect(service.sendEmailViaApi(emailLog)).rejects.toThrow('Recipient email is missing');
+  });
+
+  it('sendEmailViaApi should throw if subject is empty', async () => {
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: '', content: 'body' } as any;
+    await expect(service.sendEmailViaApi(emailLog)).rejects.toThrow('Email subject is empty');
+  });
+
+  it('sendEmailViaApi should throw if content is empty', async () => {
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: '' } as any;
+    await expect(service.sendEmailViaApi(emailLog)).rejects.toThrow('Email body is empty');
+  });
+
+  it('sendEmailViaApi should throw if subject is whitespace-only', async () => {
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: '   ', content: 'body' } as any;
+    await expect(service.sendEmailViaApi(emailLog)).rejects.toThrow('Email subject is empty');
+  });
+
+  it('sendEmailViaApi should use SMTP fallback if no script URL', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(false);
+    const mockTransporter = {
+      sendMail: jest.fn().mockResolvedValue({ messageId: 'smtp-1', accepted: ['test@example.com'], response: '250 OK' }),
+    };
+    mockSmtpService.getTransporter.mockReturnValue(mockTransporter);
+
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: false, relatedReportId: 'rpt-1' } as any;
+    const res = await service.sendEmailViaApi(emailLog);
+
+    expect(res.messageId).toBe('smtp-1');
+    expect(res.responseCode).toBe(250);
+    expect(mockTransporter.sendMail).toHaveBeenCalled();
+  });
+
+  it('sendEmailViaApi should handle HTML emails via SMTP', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(false);
+    const mockTransporter = {
+      sendMail: jest.fn().mockResolvedValue({ messageId: 'smtp-html', accepted: ['test@example.com'], response: '250 OK' }),
+    };
+    mockSmtpService.getTransporter.mockReturnValue(mockTransporter);
+
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: '<html>body</html>', isHtml: true } as any;
+    const res = await service.sendEmailViaApi(emailLog);
+
+    expect(res.messageId).toBe('smtp-html');
+    const callArgs = mockTransporter.sendMail.mock.calls[0][0];
+    expect(callArgs.html).toBe('<html>body</html>');
+  });
+
+  it('sendEmailViaApi should throw if SMTP transporter not initialized', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(false);
+    mockSmtpService.getTransporter.mockReturnValue(null);
+
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: false } as any;
+    await expect(service.sendEmailViaApi(emailLog)).rejects.toThrow('SMTP transport fallback is not initialized');
+  });
+
+  it('sendEmailViaApi should handle GAS failure and throw with status', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(true);
+    mockSmtpService.sendMailViaGas.mockRejectedValue(new Error('Script timeout'));
+
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: true } as any;
+    try {
+      await service.sendEmailViaApi(emailLog);
+      fail('Should have thrown');
+    } catch (err: any) {
+      expect(err.message).toContain('Google Apps Script error');
+      expect(err.status).toBe(500);
+    }
+  });
+
+  it('sendEmailViaApi should handle SMTP failure and throw with response code', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(false);
+    const smtpError = new Error('SMTP rejected') as any;
+    smtpError.responseCode = 550;
+    const mockTransporter = {
+      sendMail: jest.fn().mockRejectedValue(smtpError),
+    };
+    mockSmtpService.getTransporter.mockReturnValue(mockTransporter);
+
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: false } as any;
+    try {
+      await service.sendEmailViaApi(emailLog);
+      fail('Should have thrown');
+    } catch (err: any) {
+      expect(err.message).toContain('Gmail SMTP fallback error');
+      expect(err.status).toBe(550);
+    }
+  });
+
+  it('findAll should return all email logs', async () => {
+    mockEmailLogRepo.find.mockResolvedValue([{ id: '1' }, { id: '2' }]);
+    const result = await service.findAll();
+    expect(result).toHaveLength(2);
+  });
+
+  it('getTemplateService should return the template service', () => {
+    const ts = service.getTemplateService();
+    expect(ts).toBeDefined();
+  });
 });
