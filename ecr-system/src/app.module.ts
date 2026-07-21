@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { MonitoringService } from './monitoring/monitoring.service';
+import { TypeOrmStructuredLogger } from './common/typeorm-logger';
 
 import { ComponentIssueModule } from './component-issue/component-issue.module';
 import { VendorFaultModule } from './vendor-fault/vendor-fault.module';
@@ -80,7 +81,6 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
       imports: [ConfigModule, MonitoringModule],
       inject: [ConfigService, MonitoringService],
       useFactory: (config: ConfigService, monitoringService: MonitoringService) => {
-        const { TypeOrmStructuredLogger } = require('./common/typeorm-logger');
         return {
           type: 'postgres',
           url: process.env.DATABASE_URL,
@@ -89,7 +89,7 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
           synchronize: process.env.NODE_ENV !== 'production',
           logger: new TypeOrmStructuredLogger(monitoringService),
           logging: ['query', 'error', 'schema', 'migration'],
-          maxQueryExecutionTime: 1, // trigger logQuerySlow for queries > 1ms to capture database latency
+          maxQueryExecutionTime: 500, // trigger logQuerySlow for queries > 500ms to capture slow database queries
           retryAttempts: 10,
           retryDelay: 3000,
           extra: {

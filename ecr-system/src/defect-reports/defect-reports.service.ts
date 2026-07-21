@@ -114,28 +114,46 @@ export class DefectReportsService implements OnModuleInit {
   }
 
   async findAll(filters: { status?: string; raisedById?: string; page?: number; limit?: number }, actor?: any) {
-    const where: any = {};
+    const baseWhere: any = {};
     if (filters.status) {
       if (filters.status === ReportStatus.DRAFT) {
-        where.status = filters.status;
-        where.raisedById = actor?.id || '';
+        baseWhere.status = filters.status;
+        baseWhere.raisedById = actor?.id || '';
       } else {
-        where.status = filters.status;
+        baseWhere.status = filters.status;
       }
     } else {
-      where.status = Not(ReportStatus.DRAFT);
+      baseWhere.status = Not(ReportStatus.DRAFT);
     }
 
     if (filters.raisedById) {
-      where.raisedById = filters.raisedById;
+      baseWhere.raisedById = filters.raisedById;
     }
 
     const limit = filters.limit ? Math.min(filters.limit, 1000) : 500;
     const page = filters.page || 1;
     const skip = (page - 1) * limit;
 
+    if (actor?.role === 'OPERATOR') {
+      return this.reportsRepo.find({
+        where: [
+          { ...baseWhere, raisedById: actor.id },
+          { ...baseWhere, inspectionDetail: { responsibleId: actor.id } },
+        ],
+        relations: {
+          raisedBy: true,
+          inspectionDetail: true,
+          auditLogs: { actor: true },
+        },
+        relationLoadStrategy: 'query',
+        order: { createdAt: 'DESC' },
+        skip,
+        take: limit,
+      });
+    }
+
     return this.reportsRepo.find({
-      where,
+      where: baseWhere,
       relations: {
         raisedBy: true,
         inspectionDetail: true,

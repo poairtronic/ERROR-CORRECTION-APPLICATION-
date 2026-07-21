@@ -131,22 +131,21 @@ export class EmailMonitoringService {
       });
       const reportIds = reports.map(r => r.id);
 
-      qb.andWhere(
-        qb => {
-          let cond = 'log.recipient ILIKE :search OR log.subject ILIKE :search';
-          if (isUuid) {
-            cond += ' OR log.id = :searchUuid';
-          }
-          if (reportIds.length > 0) {
-            cond += ' OR log.relatedReportId IN (:...searchReportIds)';
-          }
-          return qb.andWhere(`(${cond})`, {
-            search: searchStr,
-            searchUuid: query.search,
-            searchReportIds: reportIds,
-          });
-        }
-      );
+      const searchConditions = [
+        'log.recipient ILIKE :search',
+        'log.subject ILIKE :search',
+      ];
+      if (isUuid) {
+        searchConditions.push('log.id = :searchUuid');
+      }
+      if (reportIds.length > 0) {
+        searchConditions.push('log.relatedReportId IN (:...searchReportIds)');
+      }
+      qb.andWhere(`(${searchConditions.join(' OR ')})`, {
+        search: searchStr,
+        searchUuid: query.search,
+        searchReportIds: reportIds,
+      });
     }
 
     // Template name

@@ -208,7 +208,7 @@ export class DefectReportsWorkflowService {
             const oldNum = oldVal != null ? Number(oldVal) : null;
             const newNum = newVal != null ? Number(newVal) : null;
             if (oldNum !== newNum) {
-              const log = auditRepo.create({
+              newLogs.push(auditRepo.create({
                 reportId: report.id,
                 actorId: actor.id,
                 actorRole: actor.role,
@@ -217,9 +217,7 @@ export class DefectReportsWorkflowService {
                 oldValue: String(oldVal ?? ''),
                 newValue: String(newVal ?? ''),
                 note: `Senior Manager edited ${field} during review`,
-              });
-              await auditRepo.save(log);
-              newLogs.push(log);
+              }));
               (report.inspectionDetail as any)[field] = newVal;
               changed = true;
             }
@@ -232,7 +230,7 @@ export class DefectReportsWorkflowService {
           const oldStr = oldVal != null ? JSON.stringify(oldVal) : '';
           const newStr = newVal != null ? JSON.stringify(newVal) : '';
           if (oldStr !== newStr) {
-            const log = auditRepo.create({
+            newLogs.push(auditRepo.create({
               reportId: report.id,
               actorId: actor.id,
               actorRole: actor.role,
@@ -241,13 +239,15 @@ export class DefectReportsWorkflowService {
               oldValue: oldStr,
               newValue: newStr,
               note: `Senior Manager edited rejectionStageCosts during review`,
-            });
-            await auditRepo.save(log);
-            newLogs.push(log);
+            }));
             report.inspectionDetail.rejectionStageCosts = newVal;
             report.rejectionStageCosts = newVal;
             changed = true;
           }
+        }
+
+        if (newLogs.length > 0) {
+          await auditRepo.save(newLogs);
         }
 
         if (changed) {
@@ -573,7 +573,13 @@ export class DefectReportsWorkflowService {
       );
       
       this.emitStatusChange(report, from, actor, 'Components Issued', dto.remarks || 'Components were issued by the Store Manager.');
-      
+      this.events.emit('component.issued', {
+        reportId: report.id,
+        reportNumber: report.reportNumber,
+        actor,
+        remarks: dto.remarks || 'Components were issued by the Store Manager.',
+      });
+
       return report;
     });
   }

@@ -11,6 +11,7 @@ export function NotificationProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [socket, setSocket] = useState(null);
   const socketRef = useRef(null);
 
   const fetchUnread = async () => {
@@ -57,9 +58,11 @@ export function NotificationProvider({ children }) {
     });
 
     socketRef.current = socket;
+    setSocket(socket);
 
     socket.on('connect', () => {
       setIsConnected(true);
+      setSocket(socket);
       console.log('Connected to notification server');
       // Step 6: Automatically sync state on connect/reconnect
       fetchUnread();
@@ -87,6 +90,7 @@ export function NotificationProvider({ children }) {
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      setSocket(null);
       setIsConnected(false);
     };
   }, [isAuthenticated, user]);
@@ -96,8 +100,8 @@ export function NotificationProvider({ children }) {
     setUnreadCount,
     notifications,
     isConnected,
-    socket: socketRef.current
-  }), [unreadCount, notifications, isConnected]);
+    socket,
+  }), [unreadCount, notifications, isConnected, socket]);
 
   return (
     <NotificationContext.Provider value={contextValue}>

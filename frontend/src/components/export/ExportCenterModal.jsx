@@ -25,15 +25,16 @@ export default function ExportCenterModal({ open, onClose, onExport, reportCount
   if (!open) return null;
 
   const handleExport = () => {
+    const options = {
+      includeFilters,
+      includeSummary,
+      includeHeader,
+      includeGeneratedBy,
+      includeDateTime,
+    };
     onExport({
       format,
-      options: {
-        includeFilters,
-        includeSummary,
-        includeHeader,
-        includeGeneratedBy,
-        includeDateTime,
-      },
+      options,
       fileName,
     });
   };

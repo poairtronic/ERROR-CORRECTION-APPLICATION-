@@ -53,7 +53,7 @@ export default function AuditViewerPage() {
               <FiSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
               <input placeholder="Search audits…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 36 }} />
             </div>
-            <button className="btn btn-ghost"><FiFilter /> Filter</button>
+            <button className="btn btn-ghost" onClick={() => {}}><FiFilter /> Filter</button>
           </div>
           <Table columns={columns} data={filtered} loading={isLoading} emptyMessage="No audit logs found." />
         </div>

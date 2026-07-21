@@ -112,17 +112,9 @@ export class EmailService implements OnModuleInit {
       }
     } else {
       // SMTP Fallback
-      const mailOptions: any = {
-        from: `"${emailFromName}" <${emailFrom}>`,
-        to: emailLog.recipient,
-        subject: emailLog.subject,
-      };
-
-      if (emailLog.isHtml) {
-        mailOptions.html = emailLog.content;
-      } else {
-        mailOptions.text = emailLog.content;
-      }
+      // Reuse the mailOptions from above; add content fields
+      mailOptions.html = emailLog.isHtml ? emailLog.content : undefined;
+      mailOptions.text = emailLog.isHtml ? undefined : emailLog.content;
 
       console.log(
         `[EMAIL] [SMTP Request] [${new Date().toISOString()}] ` +
@@ -203,9 +195,9 @@ export class EmailService implements OnModuleInit {
           templateName = 'system-alert';
         }
       } else if (event === NotificationEvent.DAILY_SUMMARY) {
-        templateName = 'daily-summary';
+        templateName = 'system-alert'; // Daily summary template not yet implemented
       } else if (event === NotificationEvent.WEEKLY_SUMMARY) {
-        templateName = 'weekly-summary';
+        templateName = 'system-alert'; // Weekly summary template not yet implemented
       }
 
       let subject = options.subject;

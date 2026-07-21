@@ -19,8 +19,14 @@ export class NotificationRetryCron implements BeforeApplicationShutdown {
   async beforeApplicationShutdown() {
     this.logger.log('Graceful shutdown initiated. Preventing new notification retry jobs and draining current runs...');
     this.isShuttingDown = true;
+    const shutdownTimeout = 10000;
+    const started = Date.now();
     while (this.isProcessing) {
       await new Promise(resolve => setTimeout(resolve, 100));
+      if (Date.now() - started > shutdownTimeout) {
+        this.logger.warn('Notification retry drain timed out after 10s, forcing shutdown.');
+        break;
+      }
     }
     this.logger.log('Notification retry cron drained successfully.');
   }

@@ -172,10 +172,10 @@ export class AnalyticsService {
     return this.inspectRepo.createQueryBuilder('i')
       .leftJoin(Operator, 'o', "o.id = CASE WHEN i.responsibleId ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN CAST(i.responsibleId AS uuid) ELSE NULL END")
       .select('o.name', 'operator')
-      .addSelect('COUNT(i.id)', 'reportsRaised')
+      .addSelect('COUNT(i.id)', 'defectsCaused')
       .where('i.responsibleParty = :party', { party: ResponsibleParty.OPERATOR })
       .groupBy('o.name')
-      .orderBy('"reportsRaised"', 'DESC')
+      .orderBy('"defectsCaused"', 'DESC')
       .limit(10)
       .getRawMany();
   }

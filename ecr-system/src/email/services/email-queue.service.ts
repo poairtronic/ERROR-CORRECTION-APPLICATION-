@@ -25,14 +25,20 @@ export class EmailQueueService implements BeforeApplicationShutdown {
     private eventEmitter: EventEmitter2,
     private monitoringService: MonitoringService,
   ) {
-    this.maxRetries = 3; // Official SDK requirement: 3 retries
+    this.maxRetries = 3; // Max cron-run retries (each cron run attempts 3 sends, so up to 9 total)
   }
 
   async beforeApplicationShutdown() {
     this.logger.log('Graceful shutdown initiated. Preventing new queue jobs and draining current email queue tasks...');
     this.isShuttingDown = true;
+    const shutdownTimeout = 10000;
+    const started = Date.now();
     while (this.isProcessing) {
       await new Promise(resolve => setTimeout(resolve, 100));
+      if (Date.now() - started > shutdownTimeout) {
+        this.logger.warn('Email queue drain timed out after 10s, forcing shutdown.');
+        break;
+      }
     }
     this.logger.log('Email queue drained successfully.');
   }
@@ -96,16 +102,16 @@ export class EmailQueueService implements BeforeApplicationShutdown {
         console.log(`[EMAIL] [Queue Started] [${new Date().toISOString()}] Processing batch of size ${validEmails.length}`);
 
         const isRetryableError = (error: any): boolean => {
-          if (error.status) {
+          if (error?.status) {
             const transientStatuses = [429, 500, 502, 503, 504];
             return transientStatuses.includes(error.status);
           }
-          const errorMessage = error.message ? error.message.toLowerCase() : '';
+          const errorMessage = error?.message ? error.message.toLowerCase() : '';
           return (
-            error.code === 'ECONNRESET' ||
-            error.code === 'ETIMEDOUT' ||
-            error.code === 'EPIPE' ||
-            error.code === 'TIMEOUT' ||
+            error?.code === 'ECONNRESET' ||
+            error?.code === 'ETIMEDOUT' ||
+            error?.code === 'EPIPE' ||
+            error?.code === 'TIMEOUT' ||
             errorMessage.includes('timeout') ||
             errorMessage.includes('fetch failed') ||
             errorMessage.includes('network')
@@ -116,7 +122,6 @@ export class EmailQueueService implements BeforeApplicationShutdown {
           validEmails.map(async (email) => {
             email.status = EmailStatus.PROCESSING;
             await this.emailLogRepo.save(email);
-            this.eventEmitter.emit('email.logs.updated');
             console.log(`[EMAIL] [Queue Picked] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | Status: PROCESSING`);
 
             let attempt = 0;
@@ -156,7 +161,7 @@ export class EmailQueueService implements BeforeApplicationShutdown {
               const retryable = isRetryableError(lastError);
               email.retryCount += 1;
               
-              const statusCode = lastError.status || 'N/A';
+              const statusCode = lastError?.status || 'N/A';
               email.failureReason = JSON.stringify({
                 providerName: 'Gmail SMTP',
                 error: lastError.message,
@@ -184,9 +189,10 @@ export class EmailQueueService implements BeforeApplicationShutdown {
             // [STEP 12] Database Updated
             await this.emailLogRepo.save(email);
             console.log(`[EMAIL] [Database Updated] [${new Date().toISOString()}] Email ID: ${email.id} | Status: ${email.status}`);
-            this.eventEmitter.emit('email.logs.updated');
           })
         );
+
+        this.eventEmitter.emit('email.logs.updated');
 
         const duration = Date.now() - startTime;
         this.monitoringService.recordQueueProcessingTime(duration);

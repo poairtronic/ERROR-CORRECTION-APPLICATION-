@@ -67,12 +67,23 @@ export class DefectReportsMutationService {
     const raisedByRole = this.mapRoleToRaisedBy(actor.role);
     const isRejection = dto.inspectionType === 'REJECTION';
 
-    const recentReport = await this.reportsRepo.findOne({
-      where: {
+    const dupWhere: any[] = [
+      {
         scOrPoNo: dto.scNo && dto.poNo ? `${dto.scNo} / ${dto.poNo}` : (dto.scOrPoNo || ''),
         stageOfFailure: dto.stageOfFailure,
         raisedById: actor.id,
       },
+    ];
+    if (dto.scNo && dto.poNo) {
+      dupWhere.push({
+        scNo: dto.scNo,
+        poNo: dto.poNo,
+        stageOfFailure: dto.stageOfFailure,
+        raisedById: actor.id,
+      });
+    }
+    const recentReport = await this.reportsRepo.findOne({
+      where: dupWhere,
       order: { createdAt: 'DESC' },
     });
 

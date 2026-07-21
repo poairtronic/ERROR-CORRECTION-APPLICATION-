@@ -135,26 +135,16 @@ export default function EmailMonitoringDashboard() {
 
   // Export
   const handleExport = () => {
-    const params = new URLSearchParams({
+    const params = {
       search,
       status,
       recipient,
       template,
-    }).toString();
+    };
     
-    // Direct link trigger for file download attachment
-    const exportUrl = `${api.defaults.baseURL || ''}/email-monitoring/export?${params}`;
-    
-    // Add Authorization header token dynamically using fetch
-    const token = localStorage.getItem('ecr_token');
-    fetch(exportUrl, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    .then(res => res.blob())
-    .then(blob => {
-      const url = window.URL.createObjectURL(blob);
+    api.get('/email-monitoring/export', { params, responseType: 'blob' })
+    .then(res => {
+      const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
       a.download = `email-logs-${Date.now()}.csv`;
@@ -525,7 +515,7 @@ export default function EmailMonitoringDashboard() {
                 <div style={{ backgroundColor: 'var(--bg-dim)', padding: '12px', borderRadius: '6px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Recipient</div>
                   <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailData.email.recipient}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Role: {detailData.recipientRole}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Role: {detailData.email.recipientRole}</div>
                 </div>
                 <div style={{ backgroundColor: 'var(--bg-dim)', padding: '12px', borderRadius: '6px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Event Template</div>

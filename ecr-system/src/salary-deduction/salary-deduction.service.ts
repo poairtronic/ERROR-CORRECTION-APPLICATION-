@@ -150,6 +150,12 @@ export class SalaryDeductionService {
     const monthRef = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     try {
+      const existing = await this.deductionRepo.findOne({ where: { reportId: report.id } });
+      if (existing) {
+        console.warn(`[SALARY_DEDUCTION_WARN] Deduction already exists for report ${report.id}, skipping auto-creation.`);
+        return;
+      }
+
       await this.deductionRepo.manager.transaction(async (manager) => {
         const deductionRepo = manager.getRepository(SalaryDeduction);
         const auditRepo = manager.getRepository(AuditLog);

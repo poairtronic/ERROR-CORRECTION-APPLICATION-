@@ -20,7 +20,7 @@ export class StructuredLogger implements LoggerService {
   }
 
   verbose(message: any, ...optionalParams: any[]) {
-    this.print('DEBUG', message, optionalParams);
+    this.print('VERBOSE', message, optionalParams);
   }
 
   fatal(message: any, ...optionalParams: any[]) {

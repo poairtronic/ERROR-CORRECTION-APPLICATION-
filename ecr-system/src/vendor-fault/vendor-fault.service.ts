@@ -127,6 +127,12 @@ export class VendorFaultService {
       return;
     }
 
+    const existing = await this.faultRepo.findOne({ where: { reportId: report.id } });
+    if (existing) {
+      console.warn(`[VENDOR_FAULT_WARN] Vendor fault already exists for report ${report.id}, skipping auto-creation.`);
+      return;
+    }
+
     const note = `Auto-created vendor fault for Defect Report ${report.reportNumber}. Notes: ${report.smReview?.decisionNote || ''}`;
 
     const record = this.faultRepo.create({

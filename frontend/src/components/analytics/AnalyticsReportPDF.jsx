@@ -108,9 +108,11 @@ export default function AnalyticsReportPDF({ data }) {
     if (!kpis) return [];
     const statuses = ['PENDING_INSPECTION', 'PENDING_ACCOUNTS_REVIEW', 'PENDING_SM_REVIEW',
       'PENDING_GM_APPROVAL', 'APPROVED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED', 'REJECTED'];
+    const toCamelCase = (str) =>
+      str.toLowerCase().replace(/_([a-z])/g, (_, c) => c.toUpperCase());
     return statuses.map(s => ({
       name: STATUS_LABELS[s] || s,
-      value: kpis[`${s.charAt(0).toLowerCase()}${s.slice(1).toLowerCase()}`] ||
+      value: kpis[toCamelCase(s)] ||
              kpis[s.toLowerCase()] || 0,
       color: STATUS_COLORS[s] || GRAY_400,
     }));

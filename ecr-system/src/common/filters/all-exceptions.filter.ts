@@ -58,14 +58,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }, exceptionStack);
 
     // Send standardized response back to client (preserving API compatibility)
+    const clientMessage = typeof message === 'string' ? message : (message as any)?.message || 'Internal server error';
     response.status(status).json({
       success: false,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       correlationId,
-      message: typeof message === 'string' ? message : (message as any)?.message || message || 'Internal server error',
-      error: typeof message === 'string' ? message : (message as any)?.message || message || 'Internal server error',
+      message: clientMessage,
+      error: process.env.NODE_ENV === 'production' ? undefined : clientMessage,
     });
   }
 }
