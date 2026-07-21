@@ -8,9 +8,6 @@ import { STATUS_COLORS, STATUS_LABELS } from '../../utils/constants';
 const PDF_WIDTH = 1056;
 const PDF_HEIGHT = 746;
 const PAGE_PADDING = 48;
-const CONTENT_WIDTH = PDF_WIDTH - PAGE_PADDING * 2;
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#f59e0b', '#06b6d4'];
-const GRAY_100 = '#f3f4f6';
 const GRAY_200 = '#e5e7eb';
 const GRAY_400 = '#9ca3af';
 const GRAY_500 = '#6b7280';
@@ -78,34 +75,25 @@ function KpiCard({ label, value, sub, color, icon }) {
 }
 
 export default function AnalyticsReportPDF({ data }) {
-  if (!data) {
-    return (
-      <div style={{ width: PDF_WIDTH, height: PDF_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
-        <div style={{ textAlign: 'center', color: GRAY_400, fontSize: 14 }}>Loading report data...</div>
-      </div>
-    );
-  }
-
-  const {
-    kpis, trends, slaData, vendorData, operatorData, machineData, insights,
-  } = data;
-
   const trendData = useMemo(() => {
+    if (!data) return [];
+    const trends = data.trends;
     return Array.isArray(trends) ? trends : (trends?.monthly || trends?.daily || []);
-  }, [trends]);
+  }, [data]);
 
   const resolutionRate = useMemo(() => {
-    if (!kpis?.totalReports) return 0;
-    return Math.round((kpis.closedReports / kpis.totalReports) * 100);
-  }, [kpis]);
+    if (!data || !data.kpis?.totalReports) return 0;
+    return Math.round((data.kpis.closedReports / data.kpis.totalReports) * 100);
+  }, [data]);
 
   const slaPercent = useMemo(() => {
-    if (!slaData?.total || !slaData?.withinSla) return 0;
-    return Math.round((slaData.withinSla / slaData.total) * 100);
-  }, [slaData]);
+    if (!data || !data.slaData?.total || !data.slaData?.withinSla) return 0;
+    return Math.round((data.slaData.withinSla / data.slaData.total) * 100);
+  }, [data]);
 
   const statusSummary = useMemo(() => {
-    if (!kpis) return [];
+    if (!data || !data.kpis) return [];
+    const { kpis } = data;
     const statuses = ['PENDING_INSPECTION', 'PENDING_ACCOUNTS_REVIEW', 'PENDING_SM_REVIEW',
       'PENDING_GM_APPROVAL', 'APPROVED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED', 'REJECTED'];
     const toCamelCase = (str) =>
@@ -116,7 +104,19 @@ export default function AnalyticsReportPDF({ data }) {
              kpis[s.toLowerCase()] || 0,
       color: STATUS_COLORS[s] || GRAY_400,
     }));
-  }, [kpis]);
+  }, [data]);
+
+  if (!data) {
+    return (
+      <div style={{ width: PDF_WIDTH, height: PDF_HEIGHT, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+        <div style={{ textAlign: 'center', color: GRAY_400, fontSize: 14 }}>Loading report data...</div>
+      </div>
+    );
+  }
+
+  const {
+    kpis, slaData, vendorData, operatorData, machineData, insights,
+  } = data;
 
   return (
     <div style={pdfContainerStyle}>

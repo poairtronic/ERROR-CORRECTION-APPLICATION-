@@ -58,21 +58,33 @@ export class MonitoringService {
   }
 
   recordDbQuery(latencyMs: number) {
+    if (!this.dbLatencies) {
+      (this as any).dbLatencies = [];
+    }
     this.dbLatencies.push(latencyMs);
     if (this.dbLatencies.length > 1000) this.dbLatencies.shift();
   }
 
   recordEmailLatency(latencyMs: number) {
+    if (!this.emailLatencies) {
+      (this as any).emailLatencies = [];
+    }
     this.emailLatencies.push(latencyMs);
     if (this.emailLatencies.length > 1000) this.emailLatencies.shift();
   }
 
   recordNotificationLatency(latencyMs: number) {
+    if (!this.notificationLatencies) {
+      (this as any).notificationLatencies = [];
+    }
     this.notificationLatencies.push(latencyMs);
     if (this.notificationLatencies.length > 1000) this.notificationLatencies.shift();
   }
 
   recordQueueProcessingTime(timeMs: number) {
+    if (!this.queueProcessingTimes) {
+      (this as any).queueProcessingTimes = [];
+    }
     this.queueProcessingTimes.push(timeMs);
     if (this.queueProcessingTimes.length > 1000) this.queueProcessingTimes.shift();
   }

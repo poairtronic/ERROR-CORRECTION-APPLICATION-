@@ -75,6 +75,7 @@ describe('Defect Report Workflow Integration', () => {
   const mockDeductionRepo = {
     create: jest.fn().mockImplementation((dto) => dto),
     save: jest.fn().mockImplementation((record) => Promise.resolve({ id: 'deduction-uuid', ...record })),
+    findOne: jest.fn().mockResolvedValue(null),
   };
   const mockNotificationRepo = {
     create: jest.fn().mockImplementation((dto) => dto),
