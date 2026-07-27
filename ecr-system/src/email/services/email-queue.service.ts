@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { runWithTraceContext } from '../../common/trace-context';
 import { MonitoringService } from '../../monitoring/monitoring.service';
+import { PerformanceService } from '../../monitoring/performance.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class EmailQueueService implements BeforeApplicationShutdown {
     private configService: ConfigService,
     private eventEmitter: EventEmitter2,
     private monitoringService: MonitoringService,
+    private performanceService: PerformanceService,
   ) {
     this.maxRetries = 3; // Max cron-run retries (each cron run attempts 3 sends, so up to 9 total)
   }
@@ -124,18 +126,23 @@ export class EmailQueueService implements BeforeApplicationShutdown {
             await this.emailLogRepo.save(email);
             console.log(`[EMAIL] [Queue Picked] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | Status: PROCESSING`);
 
+            const sendStart = Date.now();
             let attempt = 0;
             const maxAttempts = 3;
-            let delay = 1000; // start with 1 second delay
+            let delay = 1000;
             let sentSuccess = false;
             let lastError: any = null;
-
             while (attempt < maxAttempts && !sentSuccess) {
               attempt++;
+              const smtpStart = Date.now();
               try {
                 // Send via Gmail Provider
                 await this.emailService.sendEmailViaApi(email);
                 
+                const smtpDuration = Date.now() - smtpStart;
+                const totalDuration = Date.now() - sendStart;
+                this.performanceService.recordEmailSend(totalDuration, smtpDuration, true, attempt - 1);
+
                 email.status = EmailStatus.SENT;
                 email.sentTime = new Date();
                 email.failureReason = null as any;
@@ -144,6 +151,9 @@ export class EmailQueueService implements BeforeApplicationShutdown {
                 console.log(`[EMAIL] [Success] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | Status: SENT`);
               } catch (error: any) {
                 lastError = error;
+                const totalDuration = Date.now() - sendStart;
+                this.performanceService.recordEmailSend(totalDuration, 0, false, attempt);
+
                 console.warn(
                   `[EMAIL] [Attempt Failed] [${new Date().toISOString()}] ` +
                   `Email ID: ${email.id} | Recipient: ${email.recipient} | ` +

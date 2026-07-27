@@ -3,6 +3,8 @@ import { getTraceContext } from './trace-context';
 
 @Injectable({ scope: Scope.DEFAULT })
 export class StructuredLogger implements LoggerService {
+  private readonly isProduction = process.env.NODE_ENV === 'production';
+
   log(message: any, ...optionalParams: any[]) {
     this.print('INFO', message, optionalParams);
   }
@@ -16,10 +18,12 @@ export class StructuredLogger implements LoggerService {
   }
 
   debug(message: any, ...optionalParams: any[]) {
+    if (this.isProduction) return;
     this.print('DEBUG', message, optionalParams);
   }
 
   verbose(message: any, ...optionalParams: any[]) {
+    if (this.isProduction) return;
     this.print('VERBOSE', message, optionalParams);
   }
 
@@ -31,7 +35,6 @@ export class StructuredLogger implements LoggerService {
     const trace = getTraceContext();
     const context = optionalParams[optionalParams.length - 1] || 'App';
     
-    // Find stack trace if present
     const errorStack = level === 'ERROR' || level === 'FATAL' 
       ? optionalParams.find(p => p instanceof Error || (typeof p === 'string' && p.includes('\n'))) 
       : undefined;
@@ -47,11 +50,24 @@ export class StructuredLogger implements LoggerService {
       msgString = String(message);
     }
 
+    const memoryUsage = process.memoryUsage();
+    const memoryMb = Number((memoryUsage.heapUsed / (1024 * 1024)).toFixed(2));
+    
+    const cpuUsage = process.cpuUsage();
+    const cpuPercent = Number(((cpuUsage.user + cpuUsage.system) / 1000000).toFixed(2));
+
+    const duration = payload.duration || payload.executionTimeMs || undefined;
+    const category = payload.category || 'GENERAL';
+
     const logEntry = {
       timestamp: new Date().toISOString(),
       level,
       context,
+      category,
       message: msgString,
+      duration,
+      memoryMb,
+      cpuSec: cpuPercent,
       correlationId: trace?.correlationId || 'N/A',
       requestId: trace?.requestId || 'N/A',
       userId: trace?.req?.user?.id || trace?.req?.user?.sub || 'N/A',
@@ -65,11 +81,39 @@ export class StructuredLogger implements LoggerService {
       logEntry['stack'] = errorStack instanceof Error ? errorStack.stack : errorStack;
     }
 
-    // Direct JSON output for Render log ingestion
-    if (level === 'ERROR' || level === 'FATAL') {
-      console.error(JSON.stringify(logEntry));
+    if (this.isProduction) {
+      if (level === 'ERROR' || level === 'FATAL') {
+        console.error(JSON.stringify(logEntry));
+      } else {
+        console.log(JSON.stringify(logEntry));
+      }
     } else {
-      console.log(JSON.stringify(logEntry));
+      const colors = {
+        RESET: '\x1b[0m',
+        FATAL: '\x1b[31;1m',
+        ERROR: '\x1b[31m',
+        WARN: '\x1b[33m',
+        INFO: '\x1b[32m',
+        DEBUG: '\x1b[36m',
+        VERBOSE: '\x1b[35m',
+      };
+
+      const color = colors[level] || colors.RESET;
+      const timeStr = logEntry.timestamp.split('T')[1].substring(0, 12);
+      const reqIdStr = logEntry.requestId !== 'N/A' ? ` [Req: ${logEntry.requestId.substring(0, 8)}]` : '';
+      const durationStr = duration !== undefined ? ` (${duration}ms)` : '';
+      const contextStr = `[${context}][${category}]`;
+
+      const output = `${color}${level.padEnd(7)}${colors.RESET} | ${timeStr} | ${colors.DEBUG}${contextStr.padEnd(25)}${colors.RESET} | ${msgString}${durationStr}${reqIdStr} [RAM: ${memoryMb}MB]`;
+
+      if (level === 'ERROR' || level === 'FATAL') {
+        console.error(output);
+        if (errorStack) {
+          console.error(errorStack instanceof Error ? errorStack.stack : errorStack);
+        }
+      } else {
+        console.log(output);
+      }
     }
   }
 }

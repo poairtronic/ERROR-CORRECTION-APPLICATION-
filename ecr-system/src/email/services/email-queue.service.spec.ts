@@ -12,6 +12,7 @@ describe('EmailQueueService', () => {
   let configService: any;
   let eventEmitter: any;
   let monitoringService: any;
+  let performanceService: any;
 
   beforeEach(() => {
     emailLogRepo = {
@@ -30,6 +31,9 @@ describe('EmailQueueService', () => {
     monitoringService = {
       recordQueueProcessingTime: jest.fn(),
     };
+    performanceService = {
+      recordEmailSend: jest.fn(),
+    };
 
     service = new EmailQueueService(
       emailLogRepo,
@@ -37,6 +41,7 @@ describe('EmailQueueService', () => {
       configService,
       eventEmitter,
       monitoringService,
+      performanceService,
     );
   });
 

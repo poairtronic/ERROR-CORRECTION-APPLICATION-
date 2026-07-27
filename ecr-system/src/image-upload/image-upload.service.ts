@@ -1,10 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'cloudinary';
 import * as streamifier from 'streamifier';
+import { PerformanceService } from '../monitoring/performance.service';
 
 @Injectable()
 export class ImageUploadService {
-  constructor() {
+  constructor(private readonly performanceService: PerformanceService) {
     // Cloudinary config should ideally come from ConfigService
     // For now, it will pick up CLOUDINARY_URL from env if set, or we can set it explicitly.
     // cloudinary.config({
@@ -16,8 +17,11 @@ export class ImageUploadService {
 
   async uploadImage(file: Express.Multer.File): Promise<string> {
     this.validateFile(file);
+    const totalStart = Date.now();
+    const memStart = process.memoryUsage().heapUsed;
 
     return new Promise((resolve, reject) => {
+      const cloudinaryStart = Date.now();
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'ecr-system',
@@ -25,6 +29,16 @@ export class ImageUploadService {
           quality: 'auto:good',
         },
         (error: UploadApiErrorResponse, result: UploadApiResponse) => {
+          const cloudinaryEnd = Date.now();
+          const totalEnd = Date.now();
+          const memEnd = process.memoryUsage().heapUsed;
+
+          const totalTime = totalEnd - totalStart;
+          const cloudinaryTime = cloudinaryEnd - cloudinaryStart;
+          const memDelta = Math.max(0, (memEnd - memStart) / 1024 / 1024);
+
+          this.performanceService.recordUpload(totalTime, file.size, cloudinaryTime, memDelta);
+
           if (error) {
             if (error.message?.includes?.('does not support image input')) {
               return reject(new BadRequestException(

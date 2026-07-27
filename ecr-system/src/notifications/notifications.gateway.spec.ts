@@ -4,6 +4,7 @@ import { NotificationsGateway } from './notifications.gateway';
 import { SocketRegistryService } from './socket-registry.service';
 import { NotificationsService } from './notifications.service';
 import { MonitoringService } from '../monitoring/monitoring.service';
+import { PerformanceService } from '../monitoring/performance.service';
 
 describe('NotificationsGateway', () => {
   let gateway: NotificationsGateway;
@@ -17,6 +18,13 @@ describe('NotificationsGateway', () => {
   };
   const mockNotificationsService = { markDelivered: jest.fn() };
   const mockMonitoringService = { recordNotificationLatency: jest.fn() };
+  const mockPerformanceService = {
+    recordSocketConnect: jest.fn(),
+    recordSocketDisconnect: jest.fn(),
+    recordSocketBroadcast: jest.fn(),
+    recordSocketEvent: jest.fn(),
+    setSocketServer: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,6 +34,7 @@ describe('NotificationsGateway', () => {
         { provide: SocketRegistryService, useValue: mockRegistry },
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: MonitoringService, useValue: mockMonitoringService },
+        { provide: PerformanceService, useValue: mockPerformanceService },
       ],
     }).compile();
 

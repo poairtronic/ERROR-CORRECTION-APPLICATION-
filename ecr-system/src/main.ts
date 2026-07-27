@@ -46,13 +46,17 @@ async function bootstrap() {
   const { TimeoutInterceptor } = await import('./common/interceptors/timeout.interceptor');
   const { CorrelationInterceptor } = await import('./common/interceptors/correlation.interceptor');
   const { MetricsInterceptor } = await import('./common/interceptors/metrics.interceptor');
+  const { PerformanceInterceptor } = await import('./common/interceptors/performance.interceptor');
   const { IdempotencyInterceptor } = await import('./common/interceptors/idempotency.interceptor');
   const { MonitoringService } = await import('./monitoring/monitoring.service');
+  const { PerformanceService } = await import('./monitoring/performance.service');
   const monitoringService = app.get(MonitoringService);
+  const performanceService = app.get(PerformanceService);
   
   app.useGlobalInterceptors(
     new CorrelationInterceptor(),
     new MetricsInterceptor(monitoringService),
+    new PerformanceInterceptor(performanceService),
     new IdempotencyInterceptor(),
     new TimeoutInterceptor(),
   );

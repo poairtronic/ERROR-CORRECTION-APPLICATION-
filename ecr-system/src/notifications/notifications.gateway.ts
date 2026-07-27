@@ -6,6 +6,7 @@ import {
   SubscribeMessage,
   MessageBody,
   ConnectedSocket,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
@@ -17,9 +18,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 import * as crypto from 'crypto';
 import { runWithTraceContext } from '../common/trace-context';
 import { MonitoringService } from '../monitoring/monitoring.service';
+import { PerformanceService } from '../monitoring/performance.service';
 
 @WebSocketGateway({ cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173' } })
-export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnApplicationShutdown {
+export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnApplicationShutdown, OnGatewayInit {
   @WebSocketServer()
   server: Server;
   private readonly logger = new Logger(NotificationsGateway.name);
@@ -29,14 +31,22 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     private readonly registry: SocketRegistryService,
     @Inject(forwardRef(() => NotificationsService)) private readonly notificationsService: NotificationsService,
     private readonly monitoringService: MonitoringService,
+    private readonly performanceService: PerformanceService,
   ) {}
+
+  afterInit(server: Server) {
+    this.performanceService.setSocketServer(server);
+  }
 
   @OnEvent('email.logs.updated')
   handleEmailLogsUpdated() {
     try {
       this.logger.debug('Email logs updated, broadcasting to clients...');
       if (this.server) {
+        const start = Date.now();
         this.server.emit('email_logs_updated');
+        this.performanceService.recordSocketBroadcast(Date.now() - start);
+        this.performanceService.recordSocketEvent();
       }
     } catch (err: any) {
       this.logger.warn(`Failed to broadcast email logs update: ${err.message}`);
@@ -44,6 +54,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   }
 
   async handleConnection(client: Socket) {
+    this.performanceService.recordSocketConnect();
     const traceCtx = {
       correlationId: `ws-conn-${client.id}`,
       requestId: crypto.randomUUID(),
@@ -88,6 +99,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   }
 
   handleDisconnect(client: Socket) {
+    this.performanceService.recordSocketDisconnect();
     const user = client.data?.user;
     const traceCtx = {
       correlationId: `ws-disc-${client.id}`,
@@ -131,6 +143,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       const socket = this.server.sockets.sockets.get(socketId);
       if (socket) {
         const pushStart = Date.now();
+        this.performanceService.recordSocketEvent();
         socket.emit('notification', payload, async (ack: any) => {
           const latency = Date.now() - pushStart;
           this.monitoringService.recordNotificationLatency(latency);
@@ -163,6 +176,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   // Allow client to manually acknowledge if they prefer a standard event
   @SubscribeMessage('acknowledge_notification')
   async handleAcknowledge(@MessageBody() payload: { id: string }, @ConnectedSocket() client: Socket) {
+    this.performanceService.recordSocketEvent();
     const user = client.data.user;
     const traceCtx = {
       correlationId: `ws-ack-${payload.id}`,

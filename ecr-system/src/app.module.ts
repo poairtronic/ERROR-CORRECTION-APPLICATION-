@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { MonitoringService } from './monitoring/monitoring.service';
+import { PerformanceService } from './monitoring/performance.service';
 import { TypeOrmStructuredLogger } from './common/typeorm-logger';
 
 import { ComponentIssueModule } from './component-issue/component-issue.module';
@@ -79,15 +80,15 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule, MonitoringModule],
-      inject: [ConfigService, MonitoringService],
-      useFactory: (config: ConfigService, monitoringService: MonitoringService) => {
+      inject: [ConfigService, MonitoringService, PerformanceService],
+      useFactory: (config: ConfigService, monitoringService: MonitoringService, performanceService: PerformanceService) => {
         return {
           type: 'postgres',
           url: process.env.DATABASE_URL,
           ssl: { rejectUnauthorized: false },
           autoLoadEntities: true,
           synchronize: process.env.NODE_ENV !== 'production',
-          logger: new TypeOrmStructuredLogger(monitoringService),
+          logger: new TypeOrmStructuredLogger(monitoringService, performanceService),
           logging: ['query', 'error', 'schema', 'migration'],
           maxQueryExecutionTime: 500, // trigger logQuerySlow for queries > 500ms to capture slow database queries
           retryAttempts: 10,

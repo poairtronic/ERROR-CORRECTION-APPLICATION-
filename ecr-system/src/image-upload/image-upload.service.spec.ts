@@ -30,9 +30,13 @@ jest.mock('streamifier', () => ({
 
 describe('ImageUploadService', () => {
   let service: ImageUploadService;
+  let performanceService: any;
 
   beforeEach(() => {
-    service = new ImageUploadService();
+    performanceService = {
+      recordUpload: jest.fn(),
+    };
+    service = new ImageUploadService(performanceService);
   });
 
   it('should be defined', () => {

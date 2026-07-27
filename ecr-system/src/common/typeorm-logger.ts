@@ -1,18 +1,28 @@
 import { Logger as TypeOrmLoggerInterface, QueryRunner } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { MonitoringService } from '../monitoring/monitoring.service';
+import { PerformanceService } from '../monitoring/performance.service';
 
 export class TypeOrmStructuredLogger implements TypeOrmLoggerInterface {
   private readonly logger = new Logger('DatabaseQuery');
+  private readonly txStartTimes = new Map<QueryRunner, number>();
 
-  constructor(private readonly monitoringService: MonitoringService) {}
+  constructor(
+    private readonly monitoringService: MonitoringService,
+    private readonly performanceService: PerformanceService,
+  ) {}
 
   logQuery(query: string, parameters?: any[], queryRunner?: QueryRunner) {
-    // Normal query logging to debug level to prevent flooding console in production
     this.logger.debug({
       message: `Execute Query: ${query}`,
       parameters,
     });
+
+    this.performanceService.recordDbQuery(query, parameters || [], 0, true);
+
+    if (queryRunner && (query.includes('START TRANSACTION') || query.includes('BEGIN'))) {
+      this.txStartTimes.set(queryRunner, Date.now());
+    }
   }
 
   logQueryError(error: string | Error, query: string, parameters?: any[], queryRunner?: QueryRunner) {
@@ -21,11 +31,22 @@ export class TypeOrmStructuredLogger implements TypeOrmLoggerInterface {
       query,
       parameters,
     }, error instanceof Error ? error.stack : undefined);
+
+    this.performanceService.recordDbQuery(query, parameters || [], 0, false);
   }
 
   logQuerySlow(time: number, query: string, parameters?: any[], queryRunner?: QueryRunner) {
-    // Record execution time to monitoring service
     this.monitoringService.recordDbQuery(time);
+    this.performanceService.recordDbQuery(query, parameters || [], time, true);
+
+    if (queryRunner && (query.includes('COMMIT') || query.includes('ROLLBACK'))) {
+      const startTime = this.txStartTimes.get(queryRunner);
+      if (startTime) {
+        const txDuration = Date.now() - startTime;
+        this.performanceService.recordTransaction(txDuration);
+        this.txStartTimes.delete(queryRunner);
+      }
+    }
 
     const slowQueryThreshold = Number(process.env.SLOW_QUERY_THRESHOLD_MS) || 500;
     if (time > slowQueryThreshold) {
@@ -36,7 +57,6 @@ export class TypeOrmStructuredLogger implements TypeOrmLoggerInterface {
         thresholdMs: slowQueryThreshold,
       });
     } else {
-      // Still log the query at debug level if it was under threshold
       this.logger.debug({
         message: `Execute Query: ${query} (${time}ms)`,
         parameters,
