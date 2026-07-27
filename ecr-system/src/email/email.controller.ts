@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, HttpCode, HttpStatus, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, HttpCode, HttpStatus, Param, UseGuards, Query } from '@nestjs/common';
 import { EmailService } from './services/email.service';
 import { GmailSmtpService } from './services/gmail-smtp.service';
 import { NotificationEvent } from './enums/notification-event.enum';
@@ -18,8 +18,10 @@ export class EmailController {
   ) {}
 
   @Get('logs')
-  getLogs() {
-    return this.emailService.findAll();
+  getLogs(@Query() pagination?: any) {
+    const page = Number(pagination?.page) || 1;
+    const limit = Math.min(Number(pagination?.limit) || 50, 100);
+    return this.emailService.findAll(page, limit);
   }
 
   @Get('health')
@@ -47,42 +49,23 @@ export class EmailController {
       errorDetail = e.message;
     }
 
-    const logs = await this.emailService.findAll();
-    const total = logs.length;
-    const sent = logs.filter(l => l.status === EmailStatus.SENT).length;
-    const failed = logs.filter(l => l.status === EmailStatus.FAILED || l.status === EmailStatus.CANCELLED).length;
-    const queued = logs.filter(l => l.status === EmailStatus.PENDING || l.status === EmailStatus.PROCESSING).length;
-    const retries = logs.reduce((acc, curr) => acc + (curr.retryCount || 0), 0);
-
-    // Latency averages
-    const sentLogs = logs.filter(l => l.status === EmailStatus.SENT && l.sentTime);
-    let avgSendTimeMs = 0;
-    if (sentLogs.length > 0) {
-      const totalDuration = sentLogs.reduce((acc, curr) => {
-        const diff = curr.sentTime!.getTime() - curr.createdAt.getTime();
-        return acc + diff;
-      }, 0);
-      avgSendTimeMs = Math.round(totalDuration / sentLogs.length);
-    }
-    
-    const successRate = total > 0 ? Number(((sent / total) * 100).toFixed(2)) : 100;
-    const lastEmail = logs[0] ? { id: logs[0].id, status: logs[0].status, recipient: logs[0].recipient } : null;
+    const summary = await this.emailService.getEmailMetricsSummary();
 
     return {
       smtpConnected,
       smtpVerified,
       provider: 'Gmail SMTP',
       queueWorking: true,
-      lastEmail,
-      successRate,
+      lastEmail: summary.lastEmail,
+      successRate: summary.successRate,
       errorDetail,
       metrics: {
-        emailsSent: sent,
-        emailsFailed: failed,
-        queueLength: queued,
-        averageSendTimeMs: avgSendTimeMs,
-        retries,
-        successRate,
+        emailsSent: summary.sent,
+        emailsFailed: summary.failed,
+        queueLength: summary.queued,
+        averageSendTimeMs: summary.avgSendTimeMs,
+        retries: summary.retries,
+        successRate: summary.successRate,
       }
     };
   }

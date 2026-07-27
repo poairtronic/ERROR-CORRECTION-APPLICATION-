@@ -18,6 +18,7 @@ import { GmApproval } from '../gm-approval/gm-approval.entity';
 import { ComponentIssue } from '../component-issue/component-issue.entity';
 import { AuditLog } from '../audit-log/audit-log.entity';
 
+@Index(['status', 'createdAt'])
 @Entity('defect_reports')
 export class DefectReport {
   @PrimaryGeneratedColumn('uuid')

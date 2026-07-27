@@ -126,12 +126,12 @@ describe('NotificationsService', () => {
   it('findForUser should return notifications', async () => {
     mockNotifRepo.find.mockResolvedValue([]);
     await service.findForUser('u1', true);
-    expect(mockNotifRepo.find).toHaveBeenCalledWith({ where: { userId: 'u1', read: false }, order: { createdAt: 'DESC' }, relations: ['report'] });
+    expect(mockNotifRepo.find).toHaveBeenCalledWith({ where: { userId: 'u1', read: false }, order: { createdAt: 'DESC' }, relations: ['report'], skip: 0, take: 50 });
   });
 
   it('findByReport should return notifications', async () => {
     mockNotifRepo.find.mockResolvedValue([]);
     await service.findByReport('r1');
-    expect(mockNotifRepo.find).toHaveBeenCalledWith({ where: { reportId: 'r1' }, order: { createdAt: 'ASC' } });
+    expect(mockNotifRepo.find).toHaveBeenCalledWith({ where: { reportId: 'r1' }, order: { createdAt: 'ASC' }, skip: 0, take: 50 });
   });
 });

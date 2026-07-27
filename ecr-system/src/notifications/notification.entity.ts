@@ -15,6 +15,7 @@ import {
   NotificationStatus,
 } from '../common/enums/report-status.enum';
 
+@Index(['userId', 'createdAt'])
 @Entity('notifications')
 export class Notification {
   @PrimaryGeneratedColumn('uuid')

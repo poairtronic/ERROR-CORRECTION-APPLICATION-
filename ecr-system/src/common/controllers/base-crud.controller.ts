@@ -11,7 +11,26 @@ export class BaseCrudController<T extends ObjectLiteral> {
 
   @Get()
   findAll(@Query() pagination?: import('../dto/pagination.dto').PaginationDto) {
-    return this.repo.find({ where: { isActive: true } as any });
+    const hasPagination = pagination && (pagination.page !== undefined || pagination.limit !== undefined || pagination.sort !== undefined);
+    if (!hasPagination) {
+      return this.repo.find({ where: { isActive: true } as any });
+    }
+
+    const page = pagination.page ? Number(pagination.page) : 1;
+    const limit = pagination.limit ? Math.min(Number(pagination.limit), 100) : 50;
+    const skip = (page - 1) * limit;
+
+    const order: any = {};
+    if (pagination.sort) {
+      order[pagination.sort] = pagination.order || 'ASC';
+    }
+
+    return this.repo.find({
+      where: { isActive: true } as any,
+      skip,
+      take: limit,
+      ...(Object.keys(order).length > 0 ? { order } : {}),
+    });
   }
 
   @Post()

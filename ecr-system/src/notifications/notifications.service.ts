@@ -93,10 +93,19 @@ export class NotificationsService {
     return { retried: 0 };
   }
 
-  findForUser(userId: string, unreadOnly = false) {
+  findForUser(userId: string, unreadOnly = false, page = 1, limit = 50) {
     const where: any = { userId };
     if (unreadOnly) where.read = false;
-    return this.repo.find({ where, order: { createdAt: 'DESC' }, relations: ['report'] });
+    const pageNum = Number(page) || 1;
+    const limitNum = Math.min(Number(limit) || 50, 100);
+    const skip = (pageNum - 1) * limitNum;
+    return this.repo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      relations: ['report'],
+      skip,
+      take: limitNum,
+    });
   }
 
   async canAccessReportNotifications(reportId: string, userId: string, userRole: string): Promise<boolean> {
@@ -120,8 +129,16 @@ export class NotificationsService {
     return false;
   }
 
-  findByReport(reportId: string) {
-    return this.repo.find({ where: { reportId }, order: { createdAt: 'ASC' } });
+  findByReport(reportId: string, page = 1, limit = 50) {
+    const pageNum = Number(page) || 1;
+    const limitNum = Math.min(Number(limit) || 50, 100);
+    const skip = (pageNum - 1) * limitNum;
+    return this.repo.find({
+      where: { reportId },
+      order: { createdAt: 'ASC' },
+      skip,
+      take: limitNum,
+    });
   }
 
   async markRead(id: string) {

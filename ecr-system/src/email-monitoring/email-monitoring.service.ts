@@ -108,16 +108,14 @@ export class EmailMonitoringService {
 
     // Report search/filter
     if (query.reportNumber) {
-      const reports = await this.reportRepo.find({
-        where: { reportNumber: Like(`%${query.reportNumber}%`) },
-        select: ['id'],
-      });
-      const reportIds = reports.map(r => r.id);
-      if (reportIds.length > 0) {
-        qb.andWhere('log.relatedReportId IN (:...reportIds)', { reportIds });
-      } else {
-        qb.andWhere('1 = 0');
-      }
+      qb.andWhere(qbSub => {
+        const subQuery = qbSub.subQuery()
+          .select('r.id')
+          .from(DefectReport, 'r')
+          .where('r.reportNumber ILIKE :reportNumberVal')
+          .getQuery();
+        return 'log.relatedReportId IN ' + subQuery;
+      }, { reportNumberVal: `%${query.reportNumber}%` });
     }
 
     // General Search (Report Number, Recipient, Subject, Email ID)
@@ -125,26 +123,25 @@ export class EmailMonitoringService {
       const searchStr = `%${query.search}%`;
       const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(query.search);
       
-      const reports = await this.reportRepo.find({
-        where: { reportNumber: Like(searchStr) },
-        select: ['id'],
-      });
-      const reportIds = reports.map(r => r.id);
+      qb.andWhere(qbSub => {
+        const subQuery = qbSub.subQuery()
+          .select('r.id')
+          .from(DefectReport, 'r')
+          .where('r.reportNumber ILIKE :searchStrVal')
+          .getQuery();
 
-      const searchConditions = [
-        'log.recipient ILIKE :search',
-        'log.subject ILIKE :search',
-      ];
-      if (isUuid) {
-        searchConditions.push('log.id = :searchUuid');
-      }
-      if (reportIds.length > 0) {
-        searchConditions.push('log.relatedReportId IN (:...searchReportIds)');
-      }
-      qb.andWhere(`(${searchConditions.join(' OR ')})`, {
-        search: searchStr,
-        searchUuid: query.search,
-        searchReportIds: reportIds,
+        const searchConditions = [
+          'log.recipient ILIKE :searchStrVal',
+          'log.subject ILIKE :searchStrVal',
+          'log.relatedReportId IN ' + subQuery,
+        ];
+        if (isUuid) {
+          searchConditions.push('log.id = :searchUuidVal');
+        }
+        return `(${searchConditions.join(' OR ')})`;
+      }, {
+        searchStrVal: searchStr,
+        searchUuidVal: query.search,
       });
     }
 
@@ -181,10 +178,16 @@ export class EmailMonitoringService {
     const reportIds = items.map(i => i.relatedReportId).filter(Boolean) as string[];
 
     const users = recipientEmails.length > 0 
-      ? await this.userRepo.find({ where: { email: In(recipientEmails) } }) 
+      ? await this.userRepo.find({
+          where: { email: In(recipientEmails) },
+          select: ['email', 'role', 'name'] as any,
+        }) 
       : [];
     const reports = reportIds.length > 0
-      ? await this.reportRepo.find({ where: { id: In(reportIds) } })
+      ? await this.reportRepo.find({
+          where: { id: In(reportIds) },
+          select: ['id', 'reportNumber'] as any,
+        })
       : [];
 
     const mappedItems = items.map(item => {

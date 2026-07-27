@@ -20,6 +20,7 @@ export enum AuditActionType {
   IMAGE_UPLOADED = 'IMAGE_UPLOADED',
 }
 
+@Index(['timestamp'])
 @Entity('audit_log')
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')

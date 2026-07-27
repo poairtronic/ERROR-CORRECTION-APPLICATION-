@@ -273,7 +273,67 @@ export class EmailService implements OnModuleInit {
     return this.templateService;
   }
 
-  findAll() {
-    return this.emailLogRepo.find({ order: { createdAt: 'DESC' } });
+  findAll(page = 1, limit = 50) {
+    const pageNum = Number(page) || 1;
+    const limitNum = Math.min(Number(limit) || 50, 100);
+    const skip = (pageNum - 1) * limitNum;
+    return this.emailLogRepo.find({
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limitNum,
+    });
+  }
+
+  async getEmailMetricsSummary() {
+    const statusCounts = await this.emailLogRepo.createQueryBuilder('log')
+      .select('log.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(log.retryCount)', 'retries')
+      .groupBy('log.status')
+      .getRawMany();
+
+    let total = 0;
+    let sent = 0;
+    let failed = 0;
+    let queued = 0;
+    let retries = 0;
+
+    for (const row of statusCounts) {
+      const count = Number(row.count) || 0;
+      total += count;
+      retries += Number(row.retries || 0);
+
+      if (row.status === EmailStatus.SENT) {
+        sent += count;
+      } else if (row.status === EmailStatus.FAILED || row.status === EmailStatus.CANCELLED) {
+        failed += count;
+      } else if (row.status === EmailStatus.PENDING || row.status === EmailStatus.PROCESSING) {
+        queued += count;
+      }
+    }
+
+    const avgResult = await this.emailLogRepo.createQueryBuilder('log')
+      .select('AVG(EXTRACT(EPOCH FROM (log.sentTime - log.createdAt)) * 1000)', 'avg')
+      .where('log.status = :status AND log.sentTime IS NOT NULL', { status: EmailStatus.SENT })
+      .getRawOne();
+
+    const avgSendTimeMs = avgResult?.avg ? Math.round(Number(avgResult.avg)) : 0;
+    const successRate = total > 0 ? Number(((sent / total) * 100).toFixed(2)) : 100;
+
+    const lastEmailLog = await this.emailLogRepo.findOne({
+      order: { createdAt: 'DESC' },
+      select: ['id', 'status', 'recipient'],
+    });
+
+    return {
+      total,
+      sent,
+      failed,
+      queued,
+      retries,
+      avgSendTimeMs,
+      successRate,
+      lastEmail: lastEmailLog ? { id: lastEmailLog.id, status: lastEmailLog.status, recipient: lastEmailLog.recipient } : null,
+    };
   }
 }

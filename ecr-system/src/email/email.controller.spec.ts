@@ -12,6 +12,16 @@ describe('EmailController', () => {
       findAll: jest.fn().mockResolvedValue([
         { id: 'e1', status: 'SENT', recipient: 'a@b.com', retryCount: 0, sentTime: new Date(), createdAt: new Date() },
       ]),
+      getEmailMetricsSummary: jest.fn().mockResolvedValue({
+        total: 1,
+        sent: 1,
+        failed: 0,
+        queued: 0,
+        retries: 0,
+        avgSendTimeMs: 100,
+        successRate: 100,
+        lastEmail: { id: 'e1', status: 'SENT', recipient: 'a@b.com' },
+      }),
       queueEmail: jest.fn().mockResolvedValue({ id: 'e2' }),
       resend: jest.fn().mockResolvedValue({ id: 'e1', status: 'PENDING' }),
       getTemplateService: jest.fn().mockReturnValue({

@@ -9,14 +9,34 @@ export class NotificationsController {
   constructor(private service: NotificationsService) {}
 
   @Get()
-  findMine(@CurrentUser() user, @Query('unread') unread?: string) {
+  findMine(
+    @CurrentUser() user,
+    @Query('unread') unread?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    if (page !== undefined || limit !== undefined) {
+      const pageNum = Number(page) || 1;
+      const limitNum = Math.min(Number(limit) || 50, 100);
+      return this.service.findForUser(user.id, unread === 'true', pageNum, limitNum);
+    }
     return this.service.findForUser(user.id, unread === 'true');
   }
 
   @Get('report/:reportId')
-  async findByReport(@Param('reportId') reportId: string, @CurrentUser() user) {
+  async findByReport(
+    @Param('reportId') reportId: string,
+    @CurrentUser() user,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     const hasAccess = await this.service.canAccessReportNotifications(reportId, user.id, user.role);
     if (!hasAccess) throw new NotFoundException('Notifications not found');
+    if (page !== undefined || limit !== undefined) {
+      const pageNum = Number(page) || 1;
+      const limitNum = Math.min(Number(limit) || 50, 100);
+      return this.service.findByReport(reportId, pageNum, limitNum);
+    }
     return this.service.findByReport(reportId);
   }
 

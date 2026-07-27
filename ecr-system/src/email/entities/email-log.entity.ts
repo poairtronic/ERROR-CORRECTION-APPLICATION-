@@ -4,10 +4,14 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
 
+@Index(['recipient', 'createdAt'])
+@Index(['status', 'createdAt'])
+@Index(['event'])
 @Entity('email_logs')
 export class EmailLog {
   @PrimaryGeneratedColumn('uuid')
