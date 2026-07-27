@@ -484,7 +484,7 @@ export default function EnterpriseAnalytics() {
       />
 
       {exporting && !isLoading && (
-        <div id="pdf-report-container" style={{ position: 'fixed', left: 0, top: '100vh', width: '1056px', background: '#ffffff', zIndex: -9999 }}>
+        <div id="pdf-report-container" style={{ position: 'absolute', left: 0, top: 0, width: '1056px', background: '#ffffff', zIndex: -9999 }}>
           <AnalyticsReportPDF data={{ kpis, trends, insights, slaData, vendorData, operatorData, machineData, reports, components, errorTypes, vendors, operators, formatCurrency }} />
         </div>
       )}
