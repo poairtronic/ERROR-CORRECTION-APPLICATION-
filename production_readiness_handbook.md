@@ -1,71 +1,65 @@
-# Production Readiness & Operations Handbook
+# Enterprise Production Readiness Handbook - ECR Digitization System
 
-Velan Metrology — ECR System
+This guide outlines deployment, environment configurations, backup strategies, recovery guides, and SRE operational checklists for the Enterprise ECR Digitization System.
 
 ---
 
-## 1. Environment Setup Guide
+## 🏗️ ARCHITECTURE SUMMARY
 
-The following configuration variables must be populated on Render (or alternative production environments). Server startup will immediately fail if these variables are absent:
+The application is structured as a Monolithic Node.js workspace built on NestJS (backend) and Vite/React (frontend).
+- **Backend Rest API**: Runs NestJS, serving requests via HTTP on port `3000` (or configured `PORT`).
+- **Frontend SPA**: Vite builds static React files directly into `ecr-system/public`, which is served by the NestJS static file server (`@nestjs/serve-static`) on the base path.
+- **Database Layer**: PostgreSQL (Neon Serverless or Local) accessed via TypeORM.
+- **Real-Time Layer**: WebSockets powered by Socket.IO for notification pushes and logs updating.
 
-| Variable | Type | Description |
+---
+
+## 🛠️ ENVIRONMENT VARIABLES
+
+Create a `.env` file in the `/ecr-system` root folder.
+
+| Key | Description | Example / Recommended Value |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | String (URI) | Connection string for Neon PostgreSQL database. |
-| `JWT_SECRET` | String | Cryptographic secret for signing session tokens. |
-| `EMAIL_FROM` | String (Email) | Sender address for system notifications (e.g. gmail). |
-| `GMAIL_APP_PASSWORD` | String | SMTP application-specific password for the email account (used locally). |
-| `GMAIL_SCRIPT_URL` | String (URL) | Google Apps Script HTTP Web App proxy URL (Required for Render production deployment to bypass SMTP blocking). |
-| `GMAIL_SCRIPT_TOKEN` | String | Secure authorization token matching the Google Apps Script Web App. |
+| `PORT` | App bind port | `3000` |
+| `NODE_ENV` | Mode check | `production` |
+| `DATABASE_URL` | PostgreSQL connection | `postgresql://user:pwd@host-pooler.../neondb` |
+| `JWT_SECRET` | Secret key for auth | *(A long, cryptographically secure random string)* |
+| `JWT_EXPIRES_IN` | Token duration | `8h` |
+| `GMAIL_SCRIPT_URL` | Apps Script HTTPS URL | `https://script.google.com/macros/s/.../exec` |
+| `GMAIL_SCRIPT_TOKEN` | Script API security token | `ecr_secret_secure_mail_token_2026` |
+| `GMAIL_APP_PASSWORD` | Fallback SMTP SMTP pwd | `qjgirdacnazaffrb` |
+| `EMAIL_FROM` | Dispatch sender address | `posuppportairtronic@gmail.com` |
+| `FRONTEND_URL` | CORS authorized origin | `https://error-correction-application.onrender.com` |
 
 ---
 
-## 2. Deployment Checklist
+## 🚀 DEPLOYMENT GUIDE (Render Cloud)
 
-Before initiating production updates, follow this validation checklist:
-
-- [ ] Run typescript checks and lint suites: `npm run lint --workspaces` and `npm run build`.
-- [ ] Verify that all unit and integration test suites are completely green: `npx jest --workspace=ecr-system`.
-- [ ] Run playwritght E2E journeys: `npx playwright test` to certify login and navigation flows.
-- [ ] Confirm database connection pool status on the Neon console.
-- [ ] Execute database migrations: `npm run migration:run`.
+1.  **Create Render Web Service**:
+    - Build Command: `npm run render-build` (Runs `npm install` and Vite client builds automatically).
+    - Start Command: `npm run render-start` (Starts compiled NestJS production bundle).
+2.  **Attach Environment variables**: Set all variables from the table above in Render's dashboard.
+3.  **Define Health Checks**: Path `/api/health/live` on port `3000`.
 
 ---
 
-## 3. Rollback Checklist
+## 💾 BACKUP & RESTORATION PLAN (PostgreSQL)
 
-In the event of deployment failure or regression:
-
-- [ ] **Code Reversion:** Revert git HEAD to the last stable production tag on GitHub.
-- [ ] **Database Migration Reversal:** Revert database migrations if the schema was altered:
+Since the system runs on **Neon Serverless PostgreSQL**:
+- **Point-in-Time Recovery (PITR)**: Neon automatically manages continuous backups, allowing you to restore database states to any second within the past 7 days via the Neon Console.
+- **Manual Logical Backups**:
   ```bash
-  npm run typeorm migration:revert -d src/config/data-source.ts
+  # Take a backup dump
+  pg_dump -d "postgresql://user:pwd@host/db" -F c -b -v -f ecr_db_backup.dump
+
+  # Restore a backup dump
+  pg_restore -d "postgresql://user:pwd@host/db" -v ecr_db_backup.dump
   ```
-- [ ] **Configuration Rollback:** Restore previous environment variables in the Render Dashboard and trigger a clean manual redeploy.
 
 ---
 
-## 4. Backup & Recovery Strategy
+## 🚨 SRE OPERATIONAL CHECKLIST
 
-### Neon PostgreSQL Backup
-Neon cloud postgres automates daily backups with point-in-time recovery. To trigger manual snapshots, run:
-```bash
-pg_dump -d "postgresql://neondb_owner:npg_pJA2XQNTY9Db@ep-winter-water-at1ihqar-pooler.c-9.us-east-1.aws.neon.tech/neondb" -f backup_file.sql
-```
-
-### Recovery Verification
-To restore backups onto a staging database or test instance:
-```bash
-psql -d "postgresql://<user>:<password>@<host>/<database>" -f backup_file.sql
-```
-
----
-
-## 5. Incident Response Checklist
-
-### High CPU or Memory Overhead
-1. Query monitoring metrics at `/api/admin/monitoring/dashboard` (restricted to Administrators).
-2. Inspect log files for active query execution loops or unclosed database client connections.
-
-### Mail Delivery Failures
-1. View the live mail queue dashboard under `Admin > Email Queue` in the frontend sidebar navigation.
-2. Confirm `GMAIL_APP_PASSWORD` environment variables are active and correct in the environment settings dashboard.
+- [ ] **Secrets Rotation**: Verify `JWT_SECRET` is rotated annually.
+- [ ] **Logging Limits**: Confirm `NODE_ENV=production` is active to disable verbose DEBUG logs and keep Render storage clean.
+- [ ] **Connection pool checks**: Ensure Neon pooler connection strings (port 5432 / pooled mode) are utilized under concurrent growth.
