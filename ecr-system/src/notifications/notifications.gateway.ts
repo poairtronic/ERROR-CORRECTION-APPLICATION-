@@ -25,6 +25,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   @WebSocketServer()
   server: Server;
   private readonly logger = new Logger(NotificationsGateway.name);
+  private broadcastTimeout: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -40,17 +41,22 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   @OnEvent('email.logs.updated')
   handleEmailLogsUpdated() {
-    try {
-      this.logger.debug('Email logs updated, broadcasting to clients...');
-      if (this.server) {
-        const start = Date.now();
-        this.server.emit('email_logs_updated');
-        this.performanceService.recordSocketBroadcast(Date.now() - start);
-        this.performanceService.recordSocketEvent();
+    if (this.broadcastTimeout) return;
+
+    this.broadcastTimeout = setTimeout(() => {
+      this.broadcastTimeout = null;
+      try {
+        this.logger.debug('Email logs updated, broadcasting to clients...');
+        if (this.server) {
+          const start = Date.now();
+          this.server.emit('email_logs_updated');
+          this.performanceService.recordSocketBroadcast(Date.now() - start);
+          this.performanceService.recordSocketEvent();
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to broadcast email logs update: ${err.message}`);
       }
-    } catch (err: any) {
-      this.logger.warn(`Failed to broadcast email logs update: ${err.message}`);
-    }
+    }, 2000); // 2 seconds debounce
   }
 
   async handleConnection(client: Socket) {

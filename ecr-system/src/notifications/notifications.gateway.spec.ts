@@ -81,9 +81,13 @@ describe('NotificationsGateway', () => {
     expect(mockRegistry.removeConnection).toHaveBeenCalledWith('u1', 'c1');
   });
 
-  it('handleEmailLogsUpdated should broadcast', () => {
+  it('handleEmailLogsUpdated should broadcast with debounce', () => {
+    jest.useFakeTimers();
     gateway.handleEmailLogsUpdated();
+    expect(gateway.server.emit).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(2000);
     expect(gateway.server.emit).toHaveBeenCalledWith('email_logs_updated');
+    jest.useRealTimers();
   });
 
   it('onApplicationShutdown should close server', () => {

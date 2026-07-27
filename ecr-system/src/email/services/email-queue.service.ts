@@ -6,7 +6,7 @@ import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { EmailService } from './email.service';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { runWithTraceContext } from '../../common/trace-context';
 import { MonitoringService } from '../../monitoring/monitoring.service';
 import { PerformanceService } from '../../monitoring/performance.service';
@@ -46,6 +46,7 @@ export class EmailQueueService implements BeforeApplicationShutdown {
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
+  @OnEvent('email.logs.updated')
   async processEmailQueue() {
     const traceCtx = {
       correlationId: `cron-email-queue-${crypto.randomUUID()}`,
