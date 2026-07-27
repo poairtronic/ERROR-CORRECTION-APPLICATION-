@@ -217,59 +217,53 @@ export default function AnalyticsReportPDF({ data }) {
             <div style={{ fontSize: 9, color: GRAY_400 }}>Monthly defect report volume over time</div>
           </div>
           <div style={{ height: 220, marginBottom: 28 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                <defs>
-                  <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={BRAND_LIGHT} stopOpacity={0.2} />
-                    <stop offset="100%" stopColor={BRAND_LIGHT} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRAY_200} vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: GRAY_500 }} axisLine={{ stroke: GRAY_200 }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: GRAY_500 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${GRAY_200}` }} />
-                <Area type="monotone" dataKey="count" stroke={BRAND_LIGHT} strokeWidth={2} fill="url(#trendFill)" dot={{ r: 3, fill: BRAND_LIGHT }} />
-              </AreaChart>
-            </ResponsiveContainer>
+            <AreaChart width={960} height={220} data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={BRAND_LIGHT} stopOpacity={0.2} />
+                  <stop offset="100%" stopColor={BRAND_LIGHT} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRAY_200} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: GRAY_500 }} axisLine={{ stroke: GRAY_200 }} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: GRAY_500 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${GRAY_200}` }} />
+              <Area type="monotone" dataKey="count" stroke={BRAND_LIGHT} strokeWidth={2} fill="url(#trendFill)" dot={{ r: 3, fill: BRAND_LIGHT }} />
+            </AreaChart>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: GRAY_600, marginBottom: 12 }}>Status Distribution</div>
               <div style={{ height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statusSummary.filter(s => s.value > 0)} margin={{ top: 4, right: 8, left: -16, bottom: 4 }} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke={GRAY_200} horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 9, fill: GRAY_500 }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: GRAY_500 }} width={120} axisLine={false} tickLine={false} />
-                    <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                      {statusSummary.filter(s => s.value > 0).map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <BarChart width={460} height={180} data={statusSummary.filter(s => s.value > 0)} margin={{ top: 4, right: 8, left: -16, bottom: 4 }} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRAY_200} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 9, fill: GRAY_500 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 8, fill: GRAY_500 }} width={120} axisLine={false} tickLine={false} />
+                  <Bar dataKey="value" radius={[0, 3, 3, 0]}>
+                    {statusSummary.filter(s => s.value > 0).map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </div>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: GRAY_600, marginBottom: 12 }}>Workflow Pipeline</div>
               <div style={{ height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={[
-                      { name: 'In Inspection', value: kpis?.pendingInspection || 0, color: STATUS_COLORS.PENDING_INSPECTION || GRAY_400 },
-                      { name: 'Accounts Review', value: kpis?.pendingAccountsReview || 0, color: STATUS_COLORS.PENDING_ACCOUNTS_REVIEW || GRAY_400 },
-                      { name: 'SM Review', value: kpis?.pendingSmReview || 0, color: STATUS_COLORS.PENDING_SM_REVIEW || GRAY_400 },
-                      { name: 'GM Approval', value: kpis?.pendingGmApproval || 0, color: STATUS_COLORS.PENDING_GM_APPROVAL || GRAY_400 },
-                    ].filter(d => d.value > 0)} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={70} innerRadius={35} paddingAngle={3}>
-                      {[0, 1, 2, 3].slice(0, 4).map((_, i) => (
-                        <Cell key={i} fill={[STATUS_COLORS.PENDING_INSPECTION, STATUS_COLORS.PENDING_ACCOUNTS_REVIEW, STATUS_COLORS.PENDING_SM_REVIEW, STATUS_COLORS.PENDING_GM_APPROVAL][i] || GRAY_400} />
-                      ))}
-                    </Pie>
-                    <Legend wrapperStyle={{ fontSize: 8 }} verticalAlign="bottom" height={36} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <PieChart width={460} height={180}>
+                  <Pie data={[
+                    { name: 'In Inspection', value: kpis?.pendingInspection || 0, color: STATUS_COLORS.PENDING_INSPECTION || GRAY_400 },
+                    { name: 'Accounts Review', value: kpis?.pendingAccountsReview || 0, color: STATUS_COLORS.PENDING_ACCOUNTS_REVIEW || GRAY_400 },
+                    { name: 'SM Review', value: kpis?.pendingSmReview || 0, color: STATUS_COLORS.PENDING_SM_REVIEW || GRAY_400 },
+                    { name: 'GM Approval', value: kpis?.pendingGmApproval || 0, color: STATUS_COLORS.PENDING_GM_APPROVAL || GRAY_400 },
+                  ].filter(d => d.value > 0)} dataKey="value" nameKey="name" cx="40%" cy="50%" outerRadius={70} innerRadius={35} paddingAngle={3}>
+                    {[0, 1, 2, 3].slice(0, 4).map((_, i) => (
+                      <Cell key={i} fill={[STATUS_COLORS.PENDING_INSPECTION, STATUS_COLORS.PENDING_ACCOUNTS_REVIEW, STATUS_COLORS.PENDING_SM_REVIEW, STATUS_COLORS.PENDING_GM_APPROVAL][i] || GRAY_400} />
+                    ))}
+                  </Pie>
+                  <Legend wrapperStyle={{ fontSize: 8 }} verticalAlign="bottom" height={36} />
+                </PieChart>
               </div>
             </div>
           </div>
