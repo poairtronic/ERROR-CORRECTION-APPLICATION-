@@ -203,23 +203,23 @@ export default function EnterpriseAnalytics() {
           </div>
         ) : (
           <div className="dashboard-grid">
-            
+
             {/* Top KPI Row */}
             <div className="col-span-12" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '8px' }}>
-              <EnterpriseKpiCard 
-                title="Total Defects" value={kpis?.totalReports} desc={`${kpis?.openReports} Open / ${kpis?.closedReports} Closed`} 
+              <EnterpriseKpiCard
+                title="Total Defects" value={kpis?.totalReports} desc={`${kpis?.openReports} Open / ${kpis?.closedReports} Closed`}
                 icon={FiActivity} color="#3b82f6" delay={0} onClick={() => navigate('/reports')}
               />
-              <EnterpriseKpiCard 
-                title="Financial Impact" value={formatCurrency(kpis?.totalCost)} desc={`Rework Loss: ${formatCurrency(kpis?.totalLoss)}`} 
+              <EnterpriseKpiCard
+                title="Financial Impact" value={formatCurrency(kpis?.totalCost)} desc={`Rework Loss: ${formatCurrency(kpis?.totalLoss)}`}
                 icon={FiDollarSign} color="#f43f5e" delay={100}
               />
-              <EnterpriseKpiCard 
-                title="SLA Compliance" value={slaData?.averageResolutionDays} suffix="Days" desc="Average Resolution Time" 
+              <EnterpriseKpiCard
+                title="SLA Compliance" value={slaData?.averageResolutionDays} suffix="Days" desc="Average Resolution Time"
                 icon={FiClock} color="#10b981" trend={parseFloat(slaData?.averageResolutionDays) > 5 ? 'down' : 'up'} trendValue={parseFloat(slaData?.averageResolutionDays) > 5 ? 'Warning' : 'Good'} delay={200}
               />
-              <EnterpriseKpiCard 
-                title="Vendor Attributed" value={kpis?.vendorCases} desc="Cases caused by external vendors" 
+              <EnterpriseKpiCard
+                title="Vendor Attributed" value={kpis?.vendorCases} desc="Cases caused by external vendors"
                 icon={FiAlertTriangle} color="#8b5cf6" delay={300}
               />
             </div>
@@ -244,7 +244,7 @@ export default function EnterpriseAnalytics() {
 
             <div className="col-span-4" style={{ height: '380px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div className="glass-card animate-slide-up" style={{ animationDelay: '700ms', padding: 0, flex: 1, overflow: 'hidden' }}>
-                 <InsightsListWidget insights={insights || []} />
+                <InsightsListWidget insights={insights || []} />
               </div>
             </div>
 
@@ -261,23 +261,23 @@ export default function EnterpriseAnalytics() {
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Filter overall history by master data categories</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button className="btn btn-primary" onClick={() => setExportModalOpen(true)} style={{ height: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', fontSize: 12 }}>
-                  <FiDownload size={13} /> Export
-                </button>
-                {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage || startDate || endDate || searchQuery) && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => {
-                    setSelectedComponent('');
-                    setSelectedErrorType('');
-                    setSelectedVendor('');
-                    setSelectedOperator('');
-                    setSelectedStage('');
-                    setStartDate('');
-                    setEndDate('');
-                    setSearchQuery('');
-                  }} style={{ fontSize: '12px', color: 'var(--primary-light)' }}>
-                    Reset Filters
+                  <button className="btn btn-primary" onClick={() => setExportModalOpen(true)} style={{ height: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px', fontSize: 12 }}>
+                    <FiDownload size={13} /> Export
                   </button>
-                )}
+                  {(selectedComponent || selectedErrorType || selectedVendor || selectedOperator || selectedStage || startDate || endDate || searchQuery) && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => {
+                      setSelectedComponent('');
+                      setSelectedErrorType('');
+                      setSelectedVendor('');
+                      setSelectedOperator('');
+                      setSelectedStage('');
+                      setStartDate('');
+                      setEndDate('');
+                      setSearchQuery('');
+                    }} style={{ fontSize: '12px', color: 'var(--primary-light)' }}>
+                      Reset Filters
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -285,16 +285,16 @@ export default function EnterpriseAnalytics() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Search</label>
-                  <input 
+                  <input
                     type="text"
                     placeholder="Search by ID, component, desc..."
-                    style={{ 
-                      background: 'rgba(0,0,0,0.2)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: 'white', 
-                      padding: '8px 12px', 
-                      borderRadius: '8px', 
-                      outline: 'none', 
+                    style={{
+                      background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'white',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      outline: 'none',
                       fontSize: '13px'
                     }}
                     value={searchQuery}
@@ -304,9 +304,9 @@ export default function EnterpriseAnalytics() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component</label>
-                  <select 
+                  <select
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px 12px', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
-                    value={selectedComponent} 
+                    value={selectedComponent}
                     onChange={e => setSelectedComponent(e.target.value)}
                   >
                     <option value="" style={{ background: '#111827' }}>All Components</option>
@@ -316,9 +316,9 @@ export default function EnterpriseAnalytics() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Error Type</label>
-                  <select 
+                  <select
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px 12px', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
-                    value={selectedErrorType} 
+                    value={selectedErrorType}
                     onChange={e => setSelectedErrorType(e.target.value)}
                   >
                     <option value="" style={{ background: '#111827' }}>All Error Types</option>
@@ -328,9 +328,9 @@ export default function EnterpriseAnalytics() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vendor</label>
-                  <select 
+                  <select
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px 12px', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
-                    value={selectedVendor} 
+                    value={selectedVendor}
                     onChange={e => setSelectedVendor(e.target.value)}
                   >
                     <option value="" style={{ background: '#111827' }}>All Vendors</option>
@@ -340,9 +340,9 @@ export default function EnterpriseAnalytics() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Operator</label>
-                  <select 
+                  <select
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px 12px', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
-                    value={selectedOperator} 
+                    value={selectedOperator}
                     onChange={e => setSelectedOperator(e.target.value)}
                   >
                     <option value="" style={{ background: '#111827' }}>All Operators</option>
@@ -352,9 +352,9 @@ export default function EnterpriseAnalytics() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stage of Failure</label>
-                  <select 
+                  <select
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px 12px', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
-                    value={selectedStage} 
+                    value={selectedStage}
                     onChange={e => setSelectedStage(e.target.value)}
                   >
                     <option value="" style={{ background: '#111827' }}>All Stages</option>
@@ -364,38 +364,38 @@ export default function EnterpriseAnalytics() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Start Date</label>
-                  <input 
+                  <input
                     type="date"
-                    style={{ 
-                      background: 'rgba(0,0,0,0.2)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: 'white', 
-                      padding: '8px 12px', 
-                      borderRadius: '8px', 
-                      outline: 'none', 
+                    style={{
+                      background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'white',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      outline: 'none',
                       fontSize: '13px',
                       colorScheme: 'dark'
                     }}
-                    value={startDate} 
+                    value={startDate}
                     onChange={e => setStartDate(e.target.value)}
                   />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>End Date</label>
-                  <input 
+                  <input
                     type="date"
-                    style={{ 
-                      background: 'rgba(0,0,0,0.2)', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      color: 'white', 
-                      padding: '8px 12px', 
-                      borderRadius: '8px', 
-                      outline: 'none', 
+                    style={{
+                      background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'white',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      outline: 'none',
                       fontSize: '13px',
                       colorScheme: 'dark'
                     }}
-                    value={endDate} 
+                    value={endDate}
                     onChange={e => setEndDate(e.target.value)}
                   />
                 </div>
@@ -431,10 +431,10 @@ export default function EnterpriseAnalytics() {
                             respName = vendors.find(v => v.id === id)?.name || id || 'Vendor';
                           }
                         }
-                        
+
                         return (
-                          <tr 
-                            key={r.id} 
+                          <tr
+                            key={r.id}
                             style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', cursor: 'pointer', transition: 'background 0.2s' }}
                             onClick={() => navigate(`/reports/${r.id}`)}
                             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
@@ -484,7 +484,7 @@ export default function EnterpriseAnalytics() {
       />
 
       {exporting && !isLoading && (
-        <div id="pdf-report-container" style={{ position: 'absolute', left: 0, top: 0, width: '1056px', background: '#ffffff', zIndex: -9999 }}>
+        <div id="pdf-report-container" style={{ position: 'absolute', left: 0, top: 0, width: '1056px', background: '#faf9f9ff', zIndex: -9999 }}>
           <AnalyticsReportPDF data={{ kpis, trends, insights, slaData, vendorData, operatorData, machineData, reports, components, errorTypes, vendors, operators, formatCurrency }} />
         </div>
       )}
