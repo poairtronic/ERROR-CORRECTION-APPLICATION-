@@ -29,6 +29,7 @@ export class ImageUploadService {
           quality: 'auto:good',
         },
         (error: UploadApiErrorResponse, result: UploadApiResponse) => {
+          file.buffer = null as any; // Immediate buffer disposal
           const cloudinaryEnd = Date.now();
           const totalEnd = Date.now();
           const memEnd = process.memoryUsage().heapUsed;

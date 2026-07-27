@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, forwardRef, OnModuleInit, OnModuleDestroy }
 import { DataSource } from 'typeorm';
 import { monitorEventLoopDelay, performance } from 'perf_hooks';
 import * as os from 'os';
+import { GlobalTelemetry } from '../common/global-telemetry';
 
 @Injectable()
 export class PerformanceService implements OnModuleInit, OnModuleDestroy {
@@ -109,6 +110,8 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
     const heapUsedMb = memory.heapUsed / 1024 / 1024;
     const rssMb = memory.rss / 1024 / 1024;
 
+    GlobalTelemetry.latestMemoryMb = Number(heapUsedMb.toFixed(2));
+
     this.logger.log({
       message: `System Memory Status: RSS ${rssMb.toFixed(2)}MB | Heap Used ${heapUsedMb.toFixed(2)}MB`,
       category: 'SYSTEM',
@@ -137,6 +140,10 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
     const elu = performance.eventLoopUtilization(this.lastELU);
     this.lastELU = elu;
     const eluPercent = elu.utilization * 100;
+
+    const absoluteCpuUsage = process.cpuUsage();
+    const cpuSec = Number(((absoluteCpuUsage.user + absoluteCpuUsage.system) / 1000000).toFixed(2));
+    GlobalTelemetry.latestCpuSec = cpuSec;
 
     if (meanDelayMs > 100) {
       this.logger.error(`[CRITICAL_LIMIT] Event loop delay critically blocked: Mean Delay is ${meanDelayMs.toFixed(2)}ms (> 100ms)`);

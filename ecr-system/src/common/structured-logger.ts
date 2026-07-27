@@ -1,5 +1,6 @@
 import { LoggerService, Injectable, Scope } from '@nestjs/common';
 import { getTraceContext } from './trace-context';
+import { GlobalTelemetry } from './global-telemetry';
 
 @Injectable({ scope: Scope.DEFAULT })
 export class StructuredLogger implements LoggerService {
@@ -50,11 +51,8 @@ export class StructuredLogger implements LoggerService {
       msgString = String(message);
     }
 
-    const memoryUsage = process.memoryUsage();
-    const memoryMb = Number((memoryUsage.heapUsed / (1024 * 1024)).toFixed(2));
-    
-    const cpuUsage = process.cpuUsage();
-    const cpuPercent = Number(((cpuUsage.user + cpuUsage.system) / 1000000).toFixed(2));
+    const memoryMb = GlobalTelemetry.latestMemoryMb;
+    const cpuPercent = GlobalTelemetry.latestCpuSec;
 
     const duration = payload.duration || payload.executionTimeMs || undefined;
     const category = payload.category || 'GENERAL';

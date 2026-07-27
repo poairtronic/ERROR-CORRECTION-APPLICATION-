@@ -52,6 +52,21 @@ export class BaseCrudController<T extends ObjectLiteral> {
       });
     }
 
+    if (BaseCrudController.cache.size > 100) {
+      const cacheNow = Date.now();
+      for (const [key, val] of BaseCrudController.cache.entries()) {
+        if (val.expiry <= cacheNow) {
+          BaseCrudController.cache.delete(key);
+        }
+      }
+      if (BaseCrudController.cache.size > 100) {
+        const firstKey = BaseCrudController.cache.keys().next().value;
+        if (firstKey) {
+          BaseCrudController.cache.delete(firstKey);
+        }
+      }
+    }
+
     BaseCrudController.cache.set(cacheKey, { data, expiry: now + 10000 }); // 10 seconds cache
     return data;
   }
