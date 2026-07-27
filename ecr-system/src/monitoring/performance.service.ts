@@ -51,7 +51,12 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(forwardRef(() => DataSource)) private readonly dataSource: DataSource,
-  ) {}
+  ) {
+    this.slowQueries = [];
+    this.transactionDurations = [];
+    this.connectionWaitTimes = [];
+    this.rpsHistory = [];
+  }
 
   onModuleInit() {
     this.elHistogram.enable();
@@ -149,15 +154,18 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   recordDbQuery(query: string, parameters: any[], durationMs: number, success = true) {
-    this.totalQueriesCount++;
-    this.totalQueryDuration += durationMs;
+    if (!this.slowQueries) {
+      this.slowQueries = [];
+    }
+    this.totalQueriesCount = (this.totalQueriesCount || 0) + 1;
+    this.totalQueryDuration = (this.totalQueryDuration || 0) + (durationMs || 0);
     if (!success) {
-      this.failedQueriesCount++;
+      this.failedQueriesCount = (this.failedQueriesCount || 0) + 1;
     }
 
     this.slowQueries.push({
-      query,
-      duration: durationMs,
+      query: query || '',
+      duration: durationMs || 0,
       timestamp: new Date().toISOString(),
       success,
     });
@@ -168,7 +176,10 @@ export class PerformanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   recordTransaction(durationMs: number) {
-    this.transactionDurations.push(durationMs);
+    if (!this.transactionDurations) {
+      this.transactionDurations = [];
+    }
+    this.transactionDurations.push(durationMs || 0);
     if (this.transactionDurations.length > 100) {
       this.transactionDurations.shift();
     }

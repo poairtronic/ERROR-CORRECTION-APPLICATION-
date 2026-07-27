@@ -8,8 +8,8 @@ export class TypeOrmStructuredLogger implements TypeOrmLoggerInterface {
   private readonly txStartTimes = new Map<QueryRunner, number>();
 
   constructor(
-    private readonly monitoringService: MonitoringService,
-    private readonly performanceService: PerformanceService,
+    private readonly monitoringService?: MonitoringService,
+    private readonly performanceService?: PerformanceService,
   ) {}
 
   logQuery(query: string, parameters?: any[], queryRunner?: QueryRunner) {
@@ -18,7 +18,9 @@ export class TypeOrmStructuredLogger implements TypeOrmLoggerInterface {
       parameters,
     });
 
-    this.performanceService.recordDbQuery(query, parameters || [], 0, true);
+    if (this.performanceService && typeof this.performanceService.recordDbQuery === 'function') {
+      this.performanceService.recordDbQuery(query, parameters || [], 0, true);
+    }
 
     if (queryRunner && (query.includes('START TRANSACTION') || query.includes('BEGIN'))) {
       this.txStartTimes.set(queryRunner, Date.now());
@@ -32,18 +34,26 @@ export class TypeOrmStructuredLogger implements TypeOrmLoggerInterface {
       parameters,
     }, error instanceof Error ? error.stack : undefined);
 
-    this.performanceService.recordDbQuery(query, parameters || [], 0, false);
+    if (this.performanceService && typeof this.performanceService.recordDbQuery === 'function') {
+      this.performanceService.recordDbQuery(query, parameters || [], 0, false);
+    }
   }
 
   logQuerySlow(time: number, query: string, parameters?: any[], queryRunner?: QueryRunner) {
-    this.monitoringService.recordDbQuery(time);
-    this.performanceService.recordDbQuery(query, parameters || [], time, true);
+    if (this.monitoringService && typeof this.monitoringService.recordDbQuery === 'function') {
+      this.monitoringService.recordDbQuery(time);
+    }
+    if (this.performanceService && typeof this.performanceService.recordDbQuery === 'function') {
+      this.performanceService.recordDbQuery(query, parameters || [], time, true);
+    }
 
     if (queryRunner && (query.includes('COMMIT') || query.includes('ROLLBACK'))) {
       const startTime = this.txStartTimes.get(queryRunner);
       if (startTime) {
         const txDuration = Date.now() - startTime;
-        this.performanceService.recordTransaction(txDuration);
+        if (this.performanceService && typeof this.performanceService.recordTransaction === 'function') {
+          this.performanceService.recordTransaction(txDuration);
+        }
         this.txStartTimes.delete(queryRunner);
       }
     }
