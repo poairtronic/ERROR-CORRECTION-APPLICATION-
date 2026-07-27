@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar, FiFileText, FiDownload } from 'react-icons/fi';
+import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar, FiDownload } from 'react-icons/fi';
 import EnterpriseKpiCard from '../components/analytics/EnterpriseKpiCard';
 import TrendChartWidget from '../components/analytics/TrendChartWidget';
 import ReportStatusWidget from '../components/analytics/ReportStatusWidget';
@@ -163,7 +163,7 @@ export default function EnterpriseAnalytics() {
     endDate,
   }), [searchQuery, selectedComponent, selectedVendor, selectedOperator, selectedErrorType, selectedStage, startDate, endDate]);
 
-  const handleTableExport = useCallback(({ format, options }) => {
+  const handleTableExport = useCallback(({ format }) => {
     setExportModalOpen(false);
     setTimeout(() => {
       if (format === 'excel') {
