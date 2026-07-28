@@ -31,8 +31,57 @@ export default function InspectorDashboard() {
 
   const pendingInspections = reports.filter(r => r.status === 'PENDING_INSPECTION');
   const completedToday = reports.filter(r => 
-    r.auditLogs?.some(log => log.action === 'INSPECTED' && new Date(log.createdAt).toDateString() === new Date().toDateString())
+    r.auditLogs?.some(log => log.actionType === 'STATUS_CHANGE' && log.fromStatus === 'PENDING_INSPECTION' && new Date(log.timestamp).toDateString() === new Date().toDateString())
   ).length;
+
+  // Calculate dynamic average inspection time
+  const getInspectionDurations = (r) => {
+    if (!r.auditLogs || r.auditLogs.length === 0) return [];
+    
+    // Find all status changes out of PENDING_INSPECTION
+    const exits = r.auditLogs
+      .filter(log => log.actionType === 'STATUS_CHANGE' && log.fromStatus === 'PENDING_INSPECTION')
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+    const durations = [];
+    for (const exit of exits) {
+      const exitTime = new Date(exit.timestamp);
+      // Find latest status change into PENDING_INSPECTION before this exit
+      const entry = r.auditLogs
+        .filter(log => log.actionType === 'STATUS_CHANGE' && log.toStatus === 'PENDING_INSPECTION' && new Date(log.timestamp) < exitTime)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+        
+      const entryTime = entry ? new Date(entry.timestamp) : new Date(r.createdAt);
+      const diffMs = exitTime - entryTime;
+      if (diffMs > 0) {
+        durations.push(diffMs);
+      }
+    }
+    return durations;
+  };
+
+  const allDurations = reports.flatMap(getInspectionDurations);
+  const avgDurationMs = allDurations.length > 0
+    ? allDurations.reduce((sum, d) => sum + d, 0) / allDurations.length
+    : 0;
+
+  const formatDuration = (ms) => {
+    if (!ms || ms <= 0) return '0m';
+    const totalSeconds = Math.round(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m`;
+    }
+    return `${totalSeconds}s`;
+  };
+
+  const averageTimeStr = formatDuration(avgDurationMs);
 
   const columns = [
     { label: 'Report ID', key: 'id' },
@@ -73,7 +122,7 @@ export default function InspectorDashboard() {
           </div>
           <div className="stat-card">
             <div className="stat-label">Average Time</div>
-            <div className="stat-value" style={{ color: 'var(--primary-light)' }}>14m</div>
+            <div className="stat-value" style={{ color: 'var(--primary-light)' }}>{averageTimeStr}</div>
             <div className="stat-desc">Per inspection</div>
           </div>
         </div>
