@@ -59,7 +59,7 @@ export default function AdminDashboard() {
             <div className="card-title"><FiDatabase /> Master Data</div>
             <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Manage Error Types, Components, Vendors, and Cost Rates.</p>
           </div>
-          <div className="card" style={{ cursor: 'pointer' }}>
+          <div className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/emails')}>
             <div className="card-title"><FiSettings /> System Settings</div>
             <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Configure application settings and email notifications.</p>
           </div>
