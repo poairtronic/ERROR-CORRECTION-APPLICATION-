@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const COMPANY_NAME = 'Velan Metrology';
 const REPORT_TITLE = 'Enterprise Error Correction Report';
@@ -118,11 +118,8 @@ export function exportToPDF(reports, filters, user) {
     };
   })(doc.addPage);
 
-  const totalPagesExp = '{totalPages}';
-
   const onEachPage = function (data) {
     addHeader(doc);
-    addFooter(doc, data.pageNumber, totalPages);
 
     if (data.pageNumber === 1) {
       let yPos = MARGIN + 20;
@@ -210,7 +207,7 @@ export function exportToPDF(reports, filters, user) {
 
   addWatermark(doc);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: MARGIN + 34 + (summary.total > 0 ? 36 : 0),
     head: tableHeaders,
     body: tableData,
@@ -257,6 +254,7 @@ export function exportToPDF(reports, filters, user) {
     tableLineWidth: 0.2,
     didDrawPage: function (data) {
       if (data.pageNumber > pageNum) pageNum = data.pageNumber;
+      onEachPage(data);
     },
   });
 
