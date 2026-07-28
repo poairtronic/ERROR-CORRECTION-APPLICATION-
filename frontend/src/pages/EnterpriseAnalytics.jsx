@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiDownloadCloud, FiRefreshCw, FiCalendar, FiDownload } from 'react-icons/fi';
+import { FiActivity, FiDollarSign, FiClock, FiAlertTriangle, FiRefreshCw, FiCalendar, FiDownload } from 'react-icons/fi';
 import EnterpriseKpiCard from '../components/analytics/EnterpriseKpiCard';
 import TrendChartWidget from '../components/analytics/TrendChartWidget';
 import ReportStatusWidget from '../components/analytics/ReportStatusWidget';
@@ -9,7 +9,6 @@ import WorkflowAnalyticsWidget from '../components/analytics/WorkflowAnalyticsWi
 import IntelligenceGridWidget from '../components/analytics/IntelligenceGridWidget';
 import IntegratedAuditLog from '../components/analytics/IntegratedAuditLog';
 import InsightsListWidget from '../components/analytics/InsightsListWidget';
-import AnalyticsReportPDF from '../components/analytics/AnalyticsReportPDF';
 import ExportCenterModal from '../components/export/ExportCenterModal';
 import { exportToExcel } from '../services/excelExportService';
 import { exportToPDF } from '../services/pdfExportService';
@@ -30,7 +29,6 @@ export default function EnterpriseAnalytics() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [exporting, setExporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({ queryKey: ['analytics', 'kpis'], queryFn: async () => (await api.get('/analytics/kpis')).data, staleTime: 30000 });
@@ -46,41 +44,6 @@ export default function EnterpriseAnalytics() {
   const { data: errorTypes = [] } = useQuery({ queryKey: ['error-types'], queryFn: async () => (await api.get('/master-data/error-types')).data || [], staleTime: 60000 });
   const { data: vendors = [] } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await api.get('/master-data/vendors')).data || [], staleTime: 60000 });
   const { data: operators = [] } = useQuery({ queryKey: ['operators'], queryFn: async () => (await api.get('/master-data/operators')).data || [], staleTime: 60000 });
-
-  const handlePdfExport = useCallback(() => {
-    if (!kpis || !trends) return;
-    setExporting(true);
-    setTimeout(() => {
-      const element = document.getElementById('pdf-report-container');
-      if (!element || element.scrollHeight === 0) {
-        setExporting(false);
-        return;
-      }
-      import('html2pdf.js').then((html2pdf) => {
-        const opt = {
-          margin: 0,
-          filename: `Enterprise-Intelligence-Report-${Date.now()}.pdf`,
-          image: { type: 'jpeg', quality: 1 },
-          html2canvas: {
-            scale: 4,
-            useCORS: true,
-            logging: false,
-            letterRendering: true,
-            width: element.scrollWidth,
-          },
-          jsPDF: { unit: 'px', format: [1056, 746], orientation: 'landscape' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-        };
-        html2pdf.default().set(opt).from(element).save().then(() => {
-          setExporting(false);
-        }).catch(() => {
-          setExporting(false);
-        });
-      }).catch(() => {
-        setExporting(false);
-      });
-    }, 3000);
-  }, [kpis, trends]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ['analytics'] });
@@ -188,9 +151,6 @@ export default function EnterpriseAnalytics() {
           <div style={{ height: '24px', width: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
           <button className="btn btn-ghost" style={{ padding: '8px' }} onClick={handleRefresh} title="Refresh Data">
             <FiRefreshCw size={16} />
-          </button>
-          <button className="btn btn-primary" style={{ boxShadow: '0 4px 12px rgba(94, 106, 210, 0.2)' }} onClick={handlePdfExport}>
-            <FiDownloadCloud /> Export Report
           </button>
         </div>
       </div>
@@ -483,11 +443,6 @@ export default function EnterpriseAnalytics() {
         reportCount={filteredReports.length}
       />
 
-      {exporting && !isLoading && (
-        <div id="pdf-report-container" style={{ position: 'absolute', left: 0, top: 0, width: '1056px', background: '#faf9f9ff', zIndex: -9999 }}>
-          <AnalyticsReportPDF data={{ kpis, trends, insights, slaData, vendorData, operatorData, machineData, reports, components, errorTypes, vendors, operators, formatCurrency }} />
-        </div>
-      )}
     </>
   );
 }
