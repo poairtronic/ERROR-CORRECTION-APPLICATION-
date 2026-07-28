@@ -8,8 +8,8 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem('ecr_user')); } catch { return null; }
   });
 
-  const login = useCallback(async (username, password) => {
-    const { data } = await api.post('/auth/login', { username, password });
+  const login = useCallback(async (username, password, portal) => {
+    const { data } = await api.post('/auth/login', { username, password, portal });
     if (data.role) data.role = data.role.toUpperCase();
     localStorage.setItem('ecr_user', JSON.stringify(data));
     setUser(data);

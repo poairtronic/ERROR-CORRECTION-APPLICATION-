@@ -7,6 +7,7 @@ import { User } from '../users/user.entity';
 import { LoginHistory } from '../users/login-history.entity';
 import { MonitoringService } from '../monitoring/monitoring.service';
 import { Response } from 'express';
+import { Role } from '../common/enums/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +18,7 @@ export class AuthService {
     private monitoringService: MonitoringService,
   ) {}
 
-  async login(username: string, password: string, res: Response, ipAddress?: string, userAgent?: string) {
+  async login(username: string, password: string, res: Response, ipAddress?: string, userAgent?: string, portal?: string) {
     // Accept login by email OR name field (username)
     const user = await this.usersRepo
       .createQueryBuilder('user')
@@ -35,6 +36,19 @@ export class AuthService {
     if (!valid) {
       this.monitoringService.recordLoginAttempt(false);
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Portal validation based on user role
+    if (portal) {
+      const portalLower = portal.toLowerCase();
+      if (portalLower === 'admin' && user.role !== Role.ADMIN) {
+        this.monitoringService.recordLoginAttempt(false);
+        throw new UnauthorizedException('Access Denied: This portal is restricted to Administrators only.');
+      }
+      if (portalLower === 'user' && user.role === Role.ADMIN) {
+        this.monitoringService.recordLoginAttempt(false);
+        throw new UnauthorizedException('Access Denied: Administrators are not allowed to log in via the Staff Portal.');
+      }
     }
 
     const payload = { sub: user.id, email: user.email, role: user.role.toUpperCase() };

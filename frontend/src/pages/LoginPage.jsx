@@ -19,12 +19,20 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const user = await login(username, password);
+      const user = await login(username, password, loginType);
       
       // Admin Portal Constraint
       if (loginType === 'admin' && user.role !== 'ADMIN') {
         logout();
         setError('Access Denied: This portal is restricted to Administrators only.');
+        setLoading(false);
+        return;
+      }
+
+      // Staff Portal Constraint
+      if (loginType === 'user' && user.role === 'ADMIN') {
+        logout();
+        setError('Access Denied: Administrators are not allowed to log in via the Staff Portal.');
         setLoading(false);
         return;
       }

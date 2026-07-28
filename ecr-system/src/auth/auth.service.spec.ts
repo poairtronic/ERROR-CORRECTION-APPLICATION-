@@ -84,5 +84,45 @@ describe('AuthService', () => {
       });
       expect(mockRes.cookie).toHaveBeenCalledWith('token', 'jwt-token', expect.any(Object));
     });
+
+    it('should throw UnauthorizedException if portal is admin and user is not admin', async () => {
+      mockUsersRepo.getOne.mockResolvedValue({ id: '2', name: 'User', role: 'OPERATOR', passwordHash: 'hash' });
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+
+      await expect(
+        service.login('operator', 'correct_pass', {} as any, '127.0.0.1', 'jest', 'admin'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException if portal is user and user is admin', async () => {
+      mockUsersRepo.getOne.mockResolvedValue({ id: '1', name: 'Admin', role: 'ADMIN', passwordHash: 'hash' });
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+
+      await expect(
+        service.login('admin', 'correct_pass', {} as any, '127.0.0.1', 'jest', 'user'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should succeed if portal is user and user is not admin', async () => {
+      mockUsersRepo.getOne.mockResolvedValue({ id: '2', name: 'User', role: 'OPERATOR', passwordHash: 'hash' });
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+      mockJwtService.sign.mockReturnValue('jwt-token');
+
+      const mockRes = { cookie: jest.fn() } as any;
+      const result = await service.login('operator', 'correct_pass', mockRes, '127.0.0.1', 'jest', 'user');
+
+      expect(result.role).toBe('operator');
+    });
+
+    it('should succeed if portal is admin and user is admin', async () => {
+      mockUsersRepo.getOne.mockResolvedValue({ id: '1', name: 'Admin', role: 'ADMIN', passwordHash: 'hash' });
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+      mockJwtService.sign.mockReturnValue('jwt-token');
+
+      const mockRes = { cookie: jest.fn() } as any;
+      const result = await service.login('admin', 'correct_pass', mockRes, '127.0.0.1', 'jest', 'admin');
+
+      expect(result.role).toBe('admin');
+    });
   });
 });

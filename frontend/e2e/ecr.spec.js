@@ -56,4 +56,25 @@ test.describe('ECR System End-to-End Tests', () => {
     await page.click('.btn-logout');
     await expect(page).toHaveURL('/login');
   });
+
+  test('Admin Portal Login Constraint (Admin cannot login to Staff Portal)', async ({ page }) => {
+    // 1. Visit LoginPage
+    await page.goto('/login');
+
+    // 2. Click on Staff Portal Tab (default)
+    await page.click('button:has-text("Staff Portal")');
+
+    // 3. Fill admin credentials
+    await page.fill('input[placeholder="Enter your email"]', 'admin');
+    await page.fill('input[type="password"]', 'admin123');
+
+    // 4. Submit
+    await page.click('button[type="submit"]');
+
+    // 5. Verify URL remains /login
+    await expect(page).toHaveURL('/login');
+
+    // 6. Verify error message
+    await expect(page.locator('.login-error')).toContainText('Access Denied: Administrators are not allowed to log in via the Staff Portal.');
+  });
 });
