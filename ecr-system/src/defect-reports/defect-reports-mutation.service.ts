@@ -148,6 +148,7 @@ export class DefectReportsMutationService {
               rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
               rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
               rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
+              dcNumber: dto.inlineInspection?.dcNumber,
             }),
           );
         }
@@ -181,6 +182,7 @@ export class DefectReportsMutationService {
               rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
               rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
               rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
+              dcNumber: dto.inlineInspection?.dcNumber,
             }),
           );
         } else if (raisedByRole === RaisedByRole.SENIOR_MANAGER) {
@@ -209,6 +211,7 @@ export class DefectReportsMutationService {
               rejectionFailedStage: dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage,
               rejectionStageCosts: dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts,
               rejectionDescription: dto.rejectionDescription || dto.inlineInspection?.rejectionDescription,
+              dcNumber: dto.inlineInspection?.dcNumber,
             }),
           );
           await smReviewRepo.save(
@@ -315,6 +318,7 @@ export class DefectReportsMutationService {
         insp.rejectionFailedStage = dto.rejectionFailedStage || dto.inlineInspection?.rejectionFailedStage || insp.rejectionFailedStage;
         insp.rejectionStageCosts = dto.rejectionStageCosts || dto.inlineInspection?.rejectionStageCosts || insp.rejectionStageCosts;
         insp.rejectionDescription = dto.rejectionDescription || dto.inlineInspection?.rejectionDescription || insp.rejectionDescription;
+        insp.dcNumber = dto.inlineInspection?.dcNumber ?? insp.dcNumber;
         
         report.inspectionDetail = insp;
         insp.costEstimate = calculateTotalCost(report);

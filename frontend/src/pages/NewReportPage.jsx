@@ -31,7 +31,8 @@ export default function NewReportPage() {
     defectDescription: '', quantity: 1, componentId: '', errorTypeId: '', vendorId: '', batchNumber: '', partNumber: '', scOrPoNo: '', stageOfFailure: '',
     scNo: '', poNo: '', reworkDescription: '',
     rejectionProcessTemplate: '', rejectionFailedStage: '', rejectionStageCosts: {}, rejectionDescription: '',
-    rootCause: '', responsibleParty: '', responsibleId: '', responsibleName: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: ''
+    rootCause: '', responsibleParty: '', responsibleId: '', responsibleName: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: '',
+    dcNumber: ''
   });
   const selectedTemplateStages = form.rejectionProcessTemplate ? (PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []) : [];
   const failedStageIndex = selectedTemplateStages.indexOf(form.rejectionFailedStage);
@@ -88,7 +89,8 @@ export default function NewReportPage() {
             alternativeNote: data.inspectionDetail?.alternativeNote || '',
             costEstimate: data.inspectionDetail?.costEstimate || '',
             timeEstimateHours: data.inspectionDetail?.timeEstimateHours || '',
-            lossAmount: data.inspectionDetail?.lossAmount || ''
+            lossAmount: data.inspectionDetail?.lossAmount || '',
+            dcNumber: data.inspectionDetail?.dcNumber || ''
           });
         })
         .catch(() => {
@@ -201,7 +203,8 @@ export default function NewReportPage() {
             costEstimate: Number(body.costEstimate) || 0,
             timeEstimateHours: body.timeEstimateHours ? Number(body.timeEstimateHours) : undefined,
             lossAmount: body.lossAmount ? Number(body.lossAmount) : undefined,
-            reworkDescription: body.reworkDescription
+            reworkDescription: body.reworkDescription,
+            dcNumber: body.responsibleParty === 'VENDOR' ? form.dcNumber : undefined
           };
         } else {
           body.inlineInspection = {
@@ -218,6 +221,7 @@ export default function NewReportPage() {
             rejectionFailedStage: body.rejectionFailedStage,
             rejectionStageCosts: body.rejectionStageCosts,
             rejectionDescription: body.rejectionDescription,
+            dcNumber: body.responsibleParty === 'VENDOR' ? form.dcNumber : undefined
           };
         }
       }
@@ -231,6 +235,7 @@ export default function NewReportPage() {
       delete body.costEstimate;
       delete body.timeEstimateHours;
       delete body.lossAmount;
+      delete body.dcNumber;
       delete body.isDraft;
 
       let res;
@@ -448,7 +453,7 @@ export default function NewReportPage() {
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Responsible Party *</label>
-                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); set('responsibleName', ''); }} required={isSimplifiedInspector}>
+                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); set('responsibleName', ''); set('dcNumber', ''); }} required={isSimplifiedInspector}>
                         <option value="">Select...</option>
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
@@ -498,6 +503,7 @@ export default function NewReportPage() {
                       </div>
                     )}
                     {form.responsibleParty === 'VENDOR' && (
+                      <>
                       <div className="form-group">
                         <label>Vendor Name *</label>
                         <input 
@@ -519,6 +525,17 @@ export default function NewReportPage() {
                           {vendors.map(v => <option key={v.id} value={v.name} />)}
                         </datalist>
                       </div>
+                      <div className="form-group">
+                        <label>DC Number *</label>
+                        <input 
+                          type="text" 
+                          value={form.dcNumber || ''} 
+                          onChange={e => set('dcNumber', e.target.value)} 
+                          placeholder="Enter DC number..." 
+                          required={isSimplifiedInspector} 
+                        />
+                      </div>
+                      </>
                     )}
                     <div className="form-group full">
                       <label>Rework Description *</label>
@@ -541,7 +558,7 @@ export default function NewReportPage() {
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Responsible Party *</label>
-                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); set('responsibleName', ''); }} required={isSimplifiedInspector}>
+                      <select value={form.responsibleParty} onChange={e => { set('responsibleParty', e.target.value); set('responsibleId', ''); set('responsibleName', ''); set('dcNumber', ''); }} required={isSimplifiedInspector}>
                         <option value="">Select...</option>
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
@@ -591,6 +608,7 @@ export default function NewReportPage() {
                       </div>
                     )}
                     {form.responsibleParty === 'VENDOR' && (
+                      <>
                       <div className="form-group">
                         <label>Vendor Name *</label>
                         <input 
@@ -612,6 +630,17 @@ export default function NewReportPage() {
                           {vendors.map(v => <option key={v.id} value={v.name} />)}
                         </datalist>
                       </div>
+                      <div className="form-group">
+                        <label>DC Number *</label>
+                        <input 
+                          type="text" 
+                          value={form.dcNumber || ''} 
+                          onChange={e => set('dcNumber', e.target.value)} 
+                          placeholder="Enter DC number..." 
+                          required={isSimplifiedInspector} 
+                        />
+                      </div>
+                      </>
                     )}
                     <div className="form-group full">
                       <label>Rejection Description *</label>

@@ -63,4 +63,8 @@ export class InspectReportDto {
   @IsOptional()
   @IsString()
   rejectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  dcNumber?: string;
 }

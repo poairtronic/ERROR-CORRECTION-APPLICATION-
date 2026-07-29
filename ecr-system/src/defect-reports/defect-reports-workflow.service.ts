@@ -128,6 +128,7 @@ export class DefectReportsWorkflowService {
         rejectionFailedStage: dto.rejectionFailedStage,
         rejectionStageCosts: dto.rejectionStageCosts,
         rejectionDescription: dto.rejectionDescription,
+        dcNumber: dto.dcNumber,
       });
 
       report.inspectionDetail = inspection;

@@ -90,6 +90,9 @@ export class InspectionDetail {
   @Column({ name: 'rejection_description', type: 'text', nullable: true })
   rejectionDescription?: string;
 
+  @Column({ name: 'dc_number', type: 'varchar', nullable: true })
+  dcNumber?: string;
+
   @CreateDateColumn()
   reviewedAt: Date;
 }

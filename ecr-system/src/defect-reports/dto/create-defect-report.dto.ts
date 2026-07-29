@@ -57,6 +57,10 @@ export class InlineInspectionDto {
   @IsOptional()
   @IsString()
   rejectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  dcNumber?: string;
 }
 
 export class InlineSmReviewDto {

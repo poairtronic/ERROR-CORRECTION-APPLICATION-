@@ -99,7 +99,8 @@ export default function ReportDetailPage() {
   const [inspectData, setInspectData] = useState({
     errorType: '', rootCause: '', responsibleParty: '', decision: '',
     responsibleId: '', responsibleName: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: '', reworkDescription: '',
-    rejectionProcessTemplate: '', rejectionFailedStage: '', rejectionStageCosts: {}, rejectionDescription: ''
+    rejectionProcessTemplate: '', rejectionFailedStage: '', rejectionStageCosts: {}, rejectionDescription: '',
+    dcNumber: ''
   });
 
   const [smData, setSmData] = useState({
@@ -208,7 +209,8 @@ export default function ReportDetailPage() {
         rejectionProcessTemplate: report.rejectionProcessTemplate || '',
         rejectionFailedStage: report.rejectionFailedStage || '',
         rejectionStageCosts: report.rejectionStageCosts || {},
-        rejectionDescription: report.inspectionDetail?.rejectionDescription || report.rejectionDescription || ''
+        rejectionDescription: report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '',
+        dcNumber: report.inspectionDetail?.dcNumber || ''
       });
       if (report.inspectionType) {
         setInspectionMode(report.inspectionType);
@@ -282,6 +284,7 @@ export default function ReportDetailPage() {
       rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
       rejectionStageCosts: !isRework ? inspectData.rejectionStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
+      dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
     };
     delete body.responsibleName;
     doAction('inspect', body);
@@ -425,6 +428,9 @@ export default function ReportDetailPage() {
                       ? report.inspectionDetail.responsibleId
                       : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
+              ].concat(report.inspectionDetail?.responsibleParty === 'VENDOR' ? [
+                ['DC Number', report.inspectionDetail?.dcNumber || '—', 'dcNumber'],
+              ] : []).concat([
                 ['Rework Description', report.inspectionDetail?.reworkDescription || report.reworkDescription || '—', 'reworkDescription'],
                 ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
                 ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
@@ -435,7 +441,7 @@ export default function ReportDetailPage() {
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
-              ] : [
+              ]) : [
                 ['Description', report.defectDescription, 'defectDescription'],
                 ['Component', report.componentName || '—', 'componentName'],
                 ['Error Type', report.errorTypeName || report.inspectionDetail?.errorType || '—', 'errorTypeName'],
@@ -467,6 +473,9 @@ export default function ReportDetailPage() {
                       ? report.inspectionDetail.responsibleId
                       : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
+              ].concat(report.inspectionDetail?.responsibleParty === 'VENDOR' ? [
+                ['DC Number', report.inspectionDetail?.dcNumber || '—', 'dcNumber'],
+              ] : []).concat([
                 ['Rejection Description', report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '—', 'rejectionDescription'],
                 ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
                 ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
@@ -477,7 +486,7 @@ export default function ReportDetailPage() {
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
-              ]).concat(report.componentsIssued ? [
+              ])).concat(report.componentsIssued ? [
                 ['Components Issued On', new Date(report.componentsIssuedAt).toLocaleString('en-IN'), undefined],
                 ['Issue Remarks', report.issueRemarks || '—', undefined]
               ] : []).concat(status === 'APPROVED' || report.accountsDescription ? [
@@ -807,7 +816,7 @@ export default function ReportDetailPage() {
             <div className="form-grid">
               <div className="form-group">
                 <label>Responsible Party *</label>
-                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: '', responsibleName: ''})} required>
+                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: '', responsibleName: '', dcNumber: ''})} required>
                   <option value="">Select Party</option>
                   <option value="OPERATOR">Operator</option>
                   <option value="VENDOR">Vendor</option>
@@ -857,6 +866,7 @@ export default function ReportDetailPage() {
                 </div>
               )}
               {inspectData.responsibleParty === 'VENDOR' && (
+                <>
                 <div className="form-group">
                   <label>Vendor Name *</label>
                   <input 
@@ -878,6 +888,17 @@ export default function ReportDetailPage() {
                     {vendors.map(v => <option key={v.id} value={v.name} />)}
                   </datalist>
                 </div>
+                <div className="form-group">
+                  <label>DC Number *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.dcNumber || ''} 
+                    onChange={e => setInspectData({...inspectData, dcNumber: e.target.value})} 
+                    placeholder="Enter DC number..." 
+                    required 
+                  />
+                </div>
+                </>
               )}
               <div className="form-group full">
                 <label>Rework Description *</label>
@@ -912,7 +933,7 @@ export default function ReportDetailPage() {
             <div className="form-grid">
               <div className="form-group">
                 <label>Responsible Party *</label>
-                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: '', responsibleName: ''})} required>
+                <select value={inspectData.responsibleParty} onChange={e => setInspectData({...inspectData, responsibleParty: e.target.value, responsibleId: '', responsibleName: '', dcNumber: ''})} required>
                   <option value="">Select Party</option>
                   <option value="OPERATOR">Operator</option>
                   <option value="VENDOR">Vendor</option>
@@ -962,6 +983,7 @@ export default function ReportDetailPage() {
                 </div>
               )}
               {inspectData.responsibleParty === 'VENDOR' && (
+                <>
                 <div className="form-group">
                   <label>Vendor Name *</label>
                   <input 
@@ -983,6 +1005,17 @@ export default function ReportDetailPage() {
                     {vendors.map(v => <option key={v.id} value={v.name} />)}
                   </datalist>
                 </div>
+                <div className="form-group">
+                  <label>DC Number *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.dcNumber || ''} 
+                    onChange={e => setInspectData({...inspectData, dcNumber: e.target.value})} 
+                    placeholder="Enter DC number..." 
+                    required 
+                  />
+                </div>
+                </>
               )}
               <div className="form-group">
                 <label>Process Template *</label>
