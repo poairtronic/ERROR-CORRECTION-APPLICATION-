@@ -38,6 +38,7 @@ export default function ReportDetailPage() {
   const [notes, setNotes] = useState('');
   const [messageToSm, setMessageToSm] = useState('');
   const [inspectionMode, setInspectionMode] = useState(null); // 'REWORK' | 'REJECTION' — gates the inspection form
+  const [isSavingAccounts, setIsSavingAccounts] = useState(false);
 
   const { data: report, isLoading: loading } = useQuery({
     queryKey: ['report', id],
@@ -152,6 +153,7 @@ export default function ReportDetailPage() {
   };
 
   const handleAccountsSave = async () => {
+    setIsSavingAccounts(true);
     try {
       const mat = accountsData.materialCost === '' ? 0 : Math.round(Number(accountsData.materialCost)) || 0;
       const lab = accountsData.labourCost === '' ? 0 : Math.round(Number(accountsData.labourCost)) || 0;
@@ -182,10 +184,13 @@ export default function ReportDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to verify and submit report');
+    } finally {
+      setIsSavingAccounts(false);
     }
   };
 
   const handleAccountsSaveDraft = async () => {
+    setIsSavingAccounts(true);
     try {
       const mat = accountsData.materialCost === '' ? 0 : Math.round(Number(accountsData.materialCost)) || 0;
       const lab = accountsData.labourCost === '' ? 0 : Math.round(Number(accountsData.labourCost)) || 0;
@@ -216,6 +221,8 @@ export default function ReportDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save draft');
+    } finally {
+      setIsSavingAccounts(false);
     }
   };
 
@@ -1222,7 +1229,7 @@ export default function ReportDetailPage() {
           title="Accounts Cost Verification" 
           onClose={() => setModal(null)} 
           actionLabel="Verify & Submit" 
-          loading={actionMutation.isPending} 
+          loading={actionMutation.isPending || isSavingAccounts}
           onConfirm={handleAccountsSave}
           onSaveDraft={handleAccountsSaveDraft}
         >
