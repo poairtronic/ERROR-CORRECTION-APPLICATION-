@@ -9,13 +9,16 @@ import Dialog from '../components/ui/Dialog';
 
 import { STATUS_COLORS, STATUS_LABELS, PROCESS_TEMPLATES, getActiveStages, sumStageCosts } from '../utils/constants';
 
-function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false }) {
+function ActionModal({ title, onClose, onConfirm, actionLabel, variant = 'success', children, loading = false, onSaveDraft, saveDraftLabel = 'Save as Draft' }) {
   return (
     <Dialog open={true} onClose={onClose} title={title}>
       <form onSubmit={(e) => { e.preventDefault(); onConfirm(); }} className="modal-form-responsive">
         {children}
         <div className="modal-footer" style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
           <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>Cancel</button>
+          {onSaveDraft && (
+            <button type="button" className="btn btn-warning" onClick={onSaveDraft} disabled={loading}>{saveDraftLabel}</button>
+          )}
           <button type="submit" className={`btn btn-${variant}`} disabled={loading}>{loading ? 'Submitting…' : actionLabel}</button>
         </div>
       </form>
@@ -182,6 +185,40 @@ export default function ReportDetailPage() {
     }
   };
 
+  const handleAccountsSaveDraft = async () => {
+    try {
+      const mat = accountsData.materialCost === '' ? 0 : Math.round(Number(accountsData.materialCost)) || 0;
+      const lab = accountsData.labourCost === '' ? 0 : Math.round(Number(accountsData.labourCost)) || 0;
+      const oth = accountsData.otherCost === '' ? 0 : Math.round(Number(accountsData.otherCost)) || 0;
+      const loss = accountsData.lossAmount === '' ? '' : Math.round(Number(accountsData.lossAmount)) || 0;
+      const tot = accountsData.costEstimate === '' ? (mat + lab + oth) : Math.round(Number(accountsData.costEstimate)) || 0;
+
+      // 1. Save costs
+      await api.patch(`/defect-reports/${id}/fields`, {
+        fields: [
+          { field: 'materialCost', value: String(mat) },
+          { field: 'labourCost', value: String(lab) },
+          { field: 'otherCost', value: String(oth) },
+          { field: 'costEstimate', value: String(tot) },
+          { field: 'lossAmount', value: String(loss) },
+          { field: 'costRemarks', value: accountsData.costRemarks || 'Draft' }
+        ]
+      });
+
+      // 2. Submit status as ACCOUNTS_DRAFT
+      await api.patch(`/defect-reports/${id}/status`, { 
+        status: 'ACCOUNTS_DRAFT', 
+        note: accountsData.costRemarks || 'Saved as draft by accounts team' 
+      });
+
+      toast.success('Report saved as draft by accounts team');
+      setModal(null);
+      queryClient.invalidateQueries({ queryKey: ['report', id] });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save draft');
+    }
+  };
+
   useEffect(() => {
     if (report) {
       const respParty = report.inspectionDetail?.responsibleParty || '';
@@ -334,7 +371,7 @@ export default function ReportDetailPage() {
       const smAllowed = ['defectDescription', 'stageOfFailure', 'errorType', 'rootCause', 'decision', 'loopholeNote', 'costEstimate', 'timeEstimateHours', 'lossAmount', 'decisionNote', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
       return smAllowed.includes(fieldKey);
     }
-    if (role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW') {
+    if (role === 'ACCOUNTS' && (status === 'PENDING_ACCOUNTS_REVIEW' || status === 'ACCOUNTS_DRAFT')) {
       const accountsAllowed = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
       return accountsAllowed.includes(fieldKey);
     }
@@ -401,7 +438,7 @@ export default function ReportDetailPage() {
           {role === 'STORE_MANAGER' && status === 'APPROVED' && !report.componentsIssued && (
             <button className="btn btn-success" onClick={() => setModal('issue-components')}><FiCheckCircle /> Issue Components</button>
           )}
-          {role === 'ACCOUNTS' && status === 'PENDING_ACCOUNTS_REVIEW' && (
+          {role === 'ACCOUNTS' && (status === 'PENDING_ACCOUNTS_REVIEW' || status === 'ACCOUNTS_DRAFT') && (
             <button className="btn btn-success" onClick={openAccountsReviewModal}><FiCheckCircle /> Verify & Submit to SM</button>
           )}
         </div>
@@ -1187,6 +1224,7 @@ export default function ReportDetailPage() {
           actionLabel="Verify & Submit" 
           loading={actionMutation.isPending} 
           onConfirm={handleAccountsSave}
+          onSaveDraft={handleAccountsSaveDraft}
         >
           <div className="form-grid">
             <div className="form-group">

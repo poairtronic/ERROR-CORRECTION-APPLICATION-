@@ -376,9 +376,10 @@ export class DefectReportsWorkflowService {
         }
         const allowedAccountsStatuses = [
           ReportStatus.PENDING_ACCOUNTS_REVIEW,
+          ReportStatus.ACCOUNTS_DRAFT,
         ];
         if (!allowedAccountsStatuses.includes(report.status as any)) {
-          throw new BadRequestException('Accounts can only edit reports that are pending accounts review');
+          throw new BadRequestException('Accounts can only edit reports that are pending accounts review or accounts draft');
         }
       }
 
@@ -492,7 +493,8 @@ export class DefectReportsWorkflowService {
       const validTransitions: Record<ReportStatus, ReportStatus[]> = {
         [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
         [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW],
-        [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW],
+        [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
+        [ReportStatus.ACCOUNTS_DRAFT]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
         [ReportStatus.PENDING_SM_REVIEW]: [ReportStatus.PENDING_GM_APPROVAL, ReportStatus.REJECTED],
         [ReportStatus.PENDING_GM_APPROVAL]: [ReportStatus.APPROVED, ReportStatus.REJECTED],
         [ReportStatus.APPROVED]: [ReportStatus.COMPONENTS_ISSUED, ReportStatus.CLOSED],
@@ -504,16 +506,22 @@ export class DefectReportsWorkflowService {
       };
 
       if (actor.role === Role.ACCOUNTS) {
-        if (report.status !== ReportStatus.PENDING_ACCOUNTS_REVIEW || newStatus !== ReportStatus.PENDING_SM_REVIEW) {
-          throw new BadRequestException('Accounts can only submit reports pending accounts review to Senior Manager review.');
+        if (
+          (report.status !== ReportStatus.PENDING_ACCOUNTS_REVIEW && report.status !== ReportStatus.ACCOUNTS_DRAFT) ||
+          (newStatus !== ReportStatus.PENDING_SM_REVIEW && newStatus !== ReportStatus.ACCOUNTS_DRAFT)
+        ) {
+          throw new BadRequestException('Accounts can only submit reports pending accounts review or accounts draft to Senior Manager review or accounts draft.');
         }
 
         const insp = report.inspectionDetail;
         if (!insp) {
-          throw new BadRequestException('Inspection details are missing. Cannot proceed to Senior Manager review.');
+          throw new BadRequestException('Inspection details are missing. Cannot proceed.');
         }
-        if (insp.materialCost == null || insp.labourCost == null || insp.lossAmount == null || insp.costEstimate == null) {
-          throw new BadRequestException('materialCost, labourCost, lossAmount, and costEstimate are required before passing to SM.');
+
+        if (newStatus === ReportStatus.PENDING_SM_REVIEW) {
+          if (insp.materialCost == null || insp.labourCost == null || insp.lossAmount == null || insp.costEstimate == null) {
+            throw new BadRequestException('materialCost, labourCost, lossAmount, and costEstimate are required before passing to SM.');
+          }
         }
       }
 

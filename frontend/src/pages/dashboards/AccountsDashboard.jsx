@@ -25,7 +25,7 @@ export default function AccountsDashboard() {
     staleTime: 30000
   });
 
-  const pendingVerification = reports.filter(r => r.status === 'PENDING_ACCOUNTS_REVIEW');
+  const pendingVerification = reports.filter(r => r.status === 'PENDING_ACCOUNTS_REVIEW' || r.status === 'ACCOUNTS_DRAFT');
   const finalQueue = reports.filter(r => ['APPROVED', 'REJECTED', 'COMPONENTS_ISSUED', 'REWORK_IN_PROGRESS', 'NEW_PRODUCTION', 'CLOSED'].includes(r.status));
   
   const totalCost = kpis?.totalCost || 0;
