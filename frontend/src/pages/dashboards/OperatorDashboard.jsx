@@ -19,7 +19,7 @@ export default function OperatorDashboard() {
     }
   });
 
-  const myActiveReports = reports.filter(r => r.status !== 'CLOSED' && r.raisedBy?.id === user?.id);
+  const myActiveReports = reports.filter(r => r.status !== 'CLOSED');
 
   const columns = [
     { label: 'Report ID', key: 'id' },
@@ -49,19 +49,19 @@ export default function OperatorDashboard() {
       <div className="page-content">
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
           <div className="stat-card">
-            <div className="stat-label">My Active Reports</div>
+            <div className="stat-label">Active Reports</div>
             <div className="stat-value" style={{ color: '#fbbf24' }}>{myActiveReports.length}</div>
             <div className="stat-desc">Currently in workflow</div>
           </div>
         </div>
 
         <div className="card">
-          <div className="card-title"><FiTool /> My Recent Reports</div>
+          <div className="card-title"><FiTool /> Recent Active Reports</div>
           {isLoading ? <div className="spinner" /> : (
             <DashboardQueueTable 
               data={myActiveReports.slice(0, 10)} 
               columns={columns} 
-              emptyMessage="You have no active reports."
+              emptyMessage="There are no active reports."
               actionLabel="View" 
             />
           )}

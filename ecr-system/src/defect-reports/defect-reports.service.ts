@@ -102,14 +102,6 @@ export class DefectReportsService implements OnModuleInit {
       }
     }
 
-    if (actor && actor.role === 'OPERATOR') {
-      const isCreator = report.raisedById === actor.id;
-      const isAssigned = report.inspectionDetail?.responsibleId === actor.id;
-      if (!isCreator && !isAssigned) {
-        throw new ForbiddenException('You do not have permission to access this report');
-      }
-    }
-
     return report;
   }
 
@@ -133,24 +125,6 @@ export class DefectReportsService implements OnModuleInit {
     const limit = filters.limit ? Math.min(filters.limit, 1000) : 500;
     const page = filters.page || 1;
     const skip = (page - 1) * limit;
-
-    if (actor?.role === 'OPERATOR') {
-      return this.reportsRepo.find({
-        where: [
-          { ...baseWhere, raisedById: actor.id },
-          { ...baseWhere, inspectionDetail: { responsibleId: actor.id } },
-        ],
-        relations: {
-          raisedBy: true,
-          inspectionDetail: true,
-          auditLogs: { actor: true },
-        },
-        relationLoadStrategy: 'query',
-        order: { createdAt: 'DESC' },
-        skip,
-        take: limit,
-      });
-    }
 
     return this.reportsRepo.find({
       where: baseWhere,
