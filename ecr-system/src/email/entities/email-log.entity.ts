@@ -66,6 +66,10 @@ export class EmailLog {
   @Column({ nullable: true })
   providerMessageId: string;
 
+  @Index({ unique: true })
+  @Column({ name: 'idempotency_key', nullable: true })
+  idempotencyKey: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

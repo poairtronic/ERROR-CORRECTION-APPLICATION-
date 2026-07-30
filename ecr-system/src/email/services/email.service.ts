@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
@@ -9,6 +10,7 @@ import { NotificationEvent } from '../enums/notification-event.enum';
 import { EmailTemplateService, TemplateData } from './email-template.service';
 import { GmailSmtpService } from './gmail-smtp.service';
 import { MonitoringService } from '../../monitoring/monitoring.service';
+import { getCorrelationId } from '../../common/trace-context';
 
 export interface SendEmailOptions {
   notificationId?: string;
@@ -205,6 +207,20 @@ export class EmailService implements OnModuleInit {
         subject = `[ECR] ${subject}`;
       }
 
+      const idempotencyKey = crypto
+        .createHash('sha256')
+        .update(`${options.recipient}-${options.relatedReportId || ''}-${options.event}-${subject}`)
+        .digest('hex');
+
+      const existing = await this.emailLogRepo.findOne({ where: { idempotencyKey } });
+      if (existing) {
+        const diffMs = Date.now() - existing.createdAt.getTime();
+        if (diffMs < 300000) { // 5 minutes
+          this.logger.log(`[IDEMPOTENCY] Duplicate email blocked for key: ${idempotencyKey}`);
+          return existing;
+        }
+      }
+
       const htmlContent = this.templateService.renderHtml(templateName, options.templateData, subject);
 
       const emailLog = this.emailLogRepo.create({
@@ -218,6 +234,7 @@ export class EmailService implements OnModuleInit {
         status: EmailStatus.PENDING,
         relatedReportId: options.relatedReportId,
         notificationId: options.notificationId,
+        idempotencyKey,
       });
 
       console.log("===== EMAIL QUEUE DEBUG =====");
@@ -231,6 +248,18 @@ export class EmailService implements OnModuleInit {
       console.log("EmailLog ID:", savedLog.id);
       console.log("Status:", savedLog.status);
       console.log("============================");
+
+      console.log(
+        `[EMAIL_QUEUED] ` +
+        `Workflow Stage: ${subject} | ` +
+        `Report ID: ${options.relatedReportId || 'N/A'} | ` +
+        `Recipient: ${options.recipient} | ` +
+        `Event Name: ${options.event} | ` +
+        `Queue Job ID: ${savedLog.id} | ` +
+        `Correlation ID: ${getCorrelationId()} | ` +
+        `Timestamp: ${new Date().toISOString()} | ` +
+        `Listener Name: NotificationListener`
+      );
 
       console.log(`[EMAIL_DIAGNOSTICS] [STEP 4] Queue Created: Email log queued in database as PENDING (Log ID: ${savedLog.id})`);
       

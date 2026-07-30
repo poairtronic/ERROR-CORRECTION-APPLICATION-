@@ -7,7 +7,7 @@ import { EmailStatus } from '../enums/email-status.enum';
 import { EmailService } from './email.service';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
-import { runWithTraceContext } from '../../common/trace-context';
+import { runWithTraceContext, getCorrelationId } from '../../common/trace-context';
 import { MonitoringService } from '../../monitoring/monitoring.service';
 import { PerformanceService } from '../../monitoring/performance.service';
 import * as crypto from 'crypto';
@@ -56,6 +56,10 @@ export class EmailQueueService implements BeforeApplicationShutdown {
     return runWithTraceContext(traceCtx, async () => {
       if (this.isShuttingDown) {
         this.logger.log('Process queue requested but system is shutting down. Skipping execution.');
+        return;
+      }
+      if (this.isProcessing) {
+        this.logger.log('Process queue requested but it is already processing. Skipping.');
         return;
       }
       this.isProcessing = true;
@@ -149,6 +153,18 @@ export class EmailQueueService implements BeforeApplicationShutdown {
                 email.failureReason = null as any;
                 sentSuccess = true;
                 
+                console.log(
+                  `[EMAIL_SEND] ` +
+                  `Workflow Stage: ${email.subject} | ` +
+                  `Report ID: ${email.relatedReportId || 'N/A'} | ` +
+                  `Recipient: ${email.recipient} | ` +
+                  `Event Name: ${email.event} | ` +
+                  `Queue Job ID: ${email.id} | ` +
+                  `Correlation ID: ${getCorrelationId()} | ` +
+                  `Timestamp: ${new Date().toISOString()} | ` +
+                  `Listener Name: EmailQueueService`
+                );
+
                 console.log(`[EMAIL] [Success] [${new Date().toISOString()}] Email ID: ${email.id} | Recipient: ${email.recipient} | Status: SENT`);
               } catch (error: any) {
                 lastError = error;

@@ -63,6 +63,10 @@ export class Notification {
   @Column({ nullable: true })
   sentAt: Date;
 
+  @Index({ unique: true })
+  @Column({ name: 'idempotency_key', nullable: true })
+  idempotencyKey: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

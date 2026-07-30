@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import { Notification } from './notification.entity';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import {
@@ -41,6 +42,20 @@ export class NotificationsService {
     templateData: TemplateData;
     subject: string;
   }) {
+    const idempotencyKey = crypto
+      .createHash('sha256')
+      .update(`${params.userId}-${params.reportId || ''}-${params.event}-${params.subject}`)
+      .digest('hex');
+
+    const existing = await this.repo.findOne({ where: { idempotencyKey } });
+    if (existing) {
+      const diffMs = Date.now() - existing.createdAt.getTime();
+      if (diffMs < 300000) { // 5 minutes
+        this.logger.log(`[IDEMPOTENCY] Duplicate notification blocked for key: ${idempotencyKey}`);
+        return existing;
+      }
+    }
+
     const isConnected = this.registry.isUserConnected(params.userId);
     const status = isConnected ? NotificationStatus.SENT : NotificationStatus.QUEUED;
     const sentAt = isConnected ? new Date() : undefined;
@@ -55,6 +70,7 @@ export class NotificationsService {
         status,
         sentAt,
         attemptCount: 1,
+        idempotencyKey,
       }),
     );
     console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Notification Created: ID ${notification.id} for user ${params.userId}`);
