@@ -104,7 +104,7 @@ export function exportToPDF(reports, filters, user) {
     r.inspectionDetail?.responsibleParty || '—',
     r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure || '—',
     r.status || '—',
-    { content: `$${Number(r.inspectionDetail?.costEstimate || 0).toLocaleString('en-US')}`, styles: { halign: 'right' } },
+    { content: `₹${Number(r.inspectionDetail?.costEstimate || 0).toLocaleString('en-IN')}`, styles: { halign: 'right' } },
     r.createdAt ? formatDate(r.createdAt) : '—',
   ]);
 
@@ -154,8 +154,8 @@ export function exportToPDF(reports, filters, user) {
         { label: 'Pending Reports', value: summary.pending },
         { label: 'Vendor Cases', value: summary.vendorCases },
         { label: 'Operator Cases', value: summary.operatorCases },
-        { label: 'Total Cost', value: `$${summary.totalCost.toLocaleString('en-US')}` },
-        { label: 'Average Cost', value: `$${summary.avgCost.toLocaleString('en-US')}` },
+        { label: 'Total Cost', value: `₹${summary.totalCost.toLocaleString('en-IN')}` },
+        { label: 'Average Cost', value: `₹${summary.avgCost.toLocaleString('en-IN')}` },
       ];
 
       const boxW = (CONTENT_WIDTH - 20) / 4;

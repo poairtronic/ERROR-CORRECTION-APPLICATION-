@@ -476,12 +476,12 @@ export default function ReportDetailPage() {
                 ['DC Number', report.inspectionDetail?.dcNumber || '—', 'dcNumber'],
               ] : []).concat([
                 ['Rework Description', report.inspectionDetail?.reworkDescription || report.reworkDescription || '—', 'reworkDescription'],
-                ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
-                ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
-                ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `$${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
-                ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `$${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
+                ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `₹${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `₹${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
+                ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `₹${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
+                ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `₹${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
                 ['Details Description', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
-                ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
+                ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `₹${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
@@ -501,7 +501,7 @@ export default function ReportDetailPage() {
                         {Object.entries(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts).map(([stage, cost]) => (
                           <div key={stage} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, margin: '2px 0' }}>
                             <span>{stage}:</span>
-                            <strong>${cost}</strong>
+                            <strong>₹{cost}</strong>
                           </div>
                         ))}
                       </div>
@@ -521,12 +521,12 @@ export default function ReportDetailPage() {
                 ['DC Number', report.inspectionDetail?.dcNumber || '—', 'dcNumber'],
               ] : []).concat([
                 ['Rejection Description', report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '—', 'rejectionDescription'],
-                ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `$${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
-                ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `$${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
-                ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `$${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
-                ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `$${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
+                ['Cost Estimation', report.inspectionDetail?.costEstimate !== undefined ? `₹${report.inspectionDetail.costEstimate}` : '—', 'costEstimate'],
+                ['Material Cost', report.inspectionDetail?.materialCost !== undefined ? `₹${report.inspectionDetail.materialCost}` : '—', 'materialCost'],
+                ['Labour Cost', report.inspectionDetail?.labourCost !== undefined ? `₹${report.inspectionDetail.labourCost}` : '—', 'labourCost'],
+                ['Other Cost', report.inspectionDetail?.otherCost !== undefined ? `₹${report.inspectionDetail.otherCost}` : '—', 'otherCost'],
                 ['Details Description', report.inspectionDetail?.costRemarks || '—', 'costRemarks'],
-                ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `$${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
+                ['Loss Estimation', report.inspectionDetail?.lossAmount !== null && report.inspectionDetail?.lossAmount !== undefined ? `₹${report.inspectionDetail.lossAmount}` : '—', 'lossAmount'],
                 ['Alternative Notes', report.inspectionDetail?.alternativeNote || '—', 'alternativeNote'],
                 ['Raised By', report.raisedBy?.name || '—', undefined],
                 ['Date Raised', new Date(report.createdAt).toLocaleString('en-IN'), undefined],
@@ -582,14 +582,14 @@ export default function ReportDetailPage() {
                                             const updatedCosts = { ...currentCosts, [st]: numericVal };
                                             setEditValue(JSON.stringify(updatedCosts));
                                           }}
-                                          placeholder="Cost ($)"
+                                          placeholder="Cost (₹)"
                                         />
                                       </div>
                                     ))}
                                   </div>
                                   <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                                     <span>Calculated Total Cost:</span>
-                                    <span>${activeStages.reduce((sum, st) => sum + (Number(currentCosts[st]) || 0), 0).toFixed(2)}</span>
+                                    <span>₹{activeStages.reduce((sum, st) => sum + (Number(currentCosts[st]) || 0), 0).toFixed(2)}</span>
                                   </div>
                                 </>
                               );
@@ -961,11 +961,11 @@ export default function ReportDetailPage() {
                 </datalist>
               </div>
               <div className="form-group">
-                <label>Cost Estimation ($) *</label>
+                <label>Cost Estimation (₹) *</label>
                 <input type="number" min="0" step="1" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
               </div>
               <div className="form-group">
-                <label>Loss Estimation ($) (Optional)</label>
+                <label>Loss Estimation (₹) (Optional)</label>
                 <input type="number" min="0" step="1" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} />
               </div>
               <div className="form-group full">
@@ -1108,7 +1108,7 @@ export default function ReportDetailPage() {
                           value={inspectData.rejectionStageCosts[st] ?? ''} 
                           onChange={e => handleInspectStageCostChange(st, e.target.value)} 
                           required
-                          placeholder="Enter cost ($)"
+                          placeholder="Enter cost (₹)"
                         />
                       </div>
                     ))}
@@ -1117,11 +1117,11 @@ export default function ReportDetailPage() {
               )}
 
               <div className="form-group">
-                <label>Cost Estimation ($) *</label>
+                <label>Cost Estimation (₹) *</label>
                 <input type="number" min="0" step="1" value={inspectData.costEstimate} onChange={e => setInspectData({...inspectData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
               </div>
               <div className="form-group">
-                <label>Loss Estimation ($) (Optional)</label>
+                <label>Loss Estimation (₹) (Optional)</label>
                 <input type="number" min="0" step="1" value={inspectData.lossAmount} onChange={e => setInspectData({...inspectData, lossAmount: e.target.value ? Math.round(Number(e.target.value)) : ''})} />
               </div>
               <div className="form-group full">
@@ -1154,7 +1154,7 @@ export default function ReportDetailPage() {
             </div>
 
              <div className="form-group">
-              <label>Cost Estimate ($) *</label>
+              <label>Cost Estimate (₹) *</label>
               <input type="number" min="0" step="1" value={smData.costEstimate} onChange={e => setSmData({...smData, costEstimate: e.target.value ? Math.round(Number(e.target.value)) : ''})} required />
             </div>
 
@@ -1235,7 +1235,7 @@ export default function ReportDetailPage() {
         >
           <div className="form-grid">
             <div className="form-group">
-              <label>Material Cost ($)</label>
+              <label>Material Cost (₹)</label>
               <input 
                 type="number" 
                 min="0" 
@@ -1246,7 +1246,7 @@ export default function ReportDetailPage() {
             </div>
             
             <div className="form-group">
-              <label>Labour Cost ($)</label>
+              <label>Labour Cost (₹)</label>
               <input 
                 type="number" 
                 min="0" 
@@ -1257,7 +1257,7 @@ export default function ReportDetailPage() {
             </div>
 
             <div className="form-group">
-              <label>Other Cost ($)</label>
+              <label>Other Cost (₹)</label>
               <input 
                 type="number" 
                 min="0" 
@@ -1268,7 +1268,7 @@ export default function ReportDetailPage() {
             </div>
 
             <div className="form-group">
-              <label>Total Cost ($)</label>
+              <label>Total Cost (₹)</label>
               <input 
                 type="number" 
                 min="0"
@@ -1280,7 +1280,7 @@ export default function ReportDetailPage() {
             </div>
 
             <div className="form-group">
-              <label>Loss Amount ($) (Optional)</label>
+              <label>Loss Amount (₹) (Optional)</label>
               <input 
                 type="number" 
                 min="0" 

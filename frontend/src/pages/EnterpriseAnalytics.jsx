@@ -50,7 +50,7 @@ export default function EnterpriseAnalytics() {
   };
 
   const isLoading = kpisLoading || trendsLoading;
-  const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val || 0);
+  const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
 
   const uniqueStages = useMemo(() => {
     return Array.from(new Set(reports.map(r => r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure).filter(Boolean)));

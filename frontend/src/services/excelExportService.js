@@ -155,7 +155,7 @@ export function exportToExcel(reports, filters, user) {
 
       if (isCostCol && typeof cell.v === 'number') {
         cell.t = 'n';
-        cell.z = '$#,##0';
+        cell.z = '"₹"#,##0';
       }
 
       if (isDateCol) {
@@ -194,7 +194,7 @@ export function exportToExcel(reports, filters, user) {
         alignment: { horizontal: 'right', vertical: 'center' },
       };
       if (R === 14 || R === 15) {
-        cellB.z = '$#,##0';
+        cellB.z = '"₹"#,##0';
       }
     }
   }

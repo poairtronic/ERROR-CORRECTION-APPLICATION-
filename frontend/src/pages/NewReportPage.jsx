@@ -542,11 +542,11 @@ export default function NewReportPage() {
                       <textarea value={form.reworkDescription} onChange={e => set('reworkDescription', e.target.value)} placeholder="Describe the rework in detail…" required={isSimplifiedInspector} rows={4} />
                     </div>
                     <div className="form-group">
-                      <label>Cost Estimation ($) *</label>
+                      <label>Cost Estimation (₹) *</label>
                       <input type="number" min="0" step="1" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value ? Math.round(Number(e.target.value)) : '')} required={isSimplifiedInspector} />
                     </div>
                     <div className="form-group">
-                      <label>Loss Estimation ($) (Optional)</label>
+                      <label>Loss Estimation (₹) (Optional)</label>
                       <input type="number" min="0" step="1" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value ? Math.round(Number(e.target.value)) : '')} />
                     </div>
                     <div className="form-group full">
@@ -663,7 +663,7 @@ export default function NewReportPage() {
                                 value={form.rejectionStageCosts[st] ?? ''} 
                                 onChange={e => handleStageCostChange(st, e.target.value)} 
                                 required={isSimplifiedInspector}
-                                placeholder="Enter cost ($)"
+                                placeholder="Enter cost (₹)"
                               />
                             </div>
                           ))}
@@ -672,11 +672,11 @@ export default function NewReportPage() {
                     )}
 
                     <div className="form-group">
-                      <label>Cost Estimation ($) *</label>
+                      <label>Cost Estimation (₹) *</label>
                       <input type="number" min="0" step="1" value={form.costEstimate} onChange={e => set('costEstimate', e.target.value ? Math.round(Number(e.target.value)) : '')} required={isSimplifiedInspector} />
                     </div>
                     <div className="form-group">
-                      <label>Loss Estimation ($) (Optional)</label>
+                      <label>Loss Estimation (₹) (Optional)</label>
                       <input type="number" min="0" step="1" value={form.lossAmount} onChange={e => set('lossAmount', e.target.value ? Math.round(Number(e.target.value)) : '')} />
                     </div>
                     <div className="form-group full">
