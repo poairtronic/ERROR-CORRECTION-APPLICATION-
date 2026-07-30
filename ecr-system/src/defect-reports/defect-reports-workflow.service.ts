@@ -98,9 +98,6 @@ export class DefectReportsWorkflowService {
       if (report.status !== ReportStatus.PENDING_INSPECTION && report.status !== ReportStatus.INSPECTOR_DRAFT) {
         throw new BadRequestException('Report is not pending inspection or inspector draft');
       }
-      if (report.raisedById === actor.id) {
-        throw new BadRequestException('Cannot inspect a report you raised yourself');
-      }
 
       // Validate required fields on final submit (not draft)
       if (!dto.saveAsDraft) {

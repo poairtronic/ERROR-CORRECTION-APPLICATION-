@@ -110,7 +110,9 @@ export class DefectReportsService implements OnModuleInit {
     if (filters.status) {
       if (filters.status === ReportStatus.DRAFT) {
         baseWhere.status = filters.status;
-        baseWhere.raisedById = actor?.id || '';
+        if (actor?.id) {
+          baseWhere.raisedById = actor.id;
+        }
       } else {
         baseWhere.status = filters.status;
       }
