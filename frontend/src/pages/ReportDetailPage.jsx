@@ -333,6 +333,29 @@ export default function ReportDetailPage() {
     delete body.responsibleName;
     doAction('inspect', body);
   };
+
+  const handleInspectSaveDraft = () => {
+    const isRework = inspectionMode === 'REWORK';
+    const body = {
+      ...inspectData,
+      inspectionType: inspectionMode,
+      errorType: isRework ? 'Rework' : 'Rejection',
+      rootCause: isRework ? 'Rework' : 'Rejection',
+      decision: isRework ? 'REWORK' : 'SCRAP',
+      timeEstimateHours: inspectData.timeEstimateHours ? Number(inspectData.timeEstimateHours) : undefined,
+      costEstimate: Number(inspectData.costEstimate) || 0,
+      lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
+      reworkDescription: isRework ? inspectData.reworkDescription : undefined,
+      rejectionProcessTemplate: !isRework ? inspectData.rejectionProcessTemplate : undefined,
+      rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
+      rejectionStageCosts: !isRework ? inspectData.rejectionStageCosts : undefined,
+      rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
+      dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
+      saveAsDraft: true,
+    };
+    delete body.responsibleName;
+    doAction('inspect', body);
+  };
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState('');
 
@@ -427,11 +450,11 @@ export default function ReportDetailPage() {
           {status === 'DRAFT' && (report.raisedById === user?.id || role === 'INSPECTOR' || role === 'SENIOR_MANAGER') && (
             <button className="btn btn-primary" onClick={() => navigate(`/reports/edit/${report.id}`)}><FiEdit2 /> Edit Draft</button>
           )}
-          {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && !inspectionMode && (
-            <button className="btn btn-success" onClick={() => setModal('inspect-decision')}><FiCheckCircle /> Begin Inspection</button>
+          {role === 'INSPECTOR' && (status === 'PENDING_INSPECTION' || status === 'INSPECTOR_DRAFT') && !inspectionMode && (
+            <button className="btn btn-success" onClick={() => setModal('inspect-decision')}><FiCheckCircle /> {status === 'INSPECTOR_DRAFT' ? 'Resume Inspection' : 'Begin Inspection'}</button>
           )}
-          {role === 'INSPECTOR' && status === 'PENDING_INSPECTION' && inspectionMode && (
-            <button className="btn btn-success" onClick={() => setModal('inspect')}><FiCheckCircle /> Submit {inspectionMode} Inspection</button>
+          {role === 'INSPECTOR' && (status === 'PENDING_INSPECTION' || status === 'INSPECTOR_DRAFT') && inspectionMode && (
+            <button className="btn btn-success" onClick={() => setModal('inspect')}><FiCheckCircle /> {status === 'INSPECTOR_DRAFT' ? 'Resume/Submit Inspection' : `Submit ${inspectionMode} Inspection`}</button>
           )}
           {role === 'SENIOR_MANAGER' && status === 'PENDING_SM_REVIEW' && (
             <button className="btn btn-success" onClick={openSmReviewModal}><FiCheckCircle /> SM Review</button>
@@ -855,7 +878,14 @@ export default function ReportDetailPage() {
       )}
       {/* Inspect Modal */}
       {modal === 'inspect' && (
-        <ActionModal title={`Inspector Review — ${inspectionMode || 'Review'}`} onClose={() => { setModal(null); setInspectionMode(null); }} actionLabel="Submit Review" loading={actionMutation.isPending} onConfirm={handleInspectSubmit}>
+        <ActionModal 
+          title={`Inspector Review — ${inspectionMode || 'Review'}`} 
+          onClose={() => { setModal(null); setInspectionMode(null); }} 
+          actionLabel="Submit Review" 
+          loading={actionMutation.isPending} 
+          onConfirm={handleInspectSubmit}
+          onSaveDraft={handleInspectSaveDraft}
+        >
           {inspectionMode === 'REWORK' ? (
             <div className="form-grid">
               <div className="form-group">

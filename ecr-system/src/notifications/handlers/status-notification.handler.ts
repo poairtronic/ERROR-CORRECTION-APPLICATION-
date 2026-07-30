@@ -73,6 +73,33 @@ export class StatusNotificationHandler {
     ));
   }
 
+  async handleAccountsDraft(report: DefectReport, event: StatusChangedEvent, frontendUrl: string, buildEmailSummary: (report: DefectReport, event: StatusChangedEvent) => Promise<Record<string, string>>) {
+    const smUsers = await this.usersRepo.find({ where: { role: Role.SENIOR_MANAGER, isActive: true } });
+    const summaryTable = await buildEmailSummary(report, event);
+
+    await Promise.all(smUsers.map(sm =>
+      this.notificationsService.create({
+        userId: sm.id,
+        userEmail: sm.email,
+        channel: NotificationChannel.APP_AND_EMAIL,
+        type: 'ECR Cost Verification Draft',
+        message: 'Accounts has saved a cost verification draft for this Defect Report.',
+        event: NotificationEvent.REPORT_UPDATED,
+        subject: 'ECR Cost Verification Draft Saved',
+        reportId: report.id,
+        templateData: {
+          title: 'ECR Cost Verification Draft Saved',
+          message: 'Accounts has saved a cost verification draft for this Defect Report.',
+          summaryTable,
+          primaryButton: {
+            text: 'Open Report',
+            url: `${frontendUrl}/reports/${report.id}`,
+          },
+        },
+      })
+    ));
+  }
+
   async handlePendingSmReview(report: DefectReport, event: StatusChangedEvent, frontendUrl: string, buildEmailSummary: (report: DefectReport, event: StatusChangedEvent) => Promise<Record<string, string>>) {
     const smUsers = await this.usersRepo.find({ where: { role: Role.SENIOR_MANAGER, isActive: true } });
     const summaryTable = await buildEmailSummary(report, event);

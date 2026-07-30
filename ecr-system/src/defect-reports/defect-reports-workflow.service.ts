@@ -95,8 +95,8 @@ export class DefectReportsWorkflowService {
       });
       if (!report) throw new NotFoundException('Defect report not found');
 
-      if (report.status !== ReportStatus.PENDING_INSPECTION) {
-        throw new BadRequestException('Report is not pending inspection');
+      if (report.status !== ReportStatus.PENDING_INSPECTION && report.status !== ReportStatus.INSPECTOR_DRAFT) {
+        throw new BadRequestException('Report is not pending inspection or inspector draft');
       }
       if (report.raisedById === actor.id) {
         throw new BadRequestException('Cannot inspect a report you raised yourself');
@@ -147,10 +147,15 @@ export class DefectReportsWorkflowService {
       }
 
       const from = report.status;
-      report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+      if (dto.saveAsDraft) {
+        report.status = ReportStatus.INSPECTOR_DRAFT;
+      } else {
+        report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+      }
       await reportsRepo.save(report);
-      await this.logStatusChange(report.id, actor, from, report.status, 'Inspection complete', manager);
-      this.emitStatusChange(report, from, actor, 'Inspection complete', 'Inspection complete');
+      const transitionReason = dto.saveAsDraft ? 'Saved as draft by inspector' : 'Inspection complete';
+      await this.logStatusChange(report.id, actor, from, report.status, transitionReason, manager);
+      this.emitStatusChange(report, from, actor, transitionReason, transitionReason);
       return report;
     });
   }
@@ -492,7 +497,8 @@ export class DefectReportsWorkflowService {
       // Workflow State Machine rules
       const validTransitions: Record<ReportStatus, ReportStatus[]> = {
         [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
-        [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW],
+        [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
+        [ReportStatus.INSPECTOR_DRAFT]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
         [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
         [ReportStatus.ACCOUNTS_DRAFT]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
         [ReportStatus.PENDING_SM_REVIEW]: [ReportStatus.PENDING_GM_APPROVAL, ReportStatus.REJECTED],

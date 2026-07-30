@@ -29,7 +29,7 @@ export default function InspectorDashboard() {
 
   const isLoading = reportsLoading || draftsLoading;
 
-  const pendingInspections = reports.filter(r => r.status === 'PENDING_INSPECTION');
+  const pendingInspections = reports.filter(r => r.status === 'PENDING_INSPECTION' || r.status === 'INSPECTOR_DRAFT');
   const completedToday = reports.filter(r => 
     r.auditLogs?.some(log => log.actionType === 'STATUS_CHANGE' && log.fromStatus === 'PENDING_INSPECTION' && new Date(log.timestamp).toDateString() === new Date().toDateString())
   ).length;

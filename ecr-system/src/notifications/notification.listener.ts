@@ -125,6 +125,9 @@ export class NotificationListener {
         case ReportStatus.PENDING_ACCOUNTS_REVIEW:
           await this.statusHandler.handlePendingAccountsReview(report, event, frontendUrl, buildEmailSummary);
           break;
+        case ReportStatus.ACCOUNTS_DRAFT:
+          await this.statusHandler.handleAccountsDraft(report, event, frontendUrl, buildEmailSummary);
+          break;
         case ReportStatus.PENDING_SM_REVIEW:
           await this.statusHandler.handlePendingSmReview(report, event, frontendUrl, buildEmailSummary);
           break;

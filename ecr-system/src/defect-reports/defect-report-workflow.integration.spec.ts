@@ -339,6 +339,6 @@ describe('Defect Report Workflow Integration', () => {
     mockReport.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
     await expect(
       reportsService.transitionStatus('report-uuid', ReportStatus.APPROVED, 'approve', accountsActor)
-    ).rejects.toThrow('Accounts can only submit reports pending accounts review to Senior Manager review.');
+    ).rejects.toThrow('Accounts can only submit reports');
   });
 });

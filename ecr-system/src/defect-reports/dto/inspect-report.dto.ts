@@ -67,4 +67,7 @@ export class InspectReportDto {
   @IsOptional()
   @IsString()
   dcNumber?: string;
+
+  @IsOptional()
+  saveAsDraft?: boolean;
 }

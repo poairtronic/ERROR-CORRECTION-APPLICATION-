@@ -26,7 +26,7 @@ describe('AuthController', () => {
 
       await controller.login(body, res, req);
 
-      expect(authService.login).toHaveBeenCalledWith('admin', 'password123', res, '127.0.0.1', 'jest');
+      expect(authService.login).toHaveBeenCalledWith('admin', 'password123', res, '127.0.0.1', 'jest', undefined);
     });
 
     it('should return token response', async () => {
