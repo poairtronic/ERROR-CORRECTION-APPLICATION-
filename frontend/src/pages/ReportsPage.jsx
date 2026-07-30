@@ -37,15 +37,29 @@ export default function ReportsPage() {
 
   const filtered = useMemo(() => {
     return reports.filter(r => {
-      const matchSearch = !debouncedSearch || (
-        (r.reportNumber || '') +
-        (r.id || '') +
-        (r.componentName || '') +
-        (r.errorTypeName || '') +
-        (r.defectDescription || '') +
-        (r.raisedBy?.name || '') +
-        (r.raisedBy?.username || '')
-      ).toLowerCase().includes(debouncedSearch.toLowerCase());
+      const searchParts = [
+        r.reportNumber,
+        r.id,
+        r.scNo,
+        r.poNo,
+        r.componentName,
+        r.errorTypeName,
+        r.defectDescription,
+        r.status,
+        STATUS_LABELS[r.status],
+        r.raisedBy?.name,
+        r.raisedBy?.username,
+        r.inspectionDetail?.dcNumber,
+        r.inspectionDetail?.responsibleParty,
+        r.inspectionDetail?.errorType,
+        r.inspectionDetail?.reworkDescription,
+        r.inspectionDetail?.rejectionDescription,
+        r.inspectionDetail?.rejectionFailedStage,
+        r.rejectionFailedStage,
+        r.stageOfFailure
+      ];
+      const searchStr = searchParts.filter(Boolean).join(' ').toLowerCase();
+      const matchSearch = !debouncedSearch || searchStr.includes(debouncedSearch.toLowerCase());
       const matchStatus = !filterStatus || r.status === filterStatus;
       
       let matchDate = true;
