@@ -37,6 +37,10 @@ const MASTER_TABLES_TO_KEEP = [
   'vendors',
 ];
 
+interface TableSchemaRow {
+  table_name: string;
+}
+
 async function main() {
   const client = new Client({
     connectionString,
@@ -53,7 +57,7 @@ async function main() {
       FROM information_schema.tables 
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
     `);
-    const existingTables = tablesRes.rows.map((r) => r.table_name);
+    const existingTables = tablesRes.rows.map((r: TableSchemaRow) => r.table_name);
     console.log('\n--- EXISTING TABLES IN DATABASE ---');
     console.log(existingTables.join(', '));
 

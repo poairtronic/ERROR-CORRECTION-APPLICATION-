@@ -83,257 +83,320 @@ export class DefectReportsWorkflowService {
   }
 
   async inspect(reportId: string, dto: InspectReportDto, actor: ActingUser) {
-    return this.reportsRepo.manager.transaction(async (manager) => {
-      const reportsRepo = manager.getRepository(DefectReport);
-      const inspectionRepo = manager.getRepository(InspectionDetail);
+    this.logger.log(`[FLOW_DIAGNOSTICS] Inspect endpoint entered. ReportId: ${reportId}, saveAsDraft: ${dto.saveAsDraft}`);
+    let result: DefectReport;
+    let from: ReportStatus | undefined = undefined;
+    let transitionReason: string | undefined = undefined;
 
-      const report = await reportsRepo.findOne({
-        where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
-        relationLoadStrategy: 'query',
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!report) throw new NotFoundException('Defect report not found');
+    try {
+      this.logger.log(`[FLOW_DIAGNOSTICS] Inspect - Database transaction started`);
+      result = await this.reportsRepo.manager.transaction(async (manager) => {
+        const reportsRepo = manager.getRepository(DefectReport);
+        const inspectionRepo = manager.getRepository(InspectionDetail);
 
-      if (report.status !== ReportStatus.PENDING_INSPECTION && report.status !== ReportStatus.INSPECTOR_DRAFT) {
-        throw new BadRequestException('Report is not pending inspection or inspector draft');
-      }
+        const report = await reportsRepo.findOne({
+          where: { id: reportId },
+          relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+          relationLoadStrategy: 'query',
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!report) throw new NotFoundException('Defect report not found');
 
-      // Validate required fields on final submit (not draft)
-      if (!dto.saveAsDraft) {
-        if (!dto.responsibleParty) {
-          throw new BadRequestException('Responsible party is required when submitting inspection');
+        if (report.status !== ReportStatus.PENDING_INSPECTION && report.status !== ReportStatus.INSPECTOR_DRAFT) {
+          throw new BadRequestException('Report is not pending inspection or inspector draft');
         }
-        if (dto.costEstimate == null && dto.costEstimate !== 0) {
-          throw new BadRequestException('Cost estimate is required when submitting inspection');
+
+        // Validate required fields on final submit (not draft)
+        if (!dto.saveAsDraft) {
+          if (!dto.responsibleParty) {
+            throw new BadRequestException('Responsible party is required when submitting inspection');
+          }
+          if (dto.costEstimate == null && dto.costEstimate !== 0) {
+            throw new BadRequestException('Cost estimate is required when submitting inspection');
+          }
         }
-      }
 
-      let inspection = await inspectionRepo.findOne({
-        where: { reportId: report.id },
-        relations: ['report'],
+        let inspection = await inspectionRepo.findOne({
+          where: { reportId: report.id },
+        });
+        if (!inspection) {
+          inspection = inspectionRepo.create({ reportId: report.id });
+        } else {
+          inspection.reportId = report.id;
+        }
+        const isRejection = dto.inspectionType === 'REJECTION' || report.inspectionType === 'REJECTION';
+        Object.assign(inspection, {
+          inspectorId: actor.id,
+          errorType: dto.errorType || (isRejection ? 'Rejection' : 'Rework'),
+          rootCause: dto.rootCause || (isRejection ? 'Rejection' : 'Rework'),
+          responsibleParty: dto.responsibleParty,
+          responsibleId: dto.responsibleId,
+          decision: dto.decision || (isRejection ? 'SCRAP' : 'REWORK'),
+          alternativeNote: dto.alternativeNote,
+          timeEstimateHours: dto.timeEstimateHours,
+          lossAmount: dto.lossAmount,
+          reworkDescription: dto.reworkDescription,
+          rejectionProcessTemplate: dto.rejectionProcessTemplate,
+          rejectionFailedStage: dto.rejectionFailedStage,
+          rejectionStageCosts: dto.rejectionStageCosts,
+          rejectionDescription: dto.rejectionDescription,
+          dcNumber: dto.dcNumber,
+        });
+
+        report.inspectionDetail = inspection;
+        inspection.costEstimate = dto.costEstimate ?? calculateTotalCost(report);
+        await inspectionRepo.save(inspection);
+
+        if (dto.inspectionType) {
+          report.inspectionType = dto.inspectionType;
+        }
+
+        if (isRejection) {
+          report.rejectionProcessTemplate = dto.rejectionProcessTemplate;
+          report.rejectionFailedStage = dto.rejectionFailedStage;
+          report.rejectionStageCosts = dto.rejectionStageCosts;
+          report.rejectionDescription = dto.rejectionDescription;
+        }
+
+        from = report.status;
+        if (dto.saveAsDraft) {
+          report.status = ReportStatus.INSPECTOR_DRAFT;
+        } else {
+          report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+        }
+        await reportsRepo.save(report);
+        transitionReason = dto.saveAsDraft ? 'Saved as draft by inspector' : 'Inspection complete';
+        await this.logStatusChange(report.id, actor, from, report.status, transitionReason, manager);
+
+        // Break circular references for json serialization
+        if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
+        if (report.smReview) delete (report.smReview as any).report;
+        if (report.gmApproval) delete (report.gmApproval as any).report;
+
+        return report;
       });
-      if (!inspection) {
-        inspection = inspectionRepo.create({ report, reportId: report.id });
-      } else {
-        inspection.report = report;
-        inspection.reportId = report.id;
-      }
-      const isRejection = dto.inspectionType === 'REJECTION' || report.inspectionType === 'REJECTION';
-      Object.assign(inspection, {
-        inspectorId: actor.id,
-        errorType: dto.errorType || (isRejection ? 'Rejection' : 'Rework'),
-        rootCause: dto.rootCause || (isRejection ? 'Rejection' : 'Rework'),
-        responsibleParty: dto.responsibleParty,
-        responsibleId: dto.responsibleId,
-        decision: dto.decision || (isRejection ? 'SCRAP' : 'REWORK'),
-        alternativeNote: dto.alternativeNote,
-        timeEstimateHours: dto.timeEstimateHours,
-        lossAmount: dto.lossAmount,
-        reworkDescription: dto.reworkDescription,
-        rejectionProcessTemplate: dto.rejectionProcessTemplate,
-        rejectionFailedStage: dto.rejectionFailedStage,
-        rejectionStageCosts: dto.rejectionStageCosts,
-        rejectionDescription: dto.rejectionDescription,
-        dcNumber: dto.dcNumber,
-      });
+      this.logger.log(`[FLOW_DIAGNOSTICS] Inspect - Transaction committed`);
+    } catch (error: any) {
+      this.logger.error(`[FLOW_DIAGNOSTICS] Inspect - Transaction rolled back: ${error.message}`);
+      throw error;
+    }
 
-      report.inspectionDetail = inspection;
-      inspection.costEstimate = dto.costEstimate ?? calculateTotalCost(report);
-      await inspectionRepo.save(inspection);
+    // Emit event outside the transaction boundary and ONLY if not draft
+    if (!dto.saveAsDraft) {
+      this.logger.log(`[FLOW_DIAGNOSTICS] Inspect - Event emitted (emitStatusChange)`);
+      this.emitStatusChange(result, from, actor, transitionReason, transitionReason);
+    } else {
+      this.logger.log(`[FLOW_DIAGNOSTICS] Inspect - Saved as draft, no event emitted.`);
+    }
 
-      if (dto.inspectionType) {
-        report.inspectionType = dto.inspectionType;
-      }
-
-      if (isRejection) {
-        report.rejectionProcessTemplate = dto.rejectionProcessTemplate;
-        report.rejectionFailedStage = dto.rejectionFailedStage;
-        report.rejectionStageCosts = dto.rejectionStageCosts;
-        report.rejectionDescription = dto.rejectionDescription;
-      }
-
-      const from = report.status;
-      if (dto.saveAsDraft) {
-        report.status = ReportStatus.INSPECTOR_DRAFT;
-      } else {
-        report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
-      }
-      await reportsRepo.save(report);
-      const transitionReason = dto.saveAsDraft ? 'Saved as draft by inspector' : 'Inspection complete';
-      await this.logStatusChange(report.id, actor, from, report.status, transitionReason, manager);
-
-      // Only emit status change (which triggers email/notifications) when actually submitting, NOT for drafts
-      if (!dto.saveAsDraft) {
-        this.emitStatusChange(report, from, actor, transitionReason, transitionReason);
-      }
-      return report;
-    });
+    return result;
   }
 
   async smReview(reportId: string, dto: SmReviewDto, actor: ActingUser) {
-    return this.reportsRepo.manager.transaction(async (manager) => {
-      const reportsRepo = manager.getRepository(DefectReport);
-      const smReviewRepo = manager.getRepository(SmReview);
-      const auditRepo = manager.getRepository(AuditLog);
-      const inspectionRepo = manager.getRepository(InspectionDetail);
+    this.logger.log(`[FLOW_DIAGNOSTICS] SM Review endpoint entered. ReportId: ${reportId}`);
+    let result: DefectReport;
+    let from: ReportStatus | undefined = undefined;
 
-      const report = await reportsRepo.findOne({
-        where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
-        relationLoadStrategy: 'query',
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!report) throw new NotFoundException('Defect report not found');
+    try {
+      this.logger.log(`[FLOW_DIAGNOSTICS] SM Review - Database transaction started`);
+      result = await this.reportsRepo.manager.transaction(async (manager) => {
+        const reportsRepo = manager.getRepository(DefectReport);
+        const smReviewRepo = manager.getRepository(SmReview);
+        const auditRepo = manager.getRepository(AuditLog);
+        const inspectionRepo = manager.getRepository(InspectionDetail);
 
-      if (report.status !== ReportStatus.PENDING_SM_REVIEW) {
-        throw new BadRequestException('Report is not pending SM review');
-      }
-      if (report.raisedById === actor.id) {
-        throw new BadRequestException('Cannot review a report you raised yourself');
-      }
+        const report = await reportsRepo.findOne({
+          where: { id: reportId },
+          relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+          relationLoadStrategy: 'query',
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!report) throw new NotFoundException('Defect report not found');
 
-      let smReview = await smReviewRepo.findOne({
-        where: { reportId: report.id },
-        relations: ['report'],
-      });
-      if (!smReview) {
-        smReview = smReviewRepo.create({ report, reportId: report.id });
-      } else {
-        smReview.report = report;
-        smReview.reportId = report.id;
-      }
-      Object.assign(smReview, {
-        smId: actor.id,
-        loopholeNote: dto.loopholeNote,
-        decisionNote: dto.decisionNote,
-        biasedFlag: dto.biasedFlag ?? false,
-        forwardedToGm: dto.forwardToGm,
-      });
-      await smReviewRepo.save(smReview);
-      report.smReview = smReview;
+        if (report.status !== ReportStatus.PENDING_SM_REVIEW) {
+          throw new BadRequestException('Report is not pending SM review');
+        }
+        if (report.raisedById === actor.id) {
+          throw new BadRequestException('Cannot review a report you raised yourself');
+        }
 
-      if (report.inspectionDetail) {
-        const numericFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
-        let changed = false;
-        const newLogs: any[] = [];
+        let smReview = await smReviewRepo.findOne({
+          where: { reportId: report.id },
+        });
+        if (!smReview) {
+          smReview = smReviewRepo.create({ reportId: report.id });
+        } else {
+          smReview.reportId = report.id;
+        }
+        Object.assign(smReview, {
+          smId: actor.id,
+          loopholeNote: dto.loopholeNote,
+          decisionNote: dto.decisionNote,
+          biasedFlag: dto.biasedFlag ?? false,
+          forwardedToGm: dto.forwardToGm,
+        });
+        await smReviewRepo.save(smReview);
+        report.smReview = smReview;
 
-        for (const field of numericFields) {
-          if (dto[field] !== undefined) {
-            const oldVal = (report.inspectionDetail as any)[field];
-            const newVal = dto[field];
-            const oldNum = oldVal != null ? Number(oldVal) : null;
-            const newNum = newVal != null ? Number(newVal) : null;
-            if (oldNum !== newNum) {
+        if (report.inspectionDetail) {
+          const numericFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
+          let changed = false;
+          const newLogs: any[] = [];
+
+          for (const field of numericFields) {
+            if (dto[field] !== undefined) {
+              const oldVal = (report.inspectionDetail as any)[field];
+              const newVal = dto[field];
+              const oldNum = oldVal != null ? Number(oldVal) : null;
+              const newNum = newVal != null ? Number(newVal) : null;
+              if (oldNum !== newNum) {
+                newLogs.push(auditRepo.create({
+                  reportId: report.id,
+                  actorId: actor.id,
+                  actorRole: actor.role,
+                  actionType: AuditActionType.FIELD_EDIT,
+                  fieldName: field,
+                  oldValue: String(oldVal ?? ''),
+                  newValue: String(newVal ?? ''),
+                  note: `Senior Manager edited ${field} during review`,
+                }));
+                (report.inspectionDetail as any)[field] = newVal;
+                changed = true;
+              }
+            }
+          }
+
+          if (dto.rejectionStageCosts !== undefined) {
+            const oldVal = report.inspectionDetail.rejectionStageCosts;
+            const newVal = dto.rejectionStageCosts;
+            const oldStr = oldVal != null ? JSON.stringify(oldVal) : '';
+            const newStr = newVal != null ? JSON.stringify(newVal) : '';
+            if (oldStr !== newStr) {
               newLogs.push(auditRepo.create({
                 reportId: report.id,
                 actorId: actor.id,
                 actorRole: actor.role,
                 actionType: AuditActionType.FIELD_EDIT,
-                fieldName: field,
-                oldValue: String(oldVal ?? ''),
-                newValue: String(newVal ?? ''),
-                note: `Senior Manager edited ${field} during review`,
+                fieldName: 'rejectionStageCosts',
+                oldValue: oldStr,
+                newValue: newStr,
+                note: `Senior Manager edited rejectionStageCosts during review`,
               }));
-              (report.inspectionDetail as any)[field] = newVal;
+              report.inspectionDetail.rejectionStageCosts = newVal;
+              report.rejectionStageCosts = newVal;
               changed = true;
             }
           }
-        }
 
-        if (dto.rejectionStageCosts !== undefined) {
-          const oldVal = report.inspectionDetail.rejectionStageCosts;
-          const newVal = dto.rejectionStageCosts;
-          const oldStr = oldVal != null ? JSON.stringify(oldVal) : '';
-          const newStr = newVal != null ? JSON.stringify(newVal) : '';
-          if (oldStr !== newStr) {
-            newLogs.push(auditRepo.create({
-              reportId: report.id,
-              actorId: actor.id,
-              actorRole: actor.role,
-              actionType: AuditActionType.FIELD_EDIT,
-              fieldName: 'rejectionStageCosts',
-              oldValue: oldStr,
-              newValue: newStr,
-              note: `Senior Manager edited rejectionStageCosts during review`,
-            }));
-            report.inspectionDetail.rejectionStageCosts = newVal;
-            report.rejectionStageCosts = newVal;
-            changed = true;
+          if (newLogs.length > 0) {
+            await auditRepo.save(newLogs);
+          }
+
+          if (changed) {
+            await inspectionRepo.save(report.inspectionDetail);
           }
         }
 
-        if (newLogs.length > 0) {
-          await auditRepo.save(newLogs);
-        }
+        from = report.status;
+        report.status = dto.forwardToGm ? ReportStatus.PENDING_GM_APPROVAL : ReportStatus.REJECTED;
+        await reportsRepo.save(report);
+        await this.logStatusChange(report.id, actor, from, report.status, dto.decisionNote, manager);
 
-        if (changed) {
-          await inspectionRepo.save(report.inspectionDetail);
-        }
-      }
+        // Break circular references for json serialization
+        if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
+        if (report.smReview) delete (report.smReview as any).report;
+        if (report.gmApproval) delete (report.gmApproval as any).report;
 
-      const from = report.status;
-      report.status = dto.forwardToGm ? ReportStatus.PENDING_GM_APPROVAL : ReportStatus.REJECTED;
-      await reportsRepo.save(report);
-      await this.logStatusChange(report.id, actor, from, report.status, dto.decisionNote, manager);
-      this.emitStatusChange(report, from, actor, dto.forwardToGm ? 'Senior Manager Review Approved' : 'Senior Manager Review Rejected', dto.decisionNote);
-      return report;
-    });
+        return report;
+      });
+      this.logger.log(`[FLOW_DIAGNOSTICS] SM Review - Transaction committed`);
+    } catch (error: any) {
+      this.logger.error(`[FLOW_DIAGNOSTICS] SM Review - Transaction rolled back: ${error.message}`);
+      throw error;
+    }
+
+    // Emit event outside the transaction boundary
+    this.logger.log(`[FLOW_DIAGNOSTICS] SM Review - Event emitted (emitStatusChange)`);
+    this.emitStatusChange(result, from, actor, dto.forwardToGm ? 'Senior Manager Review Approved' : 'Senior Manager Review Rejected', dto.decisionNote);
+    return result;
   }
 
   async gmApprove(reportId: string, dto: GmApproveDto, actor: ActingUser) {
-    return this.reportsRepo.manager.transaction(async (manager) => {
-      const reportsRepo = manager.getRepository(DefectReport);
-      const gmApprovalRepo = manager.getRepository(GmApproval);
+    this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve endpoint entered. ReportId: ${reportId}`);
+    let result: DefectReport;
+    let from: ReportStatus | undefined = undefined;
+    let isApproved = false;
 
-      const report = await reportsRepo.findOne({
-        where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
-        relationLoadStrategy: 'query',
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!report) throw new NotFoundException('Defect report not found');
+    try {
+      this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Database transaction started`);
+      result = await this.reportsRepo.manager.transaction(async (manager) => {
+        const reportsRepo = manager.getRepository(DefectReport);
+        const gmApprovalRepo = manager.getRepository(GmApproval);
 
-      if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
-        throw new BadRequestException('Report is not pending GM approval');
-      }
+        const report = await reportsRepo.findOne({
+          where: { id: reportId },
+          relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+          relationLoadStrategy: 'query',
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!report) throw new NotFoundException('Defect report not found');
 
-      let gmApproval = await gmApprovalRepo.findOne({
-        where: { reportId: report.id },
-        relations: ['report'],
-      });
-      if (!gmApproval) {
-        gmApproval = gmApprovalRepo.create({ report, reportId: report.id });
-      } else {
-        gmApproval.report = report;
-        gmApproval.reportId = report.id;
-      }
-      Object.assign(gmApproval, {
-        gmId: actor.id,
-        approved: dto.approved,
-        remarks: dto.remarks,
-        budgetApproved: dto.budgetApproved,
-        messageToSm: dto.messageToSm,
-      });
-      await gmApprovalRepo.save(gmApproval);
-      report.gmApproval = gmApproval;
-
-      const from = report.status;
-      report.status = dto.approved ? ReportStatus.APPROVED : ReportStatus.REJECTED;
-      await reportsRepo.save(report);
-      await this.logStatusChange(report.id, actor, from, report.status, dto.remarks, manager);
-      this.emitStatusChange(report, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks, dto.messageToSm);
-
-      if (dto.approved && report.inspectionDetail) {
-        if (report.inspectionDetail.responsibleParty === ResponsibleParty.OPERATOR) {
-          this.events.emit('report.approved.operator_fault', { report, gmId: actor.id });
-        } else if (report.inspectionDetail.responsibleParty === ResponsibleParty.VENDOR) {
-          this.events.emit('report.approved.vendor_fault', { report, gmId: actor.id });
+        if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
+          throw new BadRequestException('Report is not pending GM approval');
         }
-      }
 
-      return report;
-    });
+        let gmApproval = await gmApprovalRepo.findOne({
+          where: { reportId: report.id },
+        });
+        if (!gmApproval) {
+          gmApproval = gmApprovalRepo.create({ reportId: report.id });
+        } else {
+          gmApproval.reportId = report.id;
+        }
+        Object.assign(gmApproval, {
+          gmId: actor.id,
+          approved: dto.approved,
+          remarks: dto.remarks,
+          budgetApproved: dto.budgetApproved,
+          messageToSm: dto.messageToSm,
+        });
+        await gmApprovalRepo.save(gmApproval);
+        report.gmApproval = gmApproval;
+
+        from = report.status;
+        report.status = dto.approved ? ReportStatus.APPROVED : ReportStatus.REJECTED;
+        isApproved = dto.approved;
+        await reportsRepo.save(report);
+        await this.logStatusChange(report.id, actor, from, report.status, dto.remarks, manager);
+
+        // Break circular references for json serialization
+        if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
+        if (report.smReview) delete (report.smReview as any).report;
+        if (report.gmApproval) delete (report.gmApproval as any).report;
+
+        return report;
+      });
+      this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Transaction committed`);
+    } catch (error: any) {
+      this.logger.error(`[FLOW_DIAGNOSTICS] GM Approve - Transaction rolled back: ${error.message}`);
+      throw error;
+    }
+
+    // Emit event outside the transaction boundary
+    this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (emitStatusChange)`);
+    this.emitStatusChange(result, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks, dto.messageToSm);
+
+    if (isApproved && result.inspectionDetail) {
+      if (result.inspectionDetail.responsibleParty === ResponsibleParty.OPERATOR) {
+        this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (report.approved.operator_fault)`);
+        this.events.emit('report.approved.operator_fault', { report: result, gmId: actor.id });
+      } else if (result.inspectionDetail.responsibleParty === ResponsibleParty.VENDOR) {
+        this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (report.approved.vendor_fault)`);
+        this.events.emit('report.approved.vendor_fault', { report: result, gmId: actor.id });
+      }
+    }
+
+    return result;
   }
 
   async editField(
@@ -342,271 +405,327 @@ export class DefectReportsWorkflowService {
     newValue: string,
     actor: ActingUser,
   ) {
-    return this.reportsRepo.manager.transaction(async (manager) => {
-      const reportsRepo = manager.getRepository(DefectReport);
-      const inspectionRepo = manager.getRepository(InspectionDetail);
-      const auditRepo = manager.getRepository(AuditLog);
+    this.logger.log(`[FLOW_DIAGNOSTICS] EditField endpoint entered. ReportId: ${reportId}, Field: ${field}`);
+    let result: DefectReport;
 
-      const report = await reportsRepo.findOne({
-        where: { id: reportId },
-        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
-        relationLoadStrategy: 'query',
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!report) throw new NotFoundException('Defect report not found');
+    try {
+      this.logger.log(`[FLOW_DIAGNOSTICS] EditField - Database transaction started`);
+      result = await this.reportsRepo.manager.transaction(async (manager) => {
+        const reportsRepo = manager.getRepository(DefectReport);
+        const inspectionRepo = manager.getRepository(InspectionDetail);
+        const auditRepo = manager.getRepository(AuditLog);
 
-      const smAllowedFields = [
-        'defectDescription',
-        'stageOfFailure',
-        'errorType',
-        'rootCause',
-        'decision',
-        'loopholeNote',
-        'costEstimate',
-        'timeEstimateHours',
-        'lossAmount',
-        'decisionNote',
-        'rejectionStageCosts',
-        'componentName',
-        'errorTypeName',
-      ];
+        const report = await reportsRepo.findOne({
+          where: { id: reportId },
+          relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+          relationLoadStrategy: 'query',
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!report) throw new NotFoundException('Defect report not found');
 
-      if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
-        throw new BadRequestException('Senior Manager cannot edit this field');
-      }
-
-      if (actor.role === Role.GENERAL_MANAGER) {
-        const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
-        if (!gmAllowedFields.includes(field)) {
-          throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, lossAmount, componentName, or errorTypeName');
-        }
-        if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
-          throw new BadRequestException('General Manager can only edit reports pending GM approval');
-        }
-      }
-
-      if (actor.role === Role.ACCOUNTS) {
-        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
-        if (!accountsAllowedFields.includes(field)) {
-          throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, rejectionStageCosts, componentName, or errorTypeName');
-        }
-        const allowedAccountsStatuses = [
-          ReportStatus.PENDING_ACCOUNTS_REVIEW,
-          ReportStatus.ACCOUNTS_DRAFT,
+        const smAllowedFields = [
+          'defectDescription',
+          'stageOfFailure',
+          'errorType',
+          'rootCause',
+          'decision',
+          'loopholeNote',
+          'costEstimate',
+          'timeEstimateHours',
+          'lossAmount',
+          'decisionNote',
+          'rejectionStageCosts',
+          'componentName',
+          'errorTypeName',
         ];
-        if (!allowedAccountsStatuses.includes(report.status as any)) {
-          throw new BadRequestException('Accounts can only edit reports that are pending accounts review or accounts draft');
+
+        if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
+          throw new BadRequestException('Senior Manager cannot edit this field');
         }
-      }
 
-      if (
-        actor.role !== Role.SENIOR_MANAGER &&
-        actor.role !== Role.GENERAL_MANAGER &&
-        actor.role !== Role.ACCOUNTS
-      ) {
-        throw new BadRequestException('Only Senior Manager, General Manager, or Accounts can edit report data');
-      }
+        if (actor.role === Role.GENERAL_MANAGER) {
+          const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
+          if (!gmAllowedFields.includes(field)) {
+            throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, lossAmount, componentName, or errorTypeName');
+          }
+          if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
+            throw new BadRequestException('General Manager can only edit reports pending GM approval');
+          }
+        }
 
-      if (field === 'status') {
-        throw new BadRequestException('Status cannot be manually edited through editField. Use transitionStatus instead.');
-      }
+        if (actor.role === Role.ACCOUNTS) {
+          const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
+          if (!accountsAllowedFields.includes(field)) {
+            throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, rejectionStageCosts, componentName, or errorTypeName');
+          }
+          const allowedAccountsStatuses = [
+            ReportStatus.PENDING_ACCOUNTS_REVIEW,
+            ReportStatus.ACCOUNTS_DRAFT,
+          ];
+          if (!allowedAccountsStatuses.includes(report.status as any)) {
+            throw new BadRequestException('Accounts can only edit reports that are pending accounts review or accounts draft');
+          }
+        }
 
-      const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
-      const accountsFields = ['materialCost', 'labourCost', 'otherCost', 'costRemarks'];
-      let oldValue: any;
+        if (
+          actor.role !== Role.SENIOR_MANAGER &&
+          actor.role !== Role.GENERAL_MANAGER &&
+          actor.role !== Role.ACCOUNTS
+        ) {
+          throw new BadRequestException('Only Senior Manager, General Manager, or Accounts can edit report data');
+        }
 
-      let oldCalculatedTotal = 0;
-      if (report.inspectionDetail) {
-        oldCalculatedTotal = calculateTotalCost(report);
-      }
+        if (field === 'status') {
+          throw new BadRequestException('Status cannot be manually edited through editField. Use transitionStatus instead.');
+        }
 
-      if (accountsFields.includes(field)) {
+        const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
+        const accountsFields = ['materialCost', 'labourCost', 'otherCost', 'costRemarks'];
+        let oldValue: any;
+
+        let oldCalculatedTotal = 0;
         if (report.inspectionDetail) {
-          oldValue = (report.inspectionDetail as any)[field];
-          if (field === 'costRemarks') {
-            report.inspectionDetail.costRemarks = newValue;
+          oldCalculatedTotal = calculateTotalCost(report);
+        }
+
+        if (accountsFields.includes(field)) {
+          if (report.inspectionDetail) {
+            oldValue = (report.inspectionDetail as any)[field];
+            if (field === 'costRemarks') {
+              report.inspectionDetail.costRemarks = newValue;
+            } else {
+              (report.inspectionDetail as any)[field] = Number(newValue);
+            }
+            await inspectionRepo.save(report.inspectionDetail);
           } else {
+            throw new BadRequestException('Cannot edit cost because report has not been inspected');
+          }
+        } else if (inspectFields.includes(field)) {
+          if (report.inspectionDetail) {
+            oldValue = (report.inspectionDetail as any)[field];
             (report.inspectionDetail as any)[field] = Number(newValue);
+            await inspectionRepo.save(report.inspectionDetail);
+          } else {
+            throw new BadRequestException('Cannot edit cost or loss because report has not been inspected');
           }
-          await inspectionRepo.save(report.inspectionDetail);
-        } else {
-          throw new BadRequestException('Cannot edit cost because report has not been inspected');
-        }
-      } else if (inspectFields.includes(field)) {
-        if (report.inspectionDetail) {
-          oldValue = (report.inspectionDetail as any)[field];
-          (report.inspectionDetail as any)[field] = Number(newValue);
-          await inspectionRepo.save(report.inspectionDetail);
-        } else {
-          throw new BadRequestException('Cannot edit cost or loss because report has not been inspected');
-        }
-      } else if (field === 'rejectionStageCosts') {
-        oldValue = report.rejectionStageCosts;
-        const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
-        report.rejectionStageCosts = parsed;
-        await reportsRepo.save(report);
-
-        if (report.inspectionDetail) {
-          report.inspectionDetail.rejectionStageCosts = parsed;
-          await inspectionRepo.save(report.inspectionDetail);
-        }
-      } else {
-        oldValue = (report as any)[field];
-        if (field in report) {
-          (report as any)[field] = newValue;
+        } else if (field === 'rejectionStageCosts') {
+          oldValue = report.rejectionStageCosts;
+          const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
+          report.rejectionStageCosts = parsed;
           await reportsRepo.save(report);
-        }
-        if (report.inspectionDetail) {
-          if (field === 'errorTypeName') {
-            report.inspectionDetail.errorType = newValue;
-            await inspectionRepo.save(report.inspectionDetail);
-          } else if (field in report.inspectionDetail) {
-            (report.inspectionDetail as any)[field] = newValue;
+
+          if (report.inspectionDetail) {
+            report.inspectionDetail.rejectionStageCosts = parsed;
             await inspectionRepo.save(report.inspectionDetail);
           }
+        } else {
+          oldValue = (report as any)[field];
+          if (field in report) {
+            (report as any)[field] = newValue;
+            await reportsRepo.save(report);
+          }
+          if (report.inspectionDetail) {
+            if (field === 'errorTypeName') {
+              report.inspectionDetail.errorType = newValue;
+              await inspectionRepo.save(report.inspectionDetail);
+            } else if (field in report.inspectionDetail) {
+              (report.inspectionDetail as any)[field] = newValue;
+              await inspectionRepo.save(report.inspectionDetail);
+            }
+          }
         }
-      }
 
-      const costFields = ['materialCost', 'labourCost', 'otherCost', 'rejectionStageCosts', 'rejectionFailedStage', 'rejectionProcessTemplate'];
-      if (costFields.includes(field) && report.inspectionDetail) {
-        const newCalculatedTotal = calculateTotalCost(report);
-        const diff = newCalculatedTotal - oldCalculatedTotal;
-        const currentCostEstimate = Number(report.inspectionDetail.costEstimate || 0);
-        report.inspectionDetail.costEstimate = parseFloat((currentCostEstimate + diff).toFixed(2));
-        await inspectionRepo.save(report.inspectionDetail);
-      }
+        const costFields = ['materialCost', 'labourCost', 'otherCost', 'rejectionStageCosts', 'rejectionFailedStage', 'rejectionProcessTemplate'];
+        if (costFields.includes(field) && report.inspectionDetail) {
+          const newCalculatedTotal = calculateTotalCost(report);
+          const diff = newCalculatedTotal - oldCalculatedTotal;
+          const currentCostEstimate = Number(report.inspectionDetail.costEstimate || 0);
+          report.inspectionDetail.costEstimate = parseFloat((currentCostEstimate + diff).toFixed(2));
+          await inspectionRepo.save(report.inspectionDetail);
+        }
 
-      await auditRepo.save(
-        auditRepo.create({
-          reportId: report.id,
-          actorId: actor.id,
-          actorRole: actor.role,
-          actionType: AuditActionType.FIELD_EDIT,
-          fieldName: field,
-          oldValue: typeof oldValue === 'object' ? JSON.stringify(oldValue) : String(oldValue ?? ''),
-          newValue: typeof newValue === 'object' ? JSON.stringify(newValue) : String(newValue ?? ''),
-          note: `Field '${field}' updated by ${actor.role}`,
-        }),
-      );
+        await auditRepo.save(
+          auditRepo.create({
+            reportId: report.id,
+            actorId: actor.id,
+            actorRole: actor.role,
+            actionType: AuditActionType.FIELD_EDIT,
+            fieldName: field,
+            oldValue: typeof oldValue === 'object' ? JSON.stringify(oldValue) : String(oldValue ?? ''),
+            newValue: typeof newValue === 'object' ? JSON.stringify(newValue) : String(newValue ?? ''),
+            note: `Field '${field}' updated by ${actor.role}`,
+          }),
+        );
 
-      return report;
-    });
+        // Break circular references for json serialization
+        if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
+        if (report.smReview) delete (report.smReview as any).report;
+        if (report.gmApproval) delete (report.gmApproval as any).report;
+
+        return report;
+      });
+      this.logger.log(`[FLOW_DIAGNOSTICS] EditField - Transaction committed`);
+    } catch (error: any) {
+      this.logger.error(`[FLOW_DIAGNOSTICS] EditField - Transaction rolled back: ${error.message}`);
+      throw error;
+    }
+
+    return result;
   }
 
   async transitionStatus(reportId: string, newStatus: ReportStatus, note: string, actor: ActingUser) {
-    return this.reportsRepo.manager.transaction(async (manager) => {
-      const reportsRepo = manager.getRepository(DefectReport);
+    this.logger.log(`[FLOW_DIAGNOSTICS] TransitionStatus endpoint entered. ReportId: ${reportId}, newStatus: ${newStatus}`);
+    let result: DefectReport;
+    let from: ReportStatus | undefined = undefined;
 
-      const report = await reportsRepo.findOne({
-        where: { id: reportId },
-        relations: ['inspectionDetail'],
-        relationLoadStrategy: 'query',
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!report) throw new NotFoundException('Defect report not found');
-      
-      // Workflow State Machine rules
-      const validTransitions: Record<ReportStatus, ReportStatus[]> = {
-        [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
-        [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
-        [ReportStatus.INSPECTOR_DRAFT]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
-        [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
-        [ReportStatus.ACCOUNTS_DRAFT]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
-        [ReportStatus.PENDING_SM_REVIEW]: [ReportStatus.PENDING_GM_APPROVAL, ReportStatus.REJECTED],
-        [ReportStatus.PENDING_GM_APPROVAL]: [ReportStatus.APPROVED, ReportStatus.REJECTED],
-        [ReportStatus.APPROVED]: [ReportStatus.COMPONENTS_ISSUED, ReportStatus.CLOSED],
-        [ReportStatus.COMPONENTS_ISSUED]: [ReportStatus.REWORK_IN_PROGRESS, ReportStatus.NEW_PRODUCTION, ReportStatus.CLOSED],
-        [ReportStatus.REWORK_IN_PROGRESS]: [ReportStatus.NEW_PRODUCTION, ReportStatus.CLOSED],
-        [ReportStatus.NEW_PRODUCTION]: [ReportStatus.CLOSED],
-        [ReportStatus.REJECTED]: [],
-        [ReportStatus.CLOSED]: [],
-      };
+    try {
+      this.logger.log(`[FLOW_DIAGNOSTICS] TransitionStatus - Database transaction started`);
+      result = await this.reportsRepo.manager.transaction(async (manager) => {
+        const reportsRepo = manager.getRepository(DefectReport);
 
-      if (actor.role === Role.ACCOUNTS) {
-        if (
-          (report.status !== ReportStatus.PENDING_ACCOUNTS_REVIEW && report.status !== ReportStatus.ACCOUNTS_DRAFT) ||
-          (newStatus !== ReportStatus.PENDING_SM_REVIEW && newStatus !== ReportStatus.ACCOUNTS_DRAFT)
-        ) {
-          throw new BadRequestException('Accounts can only submit reports pending accounts review or accounts draft to Senior Manager review or accounts draft.');
-        }
+        const report = await reportsRepo.findOne({
+          where: { id: reportId },
+          relations: ['inspectionDetail'],
+          relationLoadStrategy: 'query',
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!report) throw new NotFoundException('Defect report not found');
+        
+        // Workflow State Machine rules
+        const validTransitions: Record<ReportStatus, ReportStatus[]> = {
+          [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
+          [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
+          [ReportStatus.INSPECTOR_DRAFT]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
+          [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
+          [ReportStatus.ACCOUNTS_DRAFT]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
+          [ReportStatus.PENDING_SM_REVIEW]: [ReportStatus.PENDING_GM_APPROVAL, ReportStatus.REJECTED],
+          [ReportStatus.PENDING_GM_APPROVAL]: [ReportStatus.APPROVED, ReportStatus.REJECTED],
+          [ReportStatus.APPROVED]: [ReportStatus.COMPONENTS_ISSUED, ReportStatus.CLOSED],
+          [ReportStatus.COMPONENTS_ISSUED]: [ReportStatus.REWORK_IN_PROGRESS, ReportStatus.NEW_PRODUCTION, ReportStatus.CLOSED],
+          [ReportStatus.REWORK_IN_PROGRESS]: [ReportStatus.NEW_PRODUCTION, ReportStatus.CLOSED],
+          [ReportStatus.NEW_PRODUCTION]: [ReportStatus.CLOSED],
+          [ReportStatus.REJECTED]: [],
+          [ReportStatus.CLOSED]: [],
+        };
 
-        const insp = report.inspectionDetail;
-        if (!insp) {
-          throw new BadRequestException('Inspection details are missing. Cannot proceed.');
-        }
+        if (actor.role === Role.ACCOUNTS) {
+          if (
+            (report.status !== ReportStatus.PENDING_ACCOUNTS_REVIEW && report.status !== ReportStatus.ACCOUNTS_DRAFT) ||
+            (newStatus !== ReportStatus.PENDING_SM_REVIEW && newStatus !== ReportStatus.ACCOUNTS_DRAFT)
+          ) {
+            throw new BadRequestException('Accounts can only submit reports pending accounts review or accounts draft to Senior Manager review or accounts draft.');
+          }
 
-        if (newStatus === ReportStatus.PENDING_SM_REVIEW) {
-          if (insp.materialCost == null || insp.labourCost == null || insp.lossAmount == null || insp.costEstimate == null) {
-            throw new BadRequestException('materialCost, labourCost, lossAmount, and costEstimate are required before passing to SM.');
+          const insp = report.inspectionDetail;
+          if (!insp) {
+            throw new BadRequestException('Inspection details are missing. Cannot proceed.');
+          }
+
+          if (newStatus === ReportStatus.PENDING_SM_REVIEW) {
+            if (insp.materialCost == null || insp.labourCost == null || insp.lossAmount == null || insp.costEstimate == null) {
+              throw new BadRequestException('materialCost, labourCost, lossAmount, and costEstimate are required before passing to SM.');
+            }
           }
         }
-      }
 
-      const allowedNext = validTransitions[report.status];
-      if (!allowedNext || !allowedNext.includes(newStatus)) {
-        throw new BadRequestException(`Invalid transition from ${report.status} to ${newStatus}`);
-      }
+        const allowedNext = validTransitions[report.status];
+        if (!allowedNext || !allowedNext.includes(newStatus)) {
+          throw new BadRequestException(`Invalid transition from ${report.status} to ${newStatus}`);
+        }
 
-      const from = report.status;
-      report.status = newStatus;
-      
-      await reportsRepo.save(report);
-      await this.logStatusChange(report.id, actor, from, report.status, note || 'Status updated', manager);
-      this.emitStatusChange(report, from, actor, 'Status updated', note);
-      
-      return report;
-    });
+        from = report.status;
+        report.status = newStatus;
+        
+        await reportsRepo.save(report);
+        await this.logStatusChange(report.id, actor, from, report.status, note || 'Status updated', manager);
+        
+        // Break circular references for json serialization
+        if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
+
+        return report;
+      });
+      this.logger.log(`[FLOW_DIAGNOSTICS] TransitionStatus - Transaction committed`);
+    } catch (error: any) {
+      this.logger.error(`[FLOW_DIAGNOSTICS] TransitionStatus - Transaction rolled back: ${error.message}`);
+      throw error;
+    }
+
+    // Emit event outside the transaction boundary
+    this.logger.log(`[FLOW_DIAGNOSTICS] TransitionStatus - Event emitted (emitStatusChange)`);
+    this.emitStatusChange(result, from, actor, 'Status updated', note);
+    
+    return result;
   }
 
   async issueComponents(reportId: string, dto: { remarks: string }, actor: ActingUser) {
-    return this.reportsRepo.manager.transaction(async (manager) => {
-      const reportsRepo = manager.getRepository(DefectReport);
-      const auditRepo = manager.getRepository(AuditLog);
+    this.logger.log(`[FLOW_DIAGNOSTICS] IssueComponents endpoint entered. ReportId: ${reportId}`);
+    let result: DefectReport;
+    let from: ReportStatus | undefined = undefined;
 
-      const report = await reportsRepo.findOne({ 
-        where: { id: reportId },
-        lock: { mode: 'pessimistic_write' },
+    try {
+      this.logger.log(`[FLOW_DIAGNOSTICS] IssueComponents - Database transaction started`);
+      result = await this.reportsRepo.manager.transaction(async (manager) => {
+        const reportsRepo = manager.getRepository(DefectReport);
+        const auditRepo = manager.getRepository(AuditLog);
+
+        const report = await reportsRepo.findOne({ 
+          where: { id: reportId },
+          relations: ['inspectionDetail'],
+          relationLoadStrategy: 'query',
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!report) throw new NotFoundException('Defect report not found');
+        
+        if (report.status !== ReportStatus.APPROVED) {
+          throw new BadRequestException('Report must be APPROVED before components can be issued.');
+        }
+        
+        if (report.componentsIssued) {
+          throw new BadRequestException('Components have already been issued for this report.');
+        }
+
+        from = report.status;
+        report.componentsIssued = true;
+        report.componentsIssuedById = actor.id;
+        report.componentsIssuedAt = new Date();
+        report.issueRemarks = dto.remarks || '';
+        report.status = ReportStatus.COMPONENTS_ISSUED;
+        
+        await reportsRepo.save(report);
+        
+        await auditRepo.save(
+          auditRepo.create({
+            reportId: report.id,
+            actorId: actor.id,
+            actorRole: actor.role,
+            actionType: AuditActionType.COMPONENT_ISSUED,
+            fromStatus: from,
+            toStatus: report.status,
+            note: dto.remarks || 'Components were issued by the Store Manager.',
+          }),
+        );
+        
+        // Break circular references for json serialization
+        if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
+
+        return report;
       });
-      if (!report) throw new NotFoundException('Defect report not found');
-      
-      if (report.status !== ReportStatus.APPROVED) {
-        throw new BadRequestException('Report must be APPROVED before components can be issued.');
-      }
-      
-      if (report.componentsIssued) {
-        throw new BadRequestException('Components have already been issued for this report.');
-      }
+      this.logger.log(`[FLOW_DIAGNOSTICS] IssueComponents - Transaction committed`);
+    } catch (error: any) {
+      this.logger.error(`[FLOW_DIAGNOSTICS] IssueComponents - Transaction rolled back: ${error.message}`);
+      throw error;
+    }
 
-      const from = report.status;
-      report.componentsIssued = true;
-      report.componentsIssuedById = actor.id;
-      report.componentsIssuedAt = new Date();
-      report.issueRemarks = dto.remarks || '';
-      report.status = ReportStatus.COMPONENTS_ISSUED;
-      
-      await reportsRepo.save(report);
-      
-      await auditRepo.save(
-        auditRepo.create({
-          reportId: report.id,
-          actorId: actor.id,
-          actorRole: actor.role,
-          actionType: AuditActionType.COMPONENT_ISSUED,
-          fromStatus: from,
-          toStatus: report.status,
-          note: dto.remarks || 'Components were issued by the Store Manager.',
-        }),
-      );
-      
-      this.emitStatusChange(report, from, actor, 'Components Issued', dto.remarks || 'Components were issued by the Store Manager.');
-      this.events.emit('component.issued', {
-        reportId: report.id,
-        reportNumber: report.reportNumber,
-        actor,
-        remarks: dto.remarks || 'Components were issued by the Store Manager.',
-      });
-
-      return report;
+    // Emit events outside the transaction boundary
+    this.logger.log(`[FLOW_DIAGNOSTICS] IssueComponents - Events emitted (emitStatusChange & component.issued)`);
+    this.emitStatusChange(result, from, actor, 'Components Issued', dto.remarks || 'Components were issued by the Store Manager.');
+    this.events.emit('component.issued', {
+      reportId: result.id,
+      reportNumber: result.reportNumber,
+      actor,
+      remarks: dto.remarks || 'Components were issued by the Store Manager.',
     });
+
+    return result;
   }
 }

@@ -55,7 +55,7 @@ describe('DefectReportsController', () => {
         raisedById: undefined,
         page: 1,
         limit: 10,
-      });
+      }, mockUser);
       expect(result).toEqual({ items: [mockReport], total: 1 });
     });
 
@@ -63,6 +63,7 @@ describe('DefectReportsController', () => {
       await controller.findAll(undefined, 'true', undefined, undefined, mockUser);
       expect(service.findAll).toHaveBeenCalledWith(
         expect.objectContaining({ raisedById: 'user-1' }),
+        mockUser,
       );
     });
   });
