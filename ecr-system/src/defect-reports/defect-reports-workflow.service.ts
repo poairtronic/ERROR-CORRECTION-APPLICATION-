@@ -102,6 +102,16 @@ export class DefectReportsWorkflowService {
         throw new BadRequestException('Cannot inspect a report you raised yourself');
       }
 
+      // Validate required fields on final submit (not draft)
+      if (!dto.saveAsDraft) {
+        if (!dto.responsibleParty) {
+          throw new BadRequestException('Responsible party is required when submitting inspection');
+        }
+        if (dto.costEstimate == null && dto.costEstimate !== 0) {
+          throw new BadRequestException('Cost estimate is required when submitting inspection');
+        }
+      }
+
       let inspection = await inspectionRepo.findOne({
         where: { reportId: report.id },
         relations: ['report'],
@@ -155,7 +165,11 @@ export class DefectReportsWorkflowService {
       await reportsRepo.save(report);
       const transitionReason = dto.saveAsDraft ? 'Saved as draft by inspector' : 'Inspection complete';
       await this.logStatusChange(report.id, actor, from, report.status, transitionReason, manager);
-      this.emitStatusChange(report, from, actor, transitionReason, transitionReason);
+
+      // Only emit status change (which triggers email/notifications) when actually submitting, NOT for drafts
+      if (!dto.saveAsDraft) {
+        this.emitStatusChange(report, from, actor, transitionReason, transitionReason);
+      }
       return report;
     });
   }

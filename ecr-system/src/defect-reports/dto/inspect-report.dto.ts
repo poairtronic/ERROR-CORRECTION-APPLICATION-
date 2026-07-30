@@ -14,6 +14,7 @@ export class InspectReportDto {
   @IsString()
   rootCause?: string;
 
+  @IsOptional()
   @IsEnum(ResponsibleParty)
   responsibleParty: ResponsibleParty;
 
@@ -29,10 +30,10 @@ export class InspectReportDto {
   @IsString()
   alternativeNote?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  costEstimate: number;
+  costEstimate?: number;
 
   @IsOptional()
   @IsNumber()
