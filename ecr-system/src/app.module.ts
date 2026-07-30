@@ -88,6 +88,8 @@ import { EmailMonitoringModule } from './email-monitoring/email-monitoring.modul
           ssl: { rejectUnauthorized: false },
           autoLoadEntities: true,
           synchronize: process.env.NODE_ENV !== 'production',
+          migrationsRun: true,
+          migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
           logger: new TypeOrmStructuredLogger(monitoringService, performanceService),
           logging: ['query', 'error', 'schema', 'migration'],
           maxQueryExecutionTime: 500, // trigger logQuerySlow for queries > 500ms to capture slow database queries

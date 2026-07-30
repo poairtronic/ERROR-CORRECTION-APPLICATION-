@@ -49,6 +49,15 @@ export class DefectReportsService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    try {
+      await this.reportsRepo.query(`ALTER TYPE defect_reports_status_enum ADD VALUE IF NOT EXISTS 'INSPECTOR_DRAFT'`);
+      await this.reportsRepo.query(`ALTER TYPE defect_reports_status_enum ADD VALUE IF NOT EXISTS 'ACCOUNTS_DRAFT'`);
+      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'CUSTOMER'`);
+      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'MATERIAL'`);
+    } catch (err: any) {
+      // Ignore if enums already contain values or not supported
+    }
+
     const reports = await this.reportsRepo.createQueryBuilder('r')
       .where('r.reportNumber IS NULL OR r.reportNumber NOT LIKE :prefix', { prefix: 'AGIPL%' })
       .orderBy('r.createdAt', 'ASC')

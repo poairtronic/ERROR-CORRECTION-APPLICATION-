@@ -2,6 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddCustomerAndMaterialToResponsiblePartyEnum1783530000000 implements MigrationInterface {
   name = 'AddCustomerAndMaterialToResponsiblePartyEnum1783530000000';
+  transactional = false;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

@@ -2,6 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddInspectorDraftStatus1783520000000 implements MigrationInterface {
   name = 'AddInspectorDraftStatus1783520000000';
+  transactional = false;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
