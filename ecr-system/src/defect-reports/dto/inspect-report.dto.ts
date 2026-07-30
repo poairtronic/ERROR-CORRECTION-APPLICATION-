@@ -1,4 +1,4 @@
-import { IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min, IsString, IsObject } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, Min, IsString, IsObject } from 'class-validator';
 import { Decision, ResponsibleParty } from '../../common/enums/report-status.enum';
 
 export class InspectReportDto {
@@ -69,5 +69,6 @@ export class InspectReportDto {
   dcNumber?: string;
 
   @IsOptional()
+  @IsBoolean()
   saveAsDraft?: boolean;
 }
