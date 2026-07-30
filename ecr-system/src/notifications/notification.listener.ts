@@ -12,6 +12,7 @@ import { NotificationEvent } from '../email/enums/notification-event.enum';
 import { StatusNotificationHandler } from './handlers/status-notification.handler';
 import { EventNotificationHandler } from './handlers/event-notification.handler';
 import { StatusChangedEvent } from './handlers/event-interfaces';
+import { formatToIST } from '../common/utils/date-format';
 
 @Injectable()
 export class NotificationListener {
@@ -50,11 +51,13 @@ export class NotificationListener {
 
     return {
       'Report Number': report.reportNumber || 'N/A',
+      'PO Number': report.poNo || 'N/A',
+      'SC Number': report.scNo || 'N/A',
       'Current Status': report.status || 'N/A',
       'Previous Status': event.fromStatus || 'N/A',
       'Submitted By': raiser,
       'Action By': actionByName,
-      'Timestamp': new Date().toLocaleString('en-IN'),
+      'Timestamp': formatToIST(new Date()),
       'Comments': event.comments || 'No comments provided',
       'Direct Report Link': `${this.frontendUrl}/reports/${report.id}`,
     };

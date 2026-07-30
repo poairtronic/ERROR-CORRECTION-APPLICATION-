@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as Handlebars from 'handlebars';
 import * as fs from 'fs';
 import * as path from 'path';
+import { formatToIST } from '../../common/utils/date-format';
 
 export interface TemplateData {
   employeeName?: string;
@@ -118,7 +119,7 @@ export class EmailTemplateService {
       logoUrl: 'https://via.placeholder.com/150x50?text=Logo',
       supportEmail: this.configService.get<string>('EMAIL_FROM'),
       currentYear: new Date().getFullYear().toString(),
-      timestamp: new Date().toISOString(),
+      timestamp: formatToIST(new Date()),
       subject,
       
       // Escape values safely
@@ -128,7 +129,7 @@ export class EmailTemplateService {
       component: data.component || summary['Component'] || 'N/A',
       errorType: data.errorType || summary['Error Type'] || summary['Inspector Summary'] || 'N/A',
       priority: data.priority || summary['Priority'] || 'Normal',
-      createdDate: data.createdDate || summary['Submission Time'] || summary['Date'] || new Date().toLocaleDateString(),
+      createdDate: data.createdDate || summary['Submission Time'] || summary['Date'] || formatToIST(new Date()),
       status: data.status || summary['Status'] || 'N/A',
       comments: data.comments || summary['Comments'] || summary['Remarks'] || summary['SM Notes'] || '',
       reviewer: data.reviewer || summary['Raised By'] || summary['Inspector'] || summary['Approved By'] || summary['Rejected By'] || 'N/A',
@@ -145,10 +146,14 @@ export class EmailTemplateService {
     if (templateName === 'system-alert' && data.summaryTable) {
       let tableHtml = '<table class="table-details">';
       for (const [key, val] of Object.entries(data.summaryTable)) {
+        let valHtml = val || '—';
+        if (key === 'Direct Report Link' && val && val.startsWith('http')) {
+          valHtml = `<a href="${val}" style="color: #2563eb; text-decoration: underline;">${val}</a>`;
+        }
         tableHtml += `
           <tr>
             <td class="label">${key}</td>
-            <td class="value">${val || '—'}</td>
+            <td class="value">${valHtml}</td>
           </tr>
         `;
       }
