@@ -32,6 +32,7 @@ export enum ResponsibleParty {
   PROCESS = 'PROCESS',
   MACHINE = 'MACHINE',
   CUSTOMER = 'CUSTOMER',
+  MATERIAL = 'MATERIAL',
 }
 
 export enum RecoveryStatus {

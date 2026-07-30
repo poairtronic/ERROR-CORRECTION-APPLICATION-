@@ -235,7 +235,7 @@ export default function ReportDetailPage() {
         respName = operators.find(o => o.id === respId)?.name || '';
       } else if (respParty === 'VENDOR') {
         respName = vendors.find(v => v.id === respId)?.name || '';
-      } else if (respParty === 'CUSTOMER') {
+      } else if (respParty === 'CUSTOMER' || respParty === 'MATERIAL') {
         respName = respId;
       }
       setInspectData({
@@ -488,10 +488,10 @@ export default function ReportDetailPage() {
                 ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
                 ['Responsible Party', report.inspectionDetail?.responsibleParty || '—', 'responsibleParty'],
-                ['Operator / Vendor / Customer Name', report.inspectionDetail?.responsibleId ? (
+                ['Operator / Vendor / Customer / Material Name', report.inspectionDetail?.responsibleId ? (
                   report.inspectionDetail.responsibleParty === 'OPERATOR' 
                     ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
-                    : report.inspectionDetail.responsibleParty === 'CUSTOMER'
+                    : (report.inspectionDetail.responsibleParty === 'CUSTOMER' || report.inspectionDetail.responsibleParty === 'MATERIAL')
                       ? report.inspectionDetail.responsibleId
                       : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
@@ -533,10 +533,10 @@ export default function ReportDetailPage() {
                 ), 'rejectionStageCosts'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
                 ['Responsible Party', report.inspectionDetail?.responsibleParty || '—', 'responsibleParty'],
-                ['Operator / Vendor / Customer Name', report.inspectionDetail?.responsibleId ? (
+                ['Operator / Vendor / Customer / Material Name', report.inspectionDetail?.responsibleId ? (
                   report.inspectionDetail.responsibleParty === 'OPERATOR' 
                     ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
-                    : report.inspectionDetail.responsibleParty === 'CUSTOMER'
+                    : (report.inspectionDetail.responsibleParty === 'CUSTOMER' || report.inspectionDetail.responsibleParty === 'MATERIAL')
                       ? report.inspectionDetail.responsibleId
                       : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
@@ -895,6 +895,7 @@ export default function ReportDetailPage() {
                   <option value="OPERATOR">Operator</option>
                   <option value="VENDOR">Vendor</option>
                   <option value="CUSTOMER">Customer</option>
+                  <option value="MATERIAL">Material</option>
                 </select>
               </div>
               {inspectData.responsibleParty === 'OPERATOR' && (
@@ -935,6 +936,25 @@ export default function ReportDetailPage() {
                       });
                     }}
                     placeholder="Enter customer name..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'MATERIAL' && (
+                <div className="form-group">
+                  <label>Material Type *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter type of material..."
                     required
                   />
                 </div>
@@ -1012,6 +1032,7 @@ export default function ReportDetailPage() {
                   <option value="OPERATOR">Operator</option>
                   <option value="VENDOR">Vendor</option>
                   <option value="CUSTOMER">Customer</option>
+                  <option value="MATERIAL">Material</option>
                 </select>
               </div>
               {inspectData.responsibleParty === 'OPERATOR' && (
@@ -1052,6 +1073,25 @@ export default function ReportDetailPage() {
                       });
                     }}
                     placeholder="Enter customer name..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'MATERIAL' && (
+                <div className="form-group">
+                  <label>Material Type *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter type of material..."
                     required
                   />
                 </div>
