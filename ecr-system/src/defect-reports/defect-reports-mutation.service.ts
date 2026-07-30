@@ -127,7 +127,7 @@ export class DefectReportsMutationService {
       });
 
       if (dto.isDraft) {
-        report.status = ReportStatus.DRAFT;
+        report.status = raisedByRole === RaisedByRole.INSPECTOR ? ReportStatus.INSPECTOR_DRAFT : ReportStatus.DRAFT;
         await reportsRepo.save(report);
         if (dto.inlineInspection) {
           await inspectionRepo.save(
@@ -227,11 +227,13 @@ export class DefectReportsMutationService {
         }
       }
 
-      await this.workflowService.logStatusChange(report.id, actor, ReportStatus.DRAFT, report.status, 'Report raised', manager);
+      await this.workflowService.logStatusChange(report.id, actor, ReportStatus.DRAFT, report.status, dto.isDraft ? 'Saved as draft by inspector' : 'Report raised', manager);
       
-      console.log(`[EMAIL_DIAGNOSTICS] [STEP 1] Report Created: ${report.reportNumber} (ID: ${report.id}, Status: ${report.status})`);
-      console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Event Emitted: report.status.changed for status ${report.status}`);
-      this.workflowService.emitStatusChange(report, ReportStatus.DRAFT, actor, 'Report raised', 'Report raised');
+      if (!dto.isDraft) {
+        console.log(`[EMAIL_DIAGNOSTICS] [STEP 1] Report Created: ${report.reportNumber} (ID: ${report.id}, Status: ${report.status})`);
+        console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Event Emitted: report.status.changed for status ${report.status}`);
+        this.workflowService.emitStatusChange(report, ReportStatus.DRAFT, actor, 'Report raised', 'Report raised');
+      }
       return report;
     });
   }
@@ -251,11 +253,11 @@ export class DefectReportsMutationService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!report) throw new NotFoundException('Defect report not found');
-      if (report.status !== ReportStatus.DRAFT) {
+      if (report.status !== ReportStatus.DRAFT && report.status !== ReportStatus.INSPECTOR_DRAFT) {
         throw new BadRequestException('Only draft reports can be updated');
       }
       
-      if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER) {
+      if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER && actor.role !== Role.INSPECTOR) {
         throw new ForbiddenException('You do not have permission to edit this draft report');
       }
 
@@ -294,6 +296,12 @@ export class DefectReportsMutationService {
             throw new BadRequestException('inlineInspection and inlineSmReview are required to submit report');
           }
           report.status = ReportStatus.PENDING_GM_APPROVAL;
+        }
+      } else if (dto.isDraft === true) {
+        if (raisedByRole === RaisedByRole.INSPECTOR) {
+          report.status = ReportStatus.INSPECTOR_DRAFT;
+        } else {
+          report.status = ReportStatus.DRAFT;
         }
       }
 

@@ -22,7 +22,7 @@ export default function InspectorDashboard() {
   const { data: draftReports = [], isLoading: draftsLoading } = useQuery({
     queryKey: ['inspector-drafts'],
     queryFn: async () => {
-      const { data } = await api.get('/defect-reports?status=DRAFT');
+      const { data } = await api.get('/defect-reports?status=INSPECTOR_DRAFT');
       return data || [];
     }
   });

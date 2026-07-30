@@ -10,9 +10,9 @@ export class InlineInspectionDto {
   @IsString()
   rootCause?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  responsibleParty: string;
+  responsibleParty?: string;
 
   @IsOptional()
   @IsString()

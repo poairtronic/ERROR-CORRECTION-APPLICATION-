@@ -236,7 +236,6 @@ export default function NewReportPage() {
       delete body.timeEstimateHours;
       delete body.lossAmount;
       delete body.dcNumber;
-      delete body.isDraft;
 
       let res;
       if (isEditMode) {
