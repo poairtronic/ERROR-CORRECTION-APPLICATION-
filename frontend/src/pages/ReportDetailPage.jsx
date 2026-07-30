@@ -228,6 +228,24 @@ export default function ReportDetailPage() {
 
   useEffect(() => {
     if (report) {
+      // Auto-close modals if report status is no longer eligible for that stage
+      if ((modal === 'inspect' || modal === 'inspect-decision') && report.status !== 'PENDING_INSPECTION' && report.status !== 'INSPECTOR_DRAFT') {
+        setModal(null);
+        setInspectionMode(null);
+      }
+      if (modal === 'accounts-review' && report.status !== 'PENDING_ACCOUNTS_REVIEW' && report.status !== 'ACCOUNTS_DRAFT') {
+        setModal(null);
+      }
+      if (modal === 'sm-review' && report.status !== 'PENDING_SM_REVIEW') {
+        setModal(null);
+      }
+      if ((modal === 'gm-approve' || modal === 'gm-reject') && report.status !== 'PENDING_GM_APPROVAL') {
+        setModal(null);
+      }
+      if (modal === 'issue-components' && (report.status !== 'APPROVED' || report.componentsIssued)) {
+        setModal(null);
+      }
+
       const respParty = report.inspectionDetail?.responsibleParty || '';
       const respId = report.inspectionDetail?.responsibleId || '';
       let respName = '';
@@ -260,7 +278,7 @@ export default function ReportDetailPage() {
         setInspectionMode(report.inspectionType);
       }
     }
-  }, [report, operators, vendors]);
+  }, [report, operators, vendors, modal]);
 
   const handleInspectTemplateChange = (template) => {
     setInspectData(d => ({
@@ -835,7 +853,7 @@ export default function ReportDetailPage() {
       </div>
 
       {/* Inspector Decision Screen */}
-      {modal === 'inspect-decision' && (
+      {modal === 'inspect-decision' && (status === 'PENDING_INSPECTION' || status === 'INSPECTOR_DRAFT') && (
         <Dialog open={true} onClose={() => setModal(null)} title="Inspection Decision">
           <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: 14 }}>Choose how this report should be processed.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 420 }}>
@@ -877,7 +895,7 @@ export default function ReportDetailPage() {
         </Dialog>
       )}
       {/* Inspect Modal */}
-      {modal === 'inspect' && (
+      {modal === 'inspect' && (status === 'PENDING_INSPECTION' || status === 'INSPECTOR_DRAFT') && (
         <ActionModal 
           title={`Inspector Review — ${inspectionMode || 'Review'}`} 
           onClose={() => { setModal(null); setInspectionMode(null); }} 
