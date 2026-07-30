@@ -42,17 +42,21 @@ export class NotificationsService {
     templateData: TemplateData;
     subject: string;
   }) {
-    const idempotencyKey = crypto
-      .createHash('sha256')
-      .update(`${params.userId}-${params.reportId || ''}-${params.event}-${params.subject}`)
-      .digest('hex');
-
-    const existing = await this.repo.findOne({ where: { idempotencyKey } });
-    if (existing) {
-      const diffMs = Date.now() - existing.createdAt.getTime();
-      if (diffMs < 300000) { // 5 minutes
-        this.logger.log(`[IDEMPOTENCY] Duplicate notification blocked for key: ${idempotencyKey}`);
-        return existing;
+    if (params.reportId) {
+      const existing = await this.repo.findOne({
+        where: {
+          userId: params.userId,
+          reportId: params.reportId,
+          type: params.type,
+        },
+        order: { createdAt: 'DESC' },
+      });
+      if (existing) {
+        const diffMs = Date.now() - existing.createdAt.getTime();
+        if (diffMs < 10000) { // 10 seconds duplicate window
+          this.logger.log(`[IDEMPOTENCY] Duplicate notification blocked (user: ${params.userId}, report: ${params.reportId}, type: ${params.type})`);
+          return existing;
+        }
       }
     }
 
@@ -70,7 +74,6 @@ export class NotificationsService {
         status,
         sentAt,
         attemptCount: 1,
-        idempotencyKey,
       }),
     );
     console.log(`[EMAIL_DIAGNOSTICS] [STEP 2] Notification Created: ID ${notification.id} for user ${params.userId}`);

@@ -207,17 +207,22 @@ export class EmailService implements OnModuleInit {
         subject = `[ECR] ${subject}`;
       }
 
-      const idempotencyKey = crypto
-        .createHash('sha256')
-        .update(`${options.recipient}-${options.relatedReportId || ''}-${options.event}-${subject}`)
-        .digest('hex');
-
-      const existing = await this.emailLogRepo.findOne({ where: { idempotencyKey } });
-      if (existing) {
-        const diffMs = Date.now() - existing.createdAt.getTime();
-        if (diffMs < 300000) { // 5 minutes
-          this.logger.log(`[IDEMPOTENCY] Duplicate email blocked for key: ${idempotencyKey}`);
-          return existing;
+      if (options.relatedReportId) {
+        const existing = await this.emailLogRepo.findOne({
+          where: {
+            recipient: options.recipient,
+            relatedReportId: options.relatedReportId,
+            event: options.event,
+            subject: subject,
+          },
+          order: { createdAt: 'DESC' },
+        });
+        if (existing) {
+          const diffMs = Date.now() - existing.createdAt.getTime();
+          if (diffMs < 10000) { // 10 seconds duplicate window
+            this.logger.log(`[IDEMPOTENCY] Duplicate email blocked (recipient: ${options.recipient}, subject: ${subject})`);
+            return existing;
+          }
         }
       }
 
@@ -234,7 +239,6 @@ export class EmailService implements OnModuleInit {
         status: EmailStatus.PENDING,
         relatedReportId: options.relatedReportId,
         notificationId: options.notificationId,
-        idempotencyKey,
       });
 
       console.log("===== EMAIL QUEUE DEBUG =====");
