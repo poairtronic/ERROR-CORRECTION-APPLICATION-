@@ -457,6 +457,7 @@ export default function NewReportPage() {
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
                         <option value="CUSTOMER">Customer</option>
+                        <option value="MATERIAL">Material</option>
                       </select>
                     </div>
                     {form.responsibleParty === 'OPERATOR' && (
@@ -497,6 +498,25 @@ export default function NewReportPage() {
                             }));
                           }}
                           placeholder="Enter customer name..."
+                          required={isSimplifiedInspector}
+                        />
+                      </div>
+                    )}
+                    {form.responsibleParty === 'MATERIAL' && (
+                      <div className="form-group">
+                        <label>Material Name / Code *</label>
+                        <input 
+                          type="text"
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: val
+                            }));
+                          }}
+                          placeholder="Enter material name or code..."
                           required={isSimplifiedInspector}
                         />
                       </div>
@@ -562,6 +582,7 @@ export default function NewReportPage() {
                         <option value="OPERATOR">Operator</option>
                         <option value="VENDOR">Vendor</option>
                         <option value="CUSTOMER">Customer</option>
+                        <option value="MATERIAL">Material</option>
                       </select>
                     </div>
                     {form.responsibleParty === 'OPERATOR' && (
@@ -602,6 +623,25 @@ export default function NewReportPage() {
                             }));
                           }}
                           placeholder="Enter customer name..."
+                          required={isSimplifiedInspector}
+                        />
+                      </div>
+                    )}
+                    {form.responsibleParty === 'MATERIAL' && (
+                      <div className="form-group">
+                        <label>Material Name / Code *</label>
+                        <input 
+                          type="text"
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: val
+                            }));
+                          }}
+                          placeholder="Enter material name or code..."
                           required={isSimplifiedInspector}
                         />
                       </div>
