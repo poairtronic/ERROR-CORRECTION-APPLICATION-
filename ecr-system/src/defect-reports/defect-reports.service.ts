@@ -8,7 +8,7 @@ import {
   forwardRef
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, DataSource, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DefectReport } from './defect-report.entity';
 import { ReportSequence } from './report-sequence.entity';
@@ -16,6 +16,12 @@ import { InspectionDetail } from '../inspection/inspection-detail.entity';
 import { SmReview } from '../sm-review/sm-review.entity';
 import { GmApproval } from '../gm-approval/gm-approval.entity';
 import { AuditLog } from '../audit-log/audit-log.entity';
+import { SalaryDeduction } from '../salary-deduction/salary-deduction.entity';
+import { VendorFaultLog } from '../vendor-fault/vendor-fault-log.entity';
+import { ComponentIssue } from '../component-issue/component-issue.entity';
+import { Notification } from '../notifications/notification.entity';
+import { EmailLog } from '../email/entities/email-log.entity';
+import { EmailMonitoringAuditLog } from '../email-monitoring/entities/email-monitoring-audit-log.entity';
 import { CreateDefectReportDto } from './dto/create-defect-report.dto';
 import { InspectReportDto } from './dto/inspect-report.dto';
 import { SmReviewDto } from './dto/sm-review.dto';
@@ -40,6 +46,7 @@ export class DefectReportsService implements OnModuleInit {
     private readonly gmApprovalRepo: Repository<GmApproval>,
     @InjectRepository(AuditLog)
     private readonly auditRepo: Repository<AuditLog>,
+    private readonly dataSource: DataSource,
     private readonly events: EventEmitter2,
     @Inject(forwardRef(() => DefectReportsWorkflowService))
     private readonly workflowService: DefectReportsWorkflowService,
@@ -183,5 +190,77 @@ export class DefectReportsService implements OnModuleInit {
 
   async deleteImage(reportId: string, imageUrl: string, actor: ActingUser) {
     return this.imageService.deleteImage(reportId, imageUrl, actor);
+  }
+
+  async hardDelete(id: string, actor?: ActingUser) {
+    if (actor && actor.role?.toUpperCase() !== Role.ADMIN) {
+      throw new ForbiddenException('Only Administrators are authorized to permanently delete Quality Reports');
+    }
+
+    const report = await this.reportsRepo.findOne({ where: { id } });
+    if (!report) {
+      throw new NotFoundException('Quality Report not found');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Delete SalaryDeduction records
+      await queryRunner.manager.delete(SalaryDeduction, { reportId: id });
+
+      // 2. Delete VendorFaultLog records
+      await queryRunner.manager.delete(VendorFaultLog, { reportId: id });
+
+      // 3. Delete ComponentIssue records
+      await queryRunner.manager.delete(ComponentIssue, { reportId: id });
+
+      // 4. Delete GmApproval record
+      await queryRunner.manager.delete(GmApproval, { reportId: id });
+
+      // 5. Delete SmReview record
+      await queryRunner.manager.delete(SmReview, { reportId: id });
+
+      // 6. Delete InspectionDetail record
+      await queryRunner.manager.delete(InspectionDetail, { reportId: id });
+
+      // 7. Delete AuditLog records
+      await queryRunner.manager.delete(AuditLog, { reportId: id });
+
+      // 8. Delete Notification records
+      await queryRunner.manager.delete(Notification, { reportId: id });
+
+      // 9. Delete EmailLogs and linked EmailMonitoringAuditLogs
+      const emailLogs = await queryRunner.manager.find(EmailLog, { where: { relatedReportId: id } });
+      if (emailLogs.length > 0) {
+        const emailLogIds = emailLogs.map((e) => e.id);
+        await queryRunner.manager.delete(EmailMonitoringAuditLog, { emailLogId: In(emailLogIds) });
+        await queryRunner.manager.delete(EmailLog, { id: In(emailLogIds) });
+      }
+
+      // 10. Clean up raw table records if any exist
+      try {
+        await queryRunner.query(`DELETE FROM operational_timeline WHERE report_id = $1`, [id]);
+      } catch (_) {}
+      try {
+        await queryRunner.query(`DELETE FROM production_log WHERE report_id = $1`, [id]);
+      } catch (_) {}
+
+      // 11. Permanently delete the parent DefectReport
+      await queryRunner.manager.delete(DefectReport, { id });
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: 'Quality Report deleted successfully.',
+      };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

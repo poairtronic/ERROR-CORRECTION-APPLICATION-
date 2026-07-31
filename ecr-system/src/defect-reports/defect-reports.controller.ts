@@ -24,7 +24,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '../common/enums/role.enum';
 
-@Controller('defect-reports')
+@Controller(['defect-reports', 'reports'])
 @UseGuards(JwtAuthGuard, RolesGuard)
 @UseInterceptors(DefectReportSerializerInterceptor)
 export class DefectReportsController {
@@ -149,5 +149,14 @@ export class DefectReportsController {
     @CurrentUser() user,
   ) {
     return this.service.issueComponents(id, body, user);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  async hardDelete(
+    @Param('id') id: string,
+    @CurrentUser() user,
+  ) {
+    return this.service.hardDelete(id, user);
   }
 }
