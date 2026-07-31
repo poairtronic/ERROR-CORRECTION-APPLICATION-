@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, Legend, PieChart, Pie, Cell,
 } from 'recharts';
 import { STATUS_COLORS, STATUS_LABELS } from '../../utils/constants';
