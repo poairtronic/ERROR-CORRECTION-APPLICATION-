@@ -101,7 +101,7 @@ export default function AnalyticsReportPDF({ data }) {
     return statuses.map(s => ({
       name: STATUS_LABELS[s] || s,
       value: kpis[toCamelCase(s)] ||
-             kpis[s.toLowerCase()] || 0,
+        kpis[s.toLowerCase()] || 0,
       color: STATUS_COLORS[s] || GRAY_400,
     }));
   }, [data]);
