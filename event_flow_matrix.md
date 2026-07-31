@@ -1,6 +1,6 @@
 # Notification Event Flow Matrix
 
-This matrix maps every business workflow action to its corresponding real-time and email notification flow within the ECR System. 
+This matrix maps every business workflow action to its corresponding real-time and email notification flow within the Velan Quality Hub. 
 
 For all events listed below, the `EmailService.queueEmail()` method is invoked. This method guarantees that every single notification in this matrix is **Saved (Database)**, **Pushed (WebSocket via ACKs)**, **Queued**, and eventually **Sent (Email via SMTP)**.
 

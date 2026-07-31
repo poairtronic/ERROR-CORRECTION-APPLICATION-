@@ -1,4 +1,4 @@
-# Enterprise Error Correction Report (ECR) Digitization System
+# Enterprise Quality Report (ECR) Digitization System
 
 An enterprise-grade platform for digitizing, tracking, and resolving factory floor defect reports. This system elevates basic operational workflows into an executive decision platform, offering robust reporting, analytical intelligence, SLA tracking, and stringent quality governance.
 

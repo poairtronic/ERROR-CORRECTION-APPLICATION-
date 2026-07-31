@@ -1,4 +1,4 @@
-// k6 Load Test — ECR System Phase 7B
+// k6 Load Test — Velan Quality Hub Phase 7B
 // Run: k6 run --vus 10 --duration 30s k6-load-test.js
 // Run: k6 run --vus 25 --duration 60s k6-load-test.js
 // Run: k6 run --vus 50 --duration 120s k6-load-test.js

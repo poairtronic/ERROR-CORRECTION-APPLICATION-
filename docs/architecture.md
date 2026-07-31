@@ -1,6 +1,6 @@
 # System Architecture Document
 
-This document provides a comprehensive overview of the **Error Correction Report (ECR) Digitization System's** high-level architecture, module dependency structure, request lifecycle, and data flow patterns.
+This document provides a comprehensive overview of the **Quality Report (ECR) Digitization System's** high-level architecture, module dependency structure, request lifecycle, and data flow patterns.
 
 ---
 

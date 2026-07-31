@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const COMPANY_NAME = 'Velan Metrology';
-const REPORT_TITLE = 'Enterprise Error Correction Report';
+const REPORT_TITLE = 'Velan Quality Hub';
 const PAGE_WIDTH = 297;
 const PAGE_HEIGHT = 210;
 const MARGIN = 12;
@@ -63,7 +63,7 @@ function addHeader(doc) {
 }
 
 function addFooter(doc, pageNum, totalPages) {
-  const str = `Page ${pageNum} of ${totalPages} | ${COMPANY_NAME} | Confidential`;
+  const str = `Page ${pageNum} of ${totalPages} | ${COMPANY_NAME} | Velan Quality Hub - Version 1.0 | Confidential`;
   doc.setFontSize(7);
   doc.setTextColor(150, 150, 150);
   doc.text(str, PAGE_WIDTH / 2, PAGE_HEIGHT - 6, { align: 'center' });

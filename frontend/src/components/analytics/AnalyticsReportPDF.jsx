@@ -47,7 +47,7 @@ function PdfFooter({ page, total }) {
     <div style={footerStyle}>
       <span style={{ color: GRAY_400, fontSize: 8 }}>CONFIDENTIAL</span>
       <span style={{ color: GRAY_400, fontSize: 8 }}>
-        Velan Metrology — Enterprise Error Correction Report
+        Velan Metrology — Velan Quality Hub - Version 1.0
       </span>
       <span style={{ color: GRAY_400, fontSize: 8 }}>
         Generated: {new Date().toLocaleString('en-IN')} | Page {page} of {total}
@@ -142,7 +142,7 @@ export default function AnalyticsReportPDF({ data }) {
           <div style={{ width: 80, height: 3, background: BRAND_LIGHT, borderRadius: 2, marginBottom: 32 }} />
 
           <div style={{ fontSize: 36, fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: -1, marginBottom: 12 }}>
-            Enterprise Error Correction<br />Manufacturing Intelligence Report
+            Velan Quality Hub<br />Manufacturing Intelligence Report
           </div>
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: 400, marginBottom: 48, maxWidth: '70%' }}>
             Comprehensive analysis of defect detection, resolution workflows, and manufacturing quality metrics.

@@ -1,7 +1,7 @@
 {
   "name": "ecr-monolithic",
   "version": "1.0.0",
-  "description": "Monolithic deployment for ECR System",
+  "description": "Monolithic deployment for Velan Quality Hub",
   "private": true,
   "engines": {
     "node": "22.x"

@@ -28,8 +28,8 @@ export default function Sidebar({ isOpen, onClose }) {
       <div className="sidebar-logo">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2>ECR SYSTEM</h2>
-            <p>Error Correction Reports</p>
+            <h2>Velan Quality Hub</h2>
+            <p>Quality Reports</p>
           </div>
           {/* Mobile close button */}
           <button className="sidebar-close-btn" onClick={onClose} aria-label="Close sidebar">

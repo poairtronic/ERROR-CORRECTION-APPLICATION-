@@ -1,7 +1,7 @@
 {
   "name": "ecr-system",
   "version": "0.1.0",
-  "description": "Error Correction Report (ECR) workflow system - Velan Metrology",
+  "description": "Quality Report (ECR) workflow system - Velan Metrology",
   "scripts": {
     "build": "nest build",
     "start": "nest start",

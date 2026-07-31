@@ -1,6 +1,6 @@
 # ♊ Gemini CLI Project Instructions: ECR Digitization System
 
-Welcome to the **Enterprise Error Correction Report (ECR) Digitization System** workspace. This file establishes repository-wide architectural patterns, workflows, coding conventions, and developer commands to align and guide AI assistant interactions.
+Welcome to the **Enterprise Quality Report (ECR) Digitization System** workspace. This file establishes repository-wide architectural patterns, workflows, coding conventions, and developer commands to align and guide AI assistant interactions.
 
 ---
 

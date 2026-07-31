@@ -88,10 +88,10 @@ export default function LoginPage() {
 
         <div style={{ padding: '32px' }}>
           <div className="login-logo" style={{ marginBottom: '24px' }}>
-            <div className="hex" style={loginType === 'admin' ? { background: 'linear-gradient(135deg, #a855f7, #7e22ce)' } : {}}>ECR</div>
-            <h1 style={{ fontSize: '20px', fontWeight: 800 }}>Error Correction System</h1>
+            <div className="hex" style={loginType === 'admin' ? { background: 'linear-gradient(135deg, #a855f7, #7e22ce)' } : {}}>Velan Quality Hub</div>
+            <h1 style={{ fontSize: '20px', fontWeight: 800 }}>Velan Quality Hub</h1>
             <p style={{ fontSize: '13px', color: 'var(--text-dim)', marginTop: '4px' }}>
-              {loginType === 'admin' ? 'Administration Console' : 'Velan Metrology · Quality Control'}
+              Enterprise Quality Management & Manufacturing Excellence Platform
             </p>
           </div>
 

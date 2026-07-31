@@ -1,6 +1,6 @@
 # Enterprise Production Readiness Handbook - ECR Digitization System
 
-This guide outlines deployment, environment configurations, backup strategies, recovery guides, and SRE operational checklists for the Enterprise ECR Digitization System.
+This guide outlines deployment, environment configurations, backup strategies, recovery guides, and SRE operational checklists for the Velan Quality Hub.
 
 ---
 

@@ -1,6 +1,6 @@
-# ECR System — Phase 1 Scaffold
+# Velan Quality Hub — Phase 1 Scaffold
 
-Digitized Error Correction Report workflow for Velan Metrology.
+Digitized Quality Report workflow for Velan Metrology.
 Operator → Inspector → Senior Manager → General Manager → Store Manager,
 with automated app + email notifications at every step.
 

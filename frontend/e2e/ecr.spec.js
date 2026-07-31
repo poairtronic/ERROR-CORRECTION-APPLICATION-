@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ECR System End-to-End Tests', () => {
+test.describe('Velan Quality Hub End-to-End Tests', () => {
 
   test('Staff Portal Login & Sidebar Navigation Journey', async ({ page }) => {
     // 1. Visit the LoginPage

@@ -78,7 +78,7 @@ async function bootstrap() {
 
   const port = config.get('PORT') ?? 3000;
   await app.listen(port);
-  console.log(`ECR System API running on port ${port}`);
+  console.log(`Velan Quality Hub API running on port ${port}`);
 }
 bootstrap();
 

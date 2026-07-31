@@ -1,6 +1,6 @@
 # PHASE 7B — ENTERPRISE RUNTIME VALIDATION REPORT
 
-**System:** Enterprise Error Correction Report (ECR) Digitization System
+**System:** Enterprise Quality Report (ECR) Digitization System
 **Stack:** NestJS 10.4 / React 18 / Vite 5 / PostgreSQL (Neon) / TypeORM / Socket.IO / Jest
 **Audit Date:** 2026-07-18
 **Validator:** Principal Performance Engineer / SRE / Cloud Architect

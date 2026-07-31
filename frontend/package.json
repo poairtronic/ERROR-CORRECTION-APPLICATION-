@@ -1,7 +1,7 @@
 {
   "name": "ecr-frontend",
   "version": "1.0.0",
-  "description": "Error Correction Report (ECR) Digitization System — Velan Metrology Quality Control",
+  "description": "Quality Report (ECR) Digitization System — Velan Metrology Quality Control",
   "type": "module",
   "scripts": {
     "dev": "vite",
