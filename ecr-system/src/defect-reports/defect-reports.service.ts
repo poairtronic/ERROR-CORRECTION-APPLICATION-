@@ -207,39 +207,6 @@ export class DefectReportsService implements OnModuleInit {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Delete SalaryDeduction records
-      await queryRunner.manager.delete(SalaryDeduction, { reportId: id });
-
-      // 2. Delete VendorFaultLog records
-      await queryRunner.manager.delete(VendorFaultLog, { reportId: id });
-
-      // 3. Delete ComponentIssue records
-      await queryRunner.manager.delete(ComponentIssue, { reportId: id });
-
-      // 4. Delete GmApproval record
-      await queryRunner.manager.delete(GmApproval, { reportId: id });
-
-      // 5. Delete SmReview record
-      await queryRunner.manager.delete(SmReview, { reportId: id });
-
-      // 6. Delete InspectionDetail record
-      await queryRunner.manager.delete(InspectionDetail, { reportId: id });
-
-      // 7. Delete AuditLog records
-      await queryRunner.manager.delete(AuditLog, { reportId: id });
-
-      // 8. Delete Notification records
-      await queryRunner.manager.delete(Notification, { reportId: id });
-
-      // 9. Delete EmailLogs and linked EmailMonitoringAuditLogs
-      const emailLogs = await queryRunner.manager.find(EmailLog, { where: { relatedReportId: id } });
-      if (emailLogs.length > 0) {
-        const emailLogIds = emailLogs.map((e) => e.id);
-        await queryRunner.manager.delete(EmailMonitoringAuditLog, { emailLogId: In(emailLogIds) });
-        await queryRunner.manager.delete(EmailLog, { id: In(emailLogIds) });
-      }
-
-      // 10. Clean up raw table records if any exist
       const tableExists = async (tableName: string) => {
         const res = await queryRunner.query(
           `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`,
@@ -248,15 +215,88 @@ export class DefectReportsService implements OnModuleInit {
         return Array.isArray(res) && res.length > 0;
       };
 
-      if (await tableExists('operational_timeline')) {
-        await queryRunner.query(`DELETE FROM operational_timeline WHERE report_id = $1`, [id]);
-      }
-      if (await tableExists('production_log')) {
-        await queryRunner.query(`DELETE FROM production_log WHERE report_id = $1`, [id]);
+      const columnExists = async (tableName: string, columnName: string) => {
+        const res = await queryRunner.query(
+          `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2`,
+          [tableName, columnName],
+        );
+        return Array.isArray(res) && res.length > 0;
+      };
+
+      const safeDeleteByCol = async (tableName: string, colName: string, value: string) => {
+        if (await tableExists(tableName)) {
+          if (await columnExists(tableName, colName)) {
+            await queryRunner.query(`DELETE FROM "${tableName}" WHERE "${colName}" = $1`, [value]);
+          }
+        }
+      };
+
+      // 1. Delete SalaryDeduction
+      await safeDeleteByCol('salary_deduction', 'report_id', id);
+
+      // 2. Delete VendorFaultLog
+      await safeDeleteByCol('vendor_fault_log', 'report_id', id);
+
+      // 3. Delete ComponentIssue
+      await safeDeleteByCol('component_issue', 'report_id', id);
+
+      // 4. Delete GmApproval
+      await safeDeleteByCol('gm_approval', 'report_id', id);
+
+      // 5. Delete SmReview
+      await safeDeleteByCol('sm_review', 'report_id', id);
+
+      // 6. Delete InspectionDetail
+      await safeDeleteByCol('inspection_details', 'report_id', id);
+
+      // 7. Delete AuditLog
+      await safeDeleteByCol('audit_log', 'report_id', id);
+
+      // 8. Delete Notification
+      await safeDeleteByCol('notifications', 'report_id', id);
+
+      // 9. Delete EmailLogs and EmailMonitoringAuditLogs
+      if (await tableExists('email_logs')) {
+        const emailCol = (await columnExists('email_logs', 'relatedReportId'))
+          ? 'relatedReportId'
+          : (await columnExists('email_logs', 'related_report_id'))
+          ? 'related_report_id'
+          : null;
+
+        if (emailCol) {
+          const emailRows = await queryRunner.query(
+            `SELECT id FROM "email_logs" WHERE "${emailCol}" = $1`,
+            [id],
+          );
+          if (Array.isArray(emailRows) && emailRows.length > 0) {
+            const emailIds = emailRows.map((r: any) => r.id);
+            if (await tableExists('email_monitoring_audit_logs')) {
+              const auditCol = (await columnExists('email_monitoring_audit_logs', 'emailLogId'))
+                ? 'emailLogId'
+                : (await columnExists('email_monitoring_audit_logs', 'email_log_id'))
+                ? 'email_log_id'
+                : null;
+              if (auditCol) {
+                await queryRunner.query(
+                  `DELETE FROM "email_monitoring_audit_logs" WHERE "${auditCol}" = ANY($1)`,
+                  [emailIds],
+                );
+              }
+            }
+            await queryRunner.query(
+              `DELETE FROM "email_logs" WHERE "${emailCol}" = $1`,
+              [id],
+            );
+          }
+        }
       }
 
-      // 11. Permanently delete the parent DefectReport
-      await queryRunner.manager.delete(DefectReport, { id });
+      // 10. Delete from optional tables if present
+      await safeDeleteByCol('operational_timeline', 'report_id', id);
+      await safeDeleteByCol('production_log', 'report_id', id);
+
+      // 11. Delete parent DefectReport
+      await safeDeleteByCol('defect_reports', 'id', id);
 
       await queryRunner.commitTransaction();
 
