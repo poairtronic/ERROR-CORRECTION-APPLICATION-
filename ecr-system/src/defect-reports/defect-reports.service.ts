@@ -240,12 +240,20 @@ export class DefectReportsService implements OnModuleInit {
       }
 
       // 10. Clean up raw table records if any exist
-      try {
+      const tableExists = async (tableName: string) => {
+        const res = await queryRunner.query(
+          `SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1`,
+          [tableName],
+        );
+        return Array.isArray(res) && res.length > 0;
+      };
+
+      if (await tableExists('operational_timeline')) {
         await queryRunner.query(`DELETE FROM operational_timeline WHERE report_id = $1`, [id]);
-      } catch (_) {}
-      try {
+      }
+      if (await tableExists('production_log')) {
         await queryRunner.query(`DELETE FROM production_log WHERE report_id = $1`, [id]);
-      } catch (_) {}
+      }
 
       // 11. Permanently delete the parent DefectReport
       await queryRunner.manager.delete(DefectReport, { id });
