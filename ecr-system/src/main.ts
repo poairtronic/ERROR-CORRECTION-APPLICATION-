@@ -63,7 +63,9 @@ async function bootstrap() {
 
   // CORS - allow frontend origin (configured via FRONTEND_URL env, falls back to localhost)
   app.enableCors({
-    origin: config.get('FRONTEND_URL') || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
     credentials: true,
   });
 

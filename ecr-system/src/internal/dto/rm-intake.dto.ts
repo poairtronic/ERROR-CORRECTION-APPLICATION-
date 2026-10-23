@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, Min } from 'class-validator';
 
 export class RmIntakeDto {
   @IsIn(['REWORK', 'REJECTION'])
@@ -20,9 +20,9 @@ export class RmIntakeDto {
   @Min(1)
   quantityAffected: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  stageOfFailure: string;
+  stageOfFailure?: string;
 
   @IsOptional()
   @IsString()
@@ -38,11 +38,27 @@ export class RmIntakeDto {
 
   @IsOptional()
   @IsString()
+  operatorName?: string;
+
+  @IsOptional()
+  @IsString()
   reworkDescription?: string;
 
   @IsOptional()
   @IsString()
   rejectionDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionProcessTemplate?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionFailedStage?: string;
+
+  @IsOptional()
+  @IsObject()
+  rejectionStageCosts?: Record<string, number>;
 
   @IsOptional()
   @IsNumber()

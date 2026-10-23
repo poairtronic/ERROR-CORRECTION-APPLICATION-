@@ -5,7 +5,6 @@ import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
 import { Role } from '../enums/role.enum';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class BaseCrudController<T extends ObjectLiteral> {
   private static readonly cache = new Map<string, { data: any; expiry: number }>();
 
@@ -72,6 +71,7 @@ export class BaseCrudController<T extends ObjectLiteral> {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STORE_MANAGER)
   async create(@Body() body: Partial<T>) {
     const result = await this.repo.save(this.repo.create(body as any));
@@ -80,6 +80,7 @@ export class BaseCrudController<T extends ObjectLiteral> {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STORE_MANAGER)
   async update(@Param('id') id: string, @Body() body: Partial<T>) {
     const result = await this.repo.save({ id, ...body } as any);
@@ -88,6 +89,7 @@ export class BaseCrudController<T extends ObjectLiteral> {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async deactivate(@Param('id') id: string) {
     const result = await this.repo.update(id as any, { isActive: false } as any);
