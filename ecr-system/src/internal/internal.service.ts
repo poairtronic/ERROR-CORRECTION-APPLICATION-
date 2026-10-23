@@ -3,8 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { ReportSequence } from '../defect-reports/report-sequence.entity';
+import { InspectionDetail } from '../inspection/inspection-detail.entity';
 import { RmIntakeDto } from './dto/rm-intake.dto';
-import { ReportStatus, RaisedByRole } from '../common/enums/report-status.enum';
+import { ReportStatus, RaisedByRole, Decision } from '../common/enums/report-status.enum';
 
 @Injectable()
 export class InternalService {
@@ -16,7 +17,10 @@ export class InternalService {
   ) {}
 
   async findById(id: string): Promise<DefectReport> {
-    return (await this.reportsRepo.findOne({ where: { id } })) as DefectReport;
+    return (await this.reportsRepo.findOne({
+      where: { id },
+      relations: ['inspectionDetail'],
+    })) as DefectReport;
   }
 
   async createFromRM(dto: RmIntakeDto): Promise<{ reportId: string; reportNumber: string }> {
@@ -49,12 +53,26 @@ export class InternalService {
         inspectionType: dto.type,
         raisedByRole: RaisedByRole.OPERATOR,
         raisedById: null as any,
-        status: ReportStatus.PENDING_INSPECTION,
+        status: ReportStatus.PENDING_ACCOUNTS_REVIEW,
         images: [],
         reportNumber,
       });
 
       const savedReport = await manager.save(report);
+
+      const inspectionRepo = manager.getRepository(InspectionDetail);
+      const inspection = inspectionRepo.create({
+        reportId: savedReport.id,
+        inspectorId: null as any,
+        responsibleParty: (dto.responsibleParty as any) ?? null,
+        reworkDescription: dto.reworkDescription ?? null,
+        rejectionDescription: dto.rejectionDescription ?? null,
+        costEstimate: dto.costEstimation ?? 0,
+        lossAmount: dto.lossEstimation ?? null,
+        alternativeNote: dto.alternativeNotes ?? null,
+        decision: (dto.type === 'REWORK' ? Decision.REWORK : Decision.SCRAP) as any,
+      } as any);
+      await inspectionRepo.save(inspection);
 
       return {
         reportId: savedReport.id,

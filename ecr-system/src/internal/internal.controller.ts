@@ -30,7 +30,7 @@ export class InternalController {
 
     this.workflowService.emitStatusChange(
       savedReport,
-      ReportStatus.DRAFT,
+      ReportStatus.PENDING_INSPECTION,
       { id: null, name: dto.raisedByName, role: 'OPERATOR' } as any,
       'Report raised from RM App',
       'Auto-created from V-SMART Rework Module',
