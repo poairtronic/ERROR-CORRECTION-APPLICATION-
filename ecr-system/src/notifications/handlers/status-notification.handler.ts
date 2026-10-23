@@ -225,7 +225,7 @@ export class StatusNotificationHandler {
     if (inspectorId) notifyIds.add(inspectorId);
 
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
     });
 
     const summaryTable = await buildEmailSummary(report, event);
@@ -270,7 +270,7 @@ export class StatusNotificationHandler {
     accountsUsers.forEach(accounts => notifyIds.add(accounts.id));
 
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
     });
 
     const summaryTable = await buildEmailSummary(report, event);
@@ -376,7 +376,7 @@ export class StatusNotificationHandler {
     if (report.inspectionDetail?.inspectorId) notifyIds.add(report.inspectionDetail.inspectorId);
 
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
     });
 
     await Promise.all(usersToNotify.map(user =>
@@ -410,7 +410,7 @@ export class StatusNotificationHandler {
     if (report.inspectionDetail?.inspectorId) notifyIds.add(report.inspectionDetail.inspectorId);
 
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
     });
 
     await Promise.all(usersToNotify.map(user =>
