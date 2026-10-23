@@ -59,8 +59,26 @@ export class PerformanceInterceptor implements NestInterceptor {
     const method = req.method;
     const userId = req.user?.id || req.user?.sub || 'Unauthenticated';
 
+    let level: 'log' | 'warn' | 'error' = 'log';
+    let message = `API Request ${method} ${url} completed in ${duration}ms (Status: ${statusCode}, Size: ${responseSize} bytes, User: ${userId})`;
+
+    if (error || statusCode >= 500) {
+      level = 'error';
+      message = `API Request ${method} ${url} failed in ${duration}ms (Status: ${statusCode}, User: ${userId}) - Error: ${error?.message || 'Server Error'}`;
+    } else if (statusCode >= 400) {
+      level = 'warn';
+      message = `API Request ${method} ${url} returned ${statusCode} in ${duration}ms (User: ${userId})`;
+    } else if (duration > 3000) {
+      level = 'warn';
+      message = `[CRITICAL_SLOW] API Request ${method} ${url} exceeded 3000ms threshold: ${duration}ms`;
+    } else if (duration > 1500) {
+      level = 'warn';
+      message = `[SLOW_OPERATION] API Request ${method} ${url} exceeded 1500ms threshold: ${duration}ms`;
+    }
+
     const payload = {
       category: 'API',
+      message,
       method,
       url,
       statusCode,
@@ -69,32 +87,12 @@ export class PerformanceInterceptor implements NestInterceptor {
       userId,
     };
 
-    let level: 'log' | 'warn' | 'error' = 'log';
-    let message = `API Request ${method} ${url} completed in ${duration}ms (Status: ${statusCode}, Size: ${responseSize} bytes, User: ${userId})`;
-
-    if (error) {
-      level = 'error';
-      message = `API Request ${method} ${url} failed in ${duration}ms (Status: ${statusCode}, User: ${userId}) - Error: ${error.message}`;
-    } else if (duration > 1000) {
-      level = 'error';
-      message = `[CRITICAL_SLOW] API Request ${method} ${url} exceeded 1000ms threshold: ${duration}ms`;
-    } else if (duration > 500) {
-      level = 'error';
-      message = `[SLOW_OPERATION] API Request ${method} ${url} exceeded 500ms threshold: ${duration}ms`;
-    } else if (duration > 300) {
-      level = 'warn';
-      message = `[PERFORMANCE_WARN] API Request ${method} ${url} exceeded 300ms threshold: ${duration}ms`;
-    } else if (duration > 100) {
-      level = 'warn';
-      message = `[PERFORMANCE_WARN] API Request ${method} ${url} exceeded 100ms threshold: ${duration}ms`;
-    }
-
     if (level === 'error') {
-      this.logger.error(payload, error ? error.stack : message);
+      this.logger.error(payload, error ? error.stack : undefined);
     } else if (level === 'warn') {
-      this.logger.warn(payload, message);
+      this.logger.warn(payload);
     } else {
-      this.logger.log(payload, message);
+      this.logger.log(payload);
     }
   }
 }

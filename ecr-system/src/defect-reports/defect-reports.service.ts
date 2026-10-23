@@ -149,7 +149,6 @@ export class DefectReportsService implements OnModuleInit {
       relations: {
         raisedBy: true,
         inspectionDetail: true,
-        auditLogs: { actor: true },
       },
       relationLoadStrategy: 'query',
       order: { createdAt: 'DESC' },

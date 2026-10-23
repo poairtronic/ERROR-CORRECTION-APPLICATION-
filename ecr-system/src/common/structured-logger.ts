@@ -45,7 +45,7 @@ export class StructuredLogger implements LoggerService {
 
     if (typeof message === 'object' && message !== null) {
       const { message: msg, ...rest } = message;
-      msgString = msg || '';
+      msgString = msg || (typeof optionalParams[0] === 'string' ? optionalParams[0] : '');
       payload = rest;
     } else {
       msgString = String(message);
