@@ -311,4 +311,32 @@ export class DefectReportsService implements OnModuleInit {
       await queryRunner.release();
     }
   }
+
+  async bulkHardDelete(ids: string[], actor?: ActingUser) {
+    if (actor && actor.role?.toUpperCase() !== Role.ADMIN) {
+      throw new ForbiddenException('Only Administrators are authorized to permanently delete Quality Reports');
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException('No report IDs provided for bulk deletion');
+    }
+
+    let deletedCount = 0;
+    for (const id of ids) {
+      try {
+        await this.hardDelete(id, actor);
+        deletedCount++;
+      } catch (err: any) {
+        if (!(err instanceof NotFoundException)) {
+          throw err;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      count: deletedCount,
+      message: `Successfully deleted ${deletedCount} Quality Reports.`,
+    };
+  }
 }

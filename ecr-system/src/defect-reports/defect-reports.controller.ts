@@ -18,6 +18,7 @@ import { CreateDefectReportDto } from './dto/create-defect-report.dto';
 import { InspectReportDto } from './dto/inspect-report.dto';
 import { SmReviewDto } from './dto/sm-review.dto';
 import { GmApproveDto } from './dto/gm-approve.dto';
+import { BulkDeleteDto } from './dto/bulk-delete.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -149,6 +150,24 @@ export class DefectReportsController {
     @CurrentUser() user,
   ) {
     return this.service.issueComponents(id, body, user);
+  }
+
+  @Post('bulk-delete')
+  @Roles(Role.ADMIN)
+  async bulkHardDeletePost(
+    @Body() dto: BulkDeleteDto,
+    @CurrentUser() user,
+  ) {
+    return this.service.bulkHardDelete(dto.ids, user);
+  }
+
+  @Delete('bulk')
+  @Roles(Role.ADMIN)
+  async bulkHardDelete(
+    @Body() dto: BulkDeleteDto,
+    @CurrentUser() user,
+  ) {
+    return this.service.bulkHardDelete(dto.ids, user);
   }
 
   @Delete(':id')

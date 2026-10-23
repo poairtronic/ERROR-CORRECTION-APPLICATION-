@@ -57,14 +57,20 @@ export const Table = memo(function Table({ columns, data = [], emptyMessage = 'N
         <table>
           <thead>
             <tr>
-              {columns.map((col, i) => <th key={i}>{col.header}</th>)}
+              {columns.map((col, i) => (
+                <th key={i} style={col.style} className={col.className}>
+                  {col.header}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {[1, 2, 3].map(row => (
               <tr key={row}>
-                {columns.map((_, i) => (
-                  <td key={i}><div className="skeleton-line" /></td>
+                {columns.map((col, i) => (
+                  <td key={i} style={col.style} className={col.className}>
+                    <div className="skeleton-line" />
+                  </td>
                 ))}
               </tr>
             ))}
@@ -80,7 +86,7 @@ export const Table = memo(function Table({ columns, data = [], emptyMessage = 'N
         <thead>
           <tr>
             {columns.map((col, i) => (
-              <th key={i}>
+              <th key={i} style={col.style} className={col.className}>
                 {col.header}
               </th>
             ))}
@@ -103,7 +109,7 @@ export const Table = memo(function Table({ columns, data = [], emptyMessage = 'N
               {visibleData.map(({ row, index }) => (
                 <tr key={row.id || index} style={{ height: `${rowHeight}px` }}>
                   {columns.map((col, j) => (
-                    <td key={j}>
+                    <td key={j} style={col.style} className={col.className}>
                       {col.render ? col.render(row) : row[col.accessor]}
                     </td>
                   ))}
