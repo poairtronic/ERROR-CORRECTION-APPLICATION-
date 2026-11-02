@@ -104,10 +104,7 @@ export class DefectReportsController {
     @Body() body: { fields: { field: string; value: any }[] },
     @CurrentUser() user,
   ) {
-    for (const item of body.fields) {
-      await this.service.editField(id, item.field, String(item.value), user);
-    }
-    return this.service.findOne(id, user);
+    return this.service.editFields(id, body.fields, user);
   }
 
   @Post(':id/images')

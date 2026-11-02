@@ -1,11 +1,23 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { ReportSequence } from '../defect-reports/report-sequence.entity';
 import { InspectionDetail } from '../inspection/inspection-detail.entity';
+import { ComponentIssue } from '../component-issue/component-issue.entity';
+import { DefectReportsWorkflowService } from '../defect-reports/defect-reports-workflow.service';
 import { RmIntakeDto } from './dto/rm-intake.dto';
-import { ReportStatus, RaisedByRole, Decision } from '../common/enums/report-status.enum';
+import { MaterialIssuedDto } from './dto/material-issued.dto';
+import {
+  ReportStatus,
+  RaisedByRole,
+  Decision,
+} from '../common/enums/report-status.enum';
+import { Role } from '../common/enums/role.enum';
 
 @Injectable()
 export class InternalService {
@@ -14,6 +26,7 @@ export class InternalService {
     private readonly reportsRepo: Repository<DefectReport>,
     @InjectRepository(ReportSequence)
     private readonly sequenceRepo: Repository<ReportSequence>,
+    private readonly workflowService: DefectReportsWorkflowService,
   ) {}
 
   async findById(id: string): Promise<DefectReport> {
@@ -107,5 +120,68 @@ export class InternalService {
         err?.message || 'Failed to create report from RM intake'
       );
     }
+  }
+
+  async handleMaterialIssued(dto: MaterialIssuedDto): Promise<{
+    success: boolean;
+    message?: string;
+    reportNumber?: string;
+    newStatus?: string;
+  }> {
+    const report = await this.reportsRepo.findOne({
+      where: { reportNumber: dto.reportNumber },
+    });
+
+    if (!report) {
+      throw new NotFoundException(
+        `Defect report with report number ${dto.reportNumber} not found`,
+      );
+    }
+
+    if (
+      report.status === ReportStatus.COMPONENTS_ISSUED ||
+      report.status === ReportStatus.CLOSED
+    ) {
+      return { success: true, message: 'Already processed' };
+    }
+
+    const issueRepo = this.reportsRepo.manager.getRepository(ComponentIssue);
+    const componentIssue = issueRepo.create({
+      reportId: report.id,
+      issuedToId: null as any,
+      components: [
+        {
+          componentName: report.componentName,
+          qty: dto.issuedQty,
+          source: 'RM_VSMART',
+        },
+      ] as any,
+      remarks: `Issued from RM/V-Smart by ${dto.issuedByName} on ${dto.issuedAt}. Stock TX: ${dto.stockTransactionId}`,
+    });
+    await issueRepo.save(componentIssue);
+
+    report.componentsIssued = true;
+    report.componentsIssuedAt = new Date(dto.issuedAt);
+    report.componentsIssuedById = 'RM_SYSTEM';
+    report.status = ReportStatus.COMPONENTS_ISSUED;
+    await this.reportsRepo.save(report);
+
+    this.workflowService.emitStatusChange(
+      report,
+      ReportStatus.COMPONENTS_ISSUED,
+      {
+        id: 'RM_SYSTEM',
+        name: dto.issuedByName,
+        role: Role.STORE_MANAGER,
+      } as any,
+      'Components Issued',
+      `Issued from RM/V-Smart by ${dto.issuedByName} on ${dto.issuedAt}. Stock TX: ${dto.stockTransactionId}`,
+    );
+
+    return {
+      success: true,
+      reportNumber: dto.reportNumber,
+      newStatus: 'COMPONENTS_ISSUED',
+    };
   }
 }

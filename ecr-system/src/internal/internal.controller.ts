@@ -9,6 +9,7 @@ import {
 import { InternalService } from './internal.service';
 import { InternalSecretGuard } from './guards/internal-secret.guard';
 import { RmIntakeDto } from './dto/rm-intake.dto';
+import { MaterialIssuedDto } from './dto/material-issued.dto';
 import { ReportStatus } from '../common/enums/report-status.enum';
 import { DefectReportsWorkflowService } from '../defect-reports/defect-reports-workflow.service';
 
@@ -37,5 +38,12 @@ export class InternalController {
     );
 
     return result;
+  }
+
+  @Post('material-issued')
+  @UseGuards(InternalSecretGuard)
+  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+  async handleMaterialIssued(@Body() dto: MaterialIssuedDto) {
+    return this.internalService.handleMaterialIssued(dto);
   }
 }

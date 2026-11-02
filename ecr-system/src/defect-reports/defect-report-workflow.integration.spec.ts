@@ -29,6 +29,7 @@ import { EmailTemplateService } from '../email/services/email-template.service';
 import { ImageUploadService } from '../image-upload/image-upload.service';
 import { Role } from '../common/enums/role.enum';
 import { ReportStatus } from '../common/enums/report-status.enum';
+import { DataSource } from 'typeorm';
 
 describe('Defect Report Workflow Integration', () => {
   let reportsService: DefectReportsService;
@@ -127,6 +128,7 @@ describe('Defect Report Workflow Integration', () => {
         { provide: GmailSmtpService, useValue: mockGmailSmtpService },
         { provide: EmailTemplateService, useValue: mockTemplateService },
         { provide: ImageUploadService, useValue: { deleteImage: jest.fn() } },
+        { provide: DataSource, useValue: { transaction: jest.fn() } },
         {
           provide: ConfigService,
           useValue: {

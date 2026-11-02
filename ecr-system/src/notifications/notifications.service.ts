@@ -136,6 +136,17 @@ export class NotificationsService {
     });
     if (!report) return false;
 
+    const roleUpper = userRole?.toUpperCase();
+    if (
+      roleUpper === Role.ACCOUNTS ||
+      roleUpper === Role.SENIOR_MANAGER ||
+      roleUpper === Role.GENERAL_MANAGER ||
+      roleUpper === Role.STORE_MANAGER ||
+      roleUpper === Role.INSPECTOR
+    ) {
+      return true;
+    }
+
     if (report.raisedById === userId) return true;
 
     if (report.inspectionDetail?.responsibleId === userId) return true;

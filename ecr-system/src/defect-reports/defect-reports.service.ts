@@ -174,6 +174,10 @@ export class DefectReportsService implements OnModuleInit {
     return this.workflowService.editField(reportId, field, newValue, actor);
   }
 
+  async editFields(reportId: string, fields: { field: string; value: any }[], actor: ActingUser) {
+    return this.workflowService.editFields(reportId, fields, actor);
+  }
+
   async transitionStatus(reportId: string, newStatus: ReportStatus, note: string, actor: ActingUser) {
     return this.workflowService.transitionStatus(reportId, newStatus, note, actor);
   }

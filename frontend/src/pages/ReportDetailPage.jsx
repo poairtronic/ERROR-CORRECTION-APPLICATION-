@@ -47,7 +47,13 @@ export default function ReportDetailPage() {
 
   const { data: notifications = EMPTY_ARRAY } = useQuery({
     queryKey: ['report-notifications', id],
-    queryFn: async () => (await api.get(`/notifications/report/${id}`)).data
+    queryFn: async () => {
+      try {
+        return (await api.get(`/notifications/report/${id}`)).data || [];
+      } catch (err) {
+        return [];
+      }
+    }
   });
 
   const { data: vendors = EMPTY_ARRAY } = useQuery({

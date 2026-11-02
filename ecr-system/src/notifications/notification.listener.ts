@@ -30,6 +30,10 @@ export class NotificationListener {
     this.frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
   }
 
+  private get defectReportRepository(): Repository<DefectReport> {
+    return this.reportsRepo;
+  }
+
   private async fetchReportWithRelations(reportId: string): Promise<DefectReport | null> {
     return this.reportsRepo.findOne({
       where: { id: reportId },
@@ -179,5 +183,75 @@ export class NotificationListener {
   @OnEvent('vendor.fault.created')
   async handleVendorFaultCreated(payload: { faultId: string; vendorId: string; reportId: string }) {
     await this.eventHandler.handleVendorFaultCreated(payload, this.frontendUrl);
+  }
+
+  @OnEvent('report.status.changed')
+  async handleApprovedNotifyRm(payload: StatusChangedEvent & { newStatus?: string; report?: DefectReport }) {
+    console.log('[RM-Integration] Handler triggered. Raw payload:', JSON.stringify(payload));
+
+    // Only act on APPROVED status
+    const status: string = payload.status ?? (payload as any).newStatus;
+    if (status !== 'APPROVED') return;
+
+    // REQUIRED IN .env:
+    // RM_API_URL=http://localhost:3001
+    // RM_INTERNAL_SECRET=vsmart_ecr_bridge_2026_secure
+    const rmApiUrl = this.configService.get<string>('RM_API_URL') || process.env.RM_API_URL;
+    const rmSecret =
+      this.configService.get<string>('RM_INTERNAL_SECRET') ||
+      process.env.RM_INTERNAL_SECRET ||
+      this.configService.get<string>('ECR_INTERNAL_SECRET') ||
+      process.env.ECR_INTERNAL_SECRET;
+
+    if (!rmApiUrl || !rmSecret) {
+      console.warn('[RM-Integration] RM_API_URL or RM_INTERNAL_SECRET not configured — skipping');
+      return;
+    }
+
+    // Fetch full report if payload only contains id
+    // (use whatever is available in payload — avoid extra DB call if full report is already there)
+    const report = payload.report ?? await this.defectReportRepository.findOne({ where: { id: payload.reportId } });
+
+    if (!report) {
+      console.error('[RM-Integration] Report not found for id:', payload.reportId);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${rmApiUrl}/api/internal/ecr/material-pending`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': rmSecret,
+        },
+        body: JSON.stringify({
+          ecrId: report.id,
+          reportNumber: report.reportNumber,
+          type: report.inspectionType || 'REWORK', // 'REWORK' | 'REJECTION'
+          scNumber: report.scNo || report.scOrPoNo || 'N/A',
+          poNumber: report.poNo || report.scOrPoNo || 'N/A',
+          component: report.componentName || 'Unknown',
+          quantityAffected: report.quantity || 1,
+          approvedAt: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.error('[RM-Integration] Webhook returned non-OK status', {
+          status: response.status,
+          body,
+          reportNumber: report.reportNumber,
+        });
+      } else {
+        console.log('[RM-Integration] RM notified successfully for report:', report.reportNumber);
+      }
+    } catch (err: any) {
+      console.error('[RM-Integration] Webhook call threw error — manual retry needed', {
+        reportNumber: report.reportNumber,
+        ecrId: report.id,
+        error: err?.message,
+      });
+    }
   }
 }

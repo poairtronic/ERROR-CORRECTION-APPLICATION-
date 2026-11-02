@@ -64,7 +64,7 @@ export class DefectReportsWorkflowService {
     messageToSm?: string,
   ) {
     try {
-      this.events.emit('report.status.changed', {
+      const payload = {
         reportId: report.id,
         reportNumber: report.reportNumber,
         status: report.status,
@@ -73,7 +73,11 @@ export class DefectReportsWorkflowService {
         actionTaken,
         comments,
         messageToSm,
-      });
+      };
+      if (report.status === ReportStatus.APPROVED) {
+        console.log('[DEBUG-GM-APPROVE] Emitting report.status.changed with payload:', JSON.stringify(payload));
+      }
+      this.events.emit('report.status.changed', payload);
     } catch (error: any) {
       console.error(
         `[NOTIFICATION_ERROR] Failed to emit status change for report ${report.reportNumber}: ${error.message}. ` +
@@ -366,6 +370,9 @@ export class DefectReportsWorkflowService {
         from = report.status;
         report.status = dto.approved ? ReportStatus.APPROVED : ReportStatus.REJECTED;
         isApproved = dto.approved;
+        if (isApproved) {
+          console.log('[DEBUG-GM-APPROVE] Status set to APPROVED, emitting event for report:', report.reportNumber);
+        }
         await reportsRepo.save(report);
         await this.logStatusChange(report.id, actor, from, report.status, dto.remarks, manager);
 
@@ -386,6 +393,40 @@ export class DefectReportsWorkflowService {
     this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (emitStatusChange)`);
     this.emitStatusChange(result, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks, dto.messageToSm);
 
+    // TEMPORARY DEBUG — remove after confirming webhook works
+    if (isApproved) {
+      try {
+        const rmUrl = process.env.RM_API_URL ?? '';
+        const rmSecret = process.env.RM_INTERNAL_SECRET ?? process.env.ECR_INTERNAL_SECRET ?? '';
+        if (rmUrl && rmSecret) {
+          const res = await fetch(`${rmUrl}/api/internal/ecr/material-pending`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-internal-secret': rmSecret,
+            },
+            body: JSON.stringify({
+              ecrId: result.id,
+              reportNumber: result.reportNumber,
+              type: result.inspectionType || 'REWORK',
+              scNumber: result.scNo || result.scOrPoNo || 'N/A',
+              poNumber: result.poNo || result.scOrPoNo || 'N/A',
+              component: result.componentName || 'Unknown',
+              quantityAffected: result.quantity || 1,
+              approvedAt: new Date().toISOString(),
+            }),
+          });
+          console.log('[DEBUG-DIRECT-CALL] RM webhook response status:', res.status);
+          const body = await res.text();
+          console.log('[DEBUG-DIRECT-CALL] RM webhook response body:', body);
+        } else {
+          console.warn('[DEBUG-DIRECT-CALL] RM_API_URL or RM_INTERNAL_SECRET missing in env');
+        }
+      } catch (err: any) {
+        console.error('[DEBUG-DIRECT-CALL] Direct RM call failed:', err.message);
+      }
+    }
+
     if (isApproved && result.inspectionDetail) {
       if (result.inspectionDetail.responsibleParty === ResponsibleParty.OPERATOR) {
         this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (report.approved.operator_fault)`);
@@ -399,17 +440,25 @@ export class DefectReportsWorkflowService {
     return result;
   }
 
-  async editField(
+  async editFields(
     reportId: string,
-    field: string,
-    newValue: string,
+    fields: { field: string; value: any }[],
     actor: ActingUser,
-  ) {
-    this.logger.log(`[FLOW_DIAGNOSTICS] EditField endpoint entered. ReportId: ${reportId}, Field: ${field}`);
+  ): Promise<DefectReport> {
+    this.logger.log(`[FLOW_DIAGNOSTICS] EditFields batch entered. ReportId: ${reportId}, FieldsCount: ${fields?.length}`);
+    if (!fields || fields.length === 0) {
+      const existing = await this.reportsRepo.findOne({
+        where: { id: reportId },
+        relations: ['raisedBy', 'inspectionDetail', 'smReview', 'gmApproval', 'componentIssues'],
+      });
+      if (!existing) throw new NotFoundException('Defect report not found');
+      return existing;
+    }
+
     let result: DefectReport;
 
     try {
-      this.logger.log(`[FLOW_DIAGNOSTICS] EditField - Database transaction started`);
+      this.logger.log(`[FLOW_DIAGNOSTICS] EditFields - Database transaction started`);
       result = await this.reportsRepo.manager.transaction(async (manager) => {
         const reportsRepo = manager.getRepository(DefectReport);
         const inspectionRepo = manager.getRepository(InspectionDetail);
@@ -439,33 +488,8 @@ export class DefectReportsWorkflowService {
           'errorTypeName',
         ];
 
-        if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
-          throw new BadRequestException('Senior Manager cannot edit this field');
-        }
-
-        if (actor.role === Role.GENERAL_MANAGER) {
-          const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
-          if (!gmAllowedFields.includes(field)) {
-            throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, lossAmount, componentName, or errorTypeName');
-          }
-          if (report.status !== ReportStatus.PENDING_GM_APPROVAL) {
-            throw new BadRequestException('General Manager can only edit reports pending GM approval');
-          }
-        }
-
-        if (actor.role === Role.ACCOUNTS) {
-          const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
-          if (!accountsAllowedFields.includes(field)) {
-            throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, rejectionStageCosts, componentName, or errorTypeName');
-          }
-          const allowedAccountsStatuses = [
-            ReportStatus.PENDING_ACCOUNTS_REVIEW,
-            ReportStatus.ACCOUNTS_DRAFT,
-          ];
-          if (!allowedAccountsStatuses.includes(report.status as any)) {
-            throw new BadRequestException('Accounts can only edit reports that are pending accounts review or accounts draft');
-          }
-        }
+        const gmAllowedFields = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
+        const accountsAllowedFields = ['materialCost', 'labourCost', 'otherCost', 'lossAmount', 'costRemarks', 'costEstimate', 'rejectionStageCosts', 'componentName', 'errorTypeName'];
 
         if (
           actor.role !== Role.SENIOR_MANAGER &&
@@ -475,87 +499,138 @@ export class DefectReportsWorkflowService {
           throw new BadRequestException('Only Senior Manager, General Manager, or Accounts can edit report data');
         }
 
-        if (field === 'status') {
-          throw new BadRequestException('Status cannot be manually edited through editField. Use transitionStatus instead.');
+        if (actor.role === Role.GENERAL_MANAGER && report.status !== ReportStatus.PENDING_GM_APPROVAL) {
+          throw new BadRequestException('General Manager can only edit reports pending GM approval');
+        }
+
+        if (actor.role === Role.ACCOUNTS) {
+          const allowedAccountsStatuses = [
+            ReportStatus.PENDING_ACCOUNTS_REVIEW,
+            ReportStatus.ACCOUNTS_DRAFT,
+          ];
+          if (!allowedAccountsStatuses.includes(report.status as any)) {
+            throw new BadRequestException('Accounts can only edit reports that are pending accounts review or accounts draft');
+          }
         }
 
         const inspectFields = ['costEstimate', 'timeEstimateHours', 'lossAmount'];
         const accountsFields = ['materialCost', 'labourCost', 'otherCost', 'costRemarks'];
-        let oldValue: any;
+        const costCalculationFields = ['materialCost', 'labourCost', 'otherCost', 'rejectionStageCosts', 'rejectionFailedStage', 'rejectionProcessTemplate'];
 
-        let oldCalculatedTotal = 0;
-        if (report.inspectionDetail) {
-          oldCalculatedTotal = calculateTotalCost(report);
-        }
+        let reportModified = false;
+        let inspectionModified = false;
+        let costEstimateExplicitlySet = false;
+        let anyCostFieldsModified = false;
 
-        if (accountsFields.includes(field)) {
-          if (report.inspectionDetail) {
-            oldValue = (report.inspectionDetail as any)[field];
-            if (field === 'costRemarks') {
-              report.inspectionDetail.costRemarks = newValue;
+        const auditEntries: AuditLog[] = [];
+
+        for (const item of fields) {
+          const field = item.field;
+          const newValue = item.value != null ? String(item.value) : '';
+
+          if (field === 'status') {
+            throw new BadRequestException('Status cannot be manually edited through editField. Use transitionStatus instead.');
+          }
+
+          if (actor.role === Role.SENIOR_MANAGER && !smAllowedFields.includes(field)) {
+            throw new BadRequestException('Senior Manager cannot edit this field');
+          }
+
+          if (actor.role === Role.GENERAL_MANAGER && !gmAllowedFields.includes(field)) {
+            throw new BadRequestException('General Manager can only edit costEstimate, stageOfFailure, rejectionStageCosts, lossAmount, componentName, or errorTypeName');
+          }
+
+          if (actor.role === Role.ACCOUNTS && !accountsAllowedFields.includes(field)) {
+            throw new BadRequestException('Accounts can only edit materialCost, labourCost, otherCost, lossAmount, costRemarks, costEstimate, rejectionStageCosts, componentName, or errorTypeName');
+          }
+
+          if (costCalculationFields.includes(field)) {
+            anyCostFieldsModified = true;
+          }
+
+          let oldValue: any;
+
+          if (accountsFields.includes(field)) {
+            if (report.inspectionDetail) {
+              oldValue = (report.inspectionDetail as any)[field];
+              if (field === 'costRemarks') {
+                report.inspectionDetail.costRemarks = newValue;
+              } else {
+                (report.inspectionDetail as any)[field] = Number(newValue);
+              }
+              inspectionModified = true;
             } else {
+              throw new BadRequestException('Cannot edit cost because report has not been inspected');
+            }
+          } else if (inspectFields.includes(field)) {
+            if (report.inspectionDetail) {
+              oldValue = (report.inspectionDetail as any)[field];
               (report.inspectionDetail as any)[field] = Number(newValue);
+              if (field === 'costEstimate') {
+                costEstimateExplicitlySet = true;
+              }
+              inspectionModified = true;
+            } else {
+              throw new BadRequestException('Cannot edit cost or loss because report has not been inspected');
             }
-            await inspectionRepo.save(report.inspectionDetail);
-          } else {
-            throw new BadRequestException('Cannot edit cost because report has not been inspected');
-          }
-        } else if (inspectFields.includes(field)) {
-          if (report.inspectionDetail) {
-            oldValue = (report.inspectionDetail as any)[field];
-            (report.inspectionDetail as any)[field] = Number(newValue);
-            await inspectionRepo.save(report.inspectionDetail);
-          } else {
-            throw new BadRequestException('Cannot edit cost or loss because report has not been inspected');
-          }
-        } else if (field === 'rejectionStageCosts') {
-          oldValue = report.rejectionStageCosts;
-          const parsed = typeof newValue === 'string' ? JSON.parse(newValue) : newValue;
-          report.rejectionStageCosts = parsed;
-          await reportsRepo.save(report);
+          } else if (field === 'rejectionStageCosts') {
+            oldValue = report.rejectionStageCosts;
+            const parsed = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+            report.rejectionStageCosts = parsed;
+            reportModified = true;
 
-          if (report.inspectionDetail) {
-            report.inspectionDetail.rejectionStageCosts = parsed;
-            await inspectionRepo.save(report.inspectionDetail);
-          }
-        } else {
-          oldValue = (report as any)[field];
-          if (field in report) {
-            (report as any)[field] = newValue;
-            await reportsRepo.save(report);
-          }
-          if (report.inspectionDetail) {
-            if (field === 'errorTypeName') {
-              report.inspectionDetail.errorType = newValue;
-              await inspectionRepo.save(report.inspectionDetail);
-            } else if (field in report.inspectionDetail) {
-              (report.inspectionDetail as any)[field] = newValue;
-              await inspectionRepo.save(report.inspectionDetail);
+            if (report.inspectionDetail) {
+              report.inspectionDetail.rejectionStageCosts = parsed;
+              inspectionModified = true;
+            }
+          } else {
+            oldValue = (report as any)[field];
+            if (field in report) {
+              (report as any)[field] = newValue;
+              reportModified = true;
+            }
+            if (report.inspectionDetail) {
+              if (field === 'errorTypeName') {
+                report.inspectionDetail.errorType = newValue;
+                inspectionModified = true;
+              } else if (field in report.inspectionDetail) {
+                (report.inspectionDetail as any)[field] = newValue;
+                inspectionModified = true;
+              }
             }
           }
+
+          auditEntries.push(
+            auditRepo.create({
+              reportId: report.id,
+              actorId: actor.id,
+              actorRole: actor.role,
+              actionType: AuditActionType.FIELD_EDIT,
+              fieldName: field,
+              oldValue: typeof oldValue === 'object' ? JSON.stringify(oldValue) : String(oldValue ?? ''),
+              newValue: typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value ?? ''),
+              note: `Field '${field}' updated by ${actor.role}`,
+            }),
+          );
         }
 
-        const costFields = ['materialCost', 'labourCost', 'otherCost', 'rejectionStageCosts', 'rejectionFailedStage', 'rejectionProcessTemplate'];
-        if (costFields.includes(field) && report.inspectionDetail) {
+        if (anyCostFieldsModified && !costEstimateExplicitlySet && report.inspectionDetail) {
           const newCalculatedTotal = calculateTotalCost(report);
-          const diff = newCalculatedTotal - oldCalculatedTotal;
-          const currentCostEstimate = Number(report.inspectionDetail.costEstimate || 0);
-          report.inspectionDetail.costEstimate = parseFloat((currentCostEstimate + diff).toFixed(2));
+          report.inspectionDetail.costEstimate = newCalculatedTotal;
+          inspectionModified = true;
+        }
+
+        if (reportModified) {
+          await reportsRepo.save(report);
+        }
+
+        if (inspectionModified && report.inspectionDetail) {
           await inspectionRepo.save(report.inspectionDetail);
         }
 
-        await auditRepo.save(
-          auditRepo.create({
-            reportId: report.id,
-            actorId: actor.id,
-            actorRole: actor.role,
-            actionType: AuditActionType.FIELD_EDIT,
-            fieldName: field,
-            oldValue: typeof oldValue === 'object' ? JSON.stringify(oldValue) : String(oldValue ?? ''),
-            newValue: typeof newValue === 'object' ? JSON.stringify(newValue) : String(newValue ?? ''),
-            note: `Field '${field}' updated by ${actor.role}`,
-          }),
-        );
+        if (auditEntries.length > 0) {
+          await auditRepo.save(auditEntries);
+        }
 
         // Break circular references for json serialization
         if (report.inspectionDetail) delete (report.inspectionDetail as any).report;
@@ -564,13 +639,22 @@ export class DefectReportsWorkflowService {
 
         return report;
       });
-      this.logger.log(`[FLOW_DIAGNOSTICS] EditField - Transaction committed`);
+      this.logger.log(`[FLOW_DIAGNOSTICS] EditFields - Transaction committed`);
     } catch (error: any) {
-      this.logger.error(`[FLOW_DIAGNOSTICS] EditField - Transaction rolled back: ${error.message}`);
+      this.logger.error(`[FLOW_DIAGNOSTICS] EditFields - Transaction rolled back: ${error.message}`);
       throw error;
     }
 
     return result;
+  }
+
+  async editField(
+    reportId: string,
+    field: string,
+    newValue: string,
+    actor: ActingUser,
+  ) {
+    return this.editFields(reportId, [{ field, value: newValue }], actor);
   }
 
   async transitionStatus(reportId: string, newStatus: ReportStatus, note: string, actor: ActingUser) {

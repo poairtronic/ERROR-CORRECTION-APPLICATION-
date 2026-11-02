@@ -53,6 +53,7 @@ describe('DefectReportsService', () => {
     smReviewRepo = {};
     gmApprovalRepo = {};
     auditRepo = {};
+    const dataSource = {} as any;
     events = { emit: jest.fn() };
     workflowService = {
       inspect: jest.fn().mockResolvedValue(mockReport),
@@ -61,6 +62,7 @@ describe('DefectReportsService', () => {
       transitionStatus: jest.fn().mockResolvedValue(mockReport),
       issueComponents: jest.fn().mockResolvedValue(mockReport),
       editField: jest.fn().mockResolvedValue(mockReport),
+      editFields: jest.fn().mockResolvedValue(mockReport),
     };
     imageService = {
       uploadImages: jest.fn().mockResolvedValue(mockReport),
@@ -77,6 +79,7 @@ describe('DefectReportsService', () => {
       smReviewRepo,
       gmApprovalRepo,
       auditRepo,
+      dataSource,
       events,
       workflowService,
       imageService,

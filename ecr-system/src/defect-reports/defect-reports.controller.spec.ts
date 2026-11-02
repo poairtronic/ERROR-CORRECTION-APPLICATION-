@@ -18,6 +18,7 @@ describe('DefectReportsController', () => {
       smReview: jest.fn().mockResolvedValue({ ...mockReport, status: 'PENDING_GM_APPROVAL' }),
       gmApprove: jest.fn().mockResolvedValue({ ...mockReport, status: 'APPROVED' }),
       editField: jest.fn().mockResolvedValue(mockReport),
+      editFields: jest.fn().mockResolvedValue(mockReport),
       uploadImages: jest.fn().mockResolvedValue({ ...mockReport, imageUrls: ['url1'] }),
       deleteImage: jest.fn().mockResolvedValue(mockReport),
       transitionStatus: jest.fn().mockResolvedValue({ ...mockReport, status: 'CLOSED' }),
@@ -108,11 +109,11 @@ describe('DefectReportsController', () => {
   });
 
   describe('editFields', () => {
-    it('should call service.editField for each field and return updated report', async () => {
+    it('should call service.editFields and return updated report', async () => {
       const body = { fields: [{ field: 'priority', value: 'HIGH' }, { field: 'notes', value: 'test' }] };
-      await controller.editFields('rpt-1', body, mockUser);
-      expect(service.editField).toHaveBeenCalledTimes(2);
-      expect(service.findOne).toHaveBeenCalledWith('rpt-1', mockUser);
+      const res = await controller.editFields('rpt-1', body, mockUser);
+      expect(service.editFields).toHaveBeenCalledWith('rpt-1', body.fields, mockUser);
+      expect(res).toEqual(mockReport);
     });
   });
 
