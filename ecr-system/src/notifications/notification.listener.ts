@@ -196,12 +196,13 @@ export class NotificationListener {
     // REQUIRED IN .env:
     // RM_API_URL=http://localhost:3001
     // RM_INTERNAL_SECRET=vsmart_ecr_bridge_2026_secure
-    const rmApiUrl = this.configService.get<string>('RM_API_URL') || process.env.RM_API_URL;
+    const rmApiUrl = this.configService.get<string>('RM_API_URL') || process.env.RM_API_URL || 'https://v-smart-backend.onrender.com';
     const rmSecret =
       this.configService.get<string>('RM_INTERNAL_SECRET') ||
       process.env.RM_INTERNAL_SECRET ||
       this.configService.get<string>('ECR_INTERNAL_SECRET') ||
-      process.env.ECR_INTERNAL_SECRET;
+      process.env.ECR_INTERNAL_SECRET ||
+      'vsmart_ecr_bridge_2026_secure';
 
     if (!rmApiUrl || !rmSecret) {
       console.warn('[RM-Integration] RM_API_URL or RM_INTERNAL_SECRET not configured — skipping');

@@ -396,8 +396,8 @@ export class DefectReportsWorkflowService {
     // TEMPORARY DEBUG — remove after confirming webhook works
     if (isApproved) {
       try {
-        const rmUrl = process.env.RM_API_URL ?? '';
-        const rmSecret = process.env.RM_INTERNAL_SECRET ?? process.env.ECR_INTERNAL_SECRET ?? '';
+        const rmUrl = process.env.RM_API_URL || 'https://v-smart-backend.onrender.com';
+        const rmSecret = process.env.RM_INTERNAL_SECRET || process.env.ECR_INTERNAL_SECRET || 'vsmart_ecr_bridge_2026_secure';
         if (rmUrl && rmSecret) {
           const res = await fetch(`${rmUrl}/api/internal/ecr/material-pending`, {
             method: 'POST',

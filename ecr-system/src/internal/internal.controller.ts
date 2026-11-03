@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Post,
+  Get,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -45,5 +46,10 @@ export class InternalController {
   @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   async handleMaterialIssued(@Body() dto: MaterialIssuedDto) {
     return this.internalService.handleMaterialIssued(dto);
+  }
+  @Get('approved-reports')
+  @UseGuards(InternalSecretGuard)
+  async getApprovedReports() {
+    return this.internalService.getApprovedReportsForRm();
   }
 }

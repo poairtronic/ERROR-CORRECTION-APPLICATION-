@@ -16,4 +16,7 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      # Note: FRONTEND_URL is no longer needed since it's a monolithic deployment.
+      - key: RM_API_URL
+        value: https://v-smart-backend.onrender.com
+      - key: RM_INTERNAL_SECRET
+        value: vsmart_ecr_bridge_2026_secure

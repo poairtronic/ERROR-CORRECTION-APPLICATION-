@@ -184,4 +184,22 @@ export class InternalService {
       newStatus: 'COMPONENTS_ISSUED',
     };
   }
+  async getApprovedReportsForRm() {
+    const reports = await this.reportsRepo.find({
+      where: { status: ReportStatus.APPROVED },
+      order: { createdAt: 'DESC' },
+    });
+
+    return reports.map((r) => ({
+      ecrId: r.id,
+      reportNumber: r.reportNumber,
+      type: r.inspectionType || 'REWORK',
+      scNumber: r.scNo || r.scOrPoNo || 'N/A',
+      poNumber: r.poNo || r.scOrPoNo || 'N/A',
+      component: r.componentName || 'Unknown',
+      quantityAffected: r.quantity || 1,
+      approvedAt: r.updatedAt ? r.updatedAt.toISOString() : r.createdAt.toISOString(),
+      componentsIssued: !!r.componentsIssued,
+    }));
+  }
 }
