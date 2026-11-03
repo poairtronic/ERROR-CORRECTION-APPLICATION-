@@ -18,6 +18,7 @@ describe('EmailMonitoringController', () => {
       resend: jest.fn().mockResolvedValue({ id: 'e1', status: 'PENDING' }),
       retry: jest.fn().mockResolvedValue({ id: 'e1', status: 'PENDING' }),
       cancel: jest.fn().mockResolvedValue({ id: 'e1', status: 'CANCELLED' }),
+      retryAllFailed: jest.fn().mockResolvedValue({ count: 5, message: 'Re-queued 5 emails' }),
     };
     controller = new EmailMonitoringController(service as EmailMonitoringService);
   });
@@ -97,6 +98,15 @@ describe('EmailMonitoringController', () => {
       const req = { user: { id: 'admin-1' } };
       await controller.cancel('e1', 'cancel test', req);
       expect(service.cancel).toHaveBeenCalledWith('e1', req.user, 'cancel test');
+    });
+  });
+
+  describe('retryAllFailed', () => {
+    it('should bulk retry all failed emails', async () => {
+      const req = { user: { id: 'admin-1' } };
+      const res = await controller.retryAllFailed('Admin bulk retry', req);
+      expect(service.retryAllFailed).toHaveBeenCalledWith(req.user, 'Admin bulk retry');
+      expect(res.count).toBe(5);
     });
   });
 });

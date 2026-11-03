@@ -3,6 +3,7 @@ import { EmailQueueService } from './email-queue.service';
 // Mock trace-context module
 jest.mock('../../common/trace-context', () => ({
   runWithTraceContext: jest.fn((_ctx, fn) => fn()),
+  getCorrelationId: jest.fn(() => 'test-correlation-id'),
 }));
 
 describe('EmailQueueService', () => {
@@ -18,6 +19,11 @@ describe('EmailQueueService', () => {
     emailLogRepo = {
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
     };
     emailService = {
       sendEmailViaApi: jest.fn().mockResolvedValue(undefined),
@@ -119,6 +125,28 @@ describe('EmailQueueService', () => {
       (service as any).isProcessing = false;
       await service.beforeApplicationShutdown();
       expect((service as any).isShuttingDown).toBe(true);
+    });
+  });
+
+  describe('recoverGasQuotaExceededEmails', () => {
+    it('should reset failed emails to PENDING and emit event', async () => {
+      const mockFailed = [
+        { id: '1', status: 'CANCELLED', retryCount: 3, failureReason: 'Google Apps Script error: Exception: Service invoked too many times' },
+      ];
+      emailLogRepo.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(mockFailed),
+      });
+
+      const count = await service.recoverGasQuotaExceededEmails();
+
+      expect(count).toBe(1);
+      expect(mockFailed[0].status).toBe('PENDING');
+      expect(mockFailed[0].retryCount).toBe(0);
+      expect(mockFailed[0].failureReason).toBeNull();
+      expect(emailLogRepo.save).toHaveBeenCalledWith(mockFailed);
+      expect(eventEmitter.emit).toHaveBeenCalledWith('email.logs.updated');
     });
   });
 });

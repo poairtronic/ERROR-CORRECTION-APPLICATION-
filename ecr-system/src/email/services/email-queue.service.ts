@@ -1,4 +1,4 @@
-import { Injectable, Logger, BeforeApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, BeforeApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,7 +13,7 @@ import { PerformanceService } from '../../monitoring/performance.service';
 import * as crypto from 'crypto';
 
 @Injectable()
-export class EmailQueueService implements BeforeApplicationShutdown {
+export class EmailQueueService implements BeforeApplicationShutdown, OnModuleInit {
   private readonly logger = new Logger(EmailQueueService.name);
   private readonly maxRetries: number;
   private isProcessing = false;
@@ -28,6 +28,46 @@ export class EmailQueueService implements BeforeApplicationShutdown {
     private performanceService: PerformanceService,
   ) {
     this.maxRetries = 3; // Max cron-run retries (each cron run attempts 3 sends, so up to 9 total)
+  }
+
+  async onModuleInit() {
+    try {
+      const recovered = await this.recoverGasQuotaExceededEmails();
+      if (recovered > 0) {
+        this.logger.log(`[EMAIL_RECOVERY] Automatically re-queued ${recovered} failed/cancelled emails for resilient delivery.`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`[EMAIL_RECOVERY] Startup email recovery notice: ${err.message}`);
+    }
+  }
+
+  async recoverGasQuotaExceededEmails(): Promise<number> {
+    const affectedEmails = await this.emailLogRepo
+      .createQueryBuilder('log')
+      .where('log.status IN (:...statuses)', { statuses: [EmailStatus.FAILED, EmailStatus.CANCELLED] })
+      .andWhere(
+        '(log.failureReason LIKE :msg1 OR log.failureReason LIKE :msg2 OR log.failureReason LIKE :msg3)',
+        {
+          msg1: '%Service invoked too many times%',
+          msg2: '%Google Apps Script error%',
+          msg3: '%quota exceeded%',
+        },
+      )
+      .getMany();
+
+    if (affectedEmails.length === 0) {
+      return 0;
+    }
+
+    for (const email of affectedEmails) {
+      email.status = EmailStatus.PENDING;
+      email.retryCount = 0;
+      email.failureReason = null as any;
+    }
+
+    await this.emailLogRepo.save(affectedEmails);
+    this.eventEmitter.emit('email.logs.updated');
+    return affectedEmails.length;
   }
 
   async beforeApplicationShutdown() {
@@ -189,8 +229,15 @@ export class EmailQueueService implements BeforeApplicationShutdown {
               email.retryCount += 1;
               
               const statusCode = lastError?.status || 'N/A';
+              const errorMsg = lastError?.message || '';
+              let providerLabel = 'Gmail SMTP';
+              if (errorMsg.includes('Google Apps Script') && errorMsg.includes('SMTP')) {
+                providerLabel = 'Dual Provider (GAS & SMTP)';
+              } else if (errorMsg.includes('Google Apps Script')) {
+                providerLabel = 'Google Apps Script';
+              }
               email.failureReason = JSON.stringify({
-                providerName: 'Gmail SMTP',
+                providerName: providerLabel,
                 error: lastError.message,
                 responseCode: statusCode,
                 responseBody: lastError.message,

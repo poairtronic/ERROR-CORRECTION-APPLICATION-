@@ -29,6 +29,7 @@ export default function EmailMonitoringDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [actionReason, setActionReason] = useState('');
   const [showActionPrompt, setShowActionPrompt] = useState(null); // 'resend' | 'retry' | 'cancel'
+  const [isRetryingAll, setIsRetryingAll] = useState(false);
 
   // Fetch summaries
   const { data: summary, refetch: refetchSummary } = useQuery({
@@ -133,6 +134,23 @@ export default function EmailMonitoringDashboard() {
     }
   };
 
+  const triggerRetryAllFailed = async () => {
+    if (!window.confirm('Are you sure you want to re-queue all failed and cancelled emails for delivery?')) {
+      return;
+    }
+    setIsRetryingAll(true);
+    try {
+      const { data } = await api.post('/email-monitoring/retry-all-failed', { reason: 'Admin bulk retry from dashboard' });
+      toast.success(data?.message || 'Failed emails re-queued successfully');
+      refetchSummary();
+      refetchList();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to retry emails');
+    } finally {
+      setIsRetryingAll(false);
+    }
+  };
+
   // Export
   const handleExport = () => {
     const params = {
@@ -191,6 +209,23 @@ export default function EmailMonitoringDashboard() {
           <p>Real-time delivery status, queue monitoring, and administration actions</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
+          {summary && (summary.failed > 0 || summary.cancelled > 0) && (
+            <button
+              className="btn"
+              onClick={triggerRetryAllFailed}
+              disabled={isRetryingAll}
+              style={{
+                backgroundColor: 'var(--danger, #ef4444)',
+                color: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontWeight: 600,
+              }}
+            >
+              <FiPlay /> {isRetryingAll ? 'Re-queuing...' : `Retry All Failed (${summary.failed + summary.cancelled})`}
+            </button>
+          )}
           <button className="btn btn-outline" onClick={handleExport}>
             <FiDownload /> Export CSV
           </button>

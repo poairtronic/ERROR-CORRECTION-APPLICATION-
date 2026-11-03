@@ -125,5 +125,52 @@ describe('GmailSmtpService', () => {
       expect(result.messageId).toBe('gas-123');
       expect(result.responseCode).toBe(200);
     });
+
+    it('should trip quota circuit breaker when GAS returns quota error', async () => {
+      await service.onModuleInit();
+
+      const { retryWithBackoff } = require('../../common/utils/retry');
+      retryWithBackoff.mockImplementation(async () => ({
+        status: 200,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              status: 'error',
+              message: 'Exception: Service invoked too many times for one day: email.',
+            }),
+          ),
+      }));
+
+      await expect(
+        service.sendMailViaGas('test@example.com', 'Test', '<p>body</p>', true, 'ECR'),
+      ).rejects.toThrow('Service invoked too many times');
+
+      expect(service.isGasQuotaExceeded()).toBe(true);
+      expect(service.getPreferredProvider()).toBe('smtp');
+    });
+  });
+
+  describe('with dual GAS and SMTP credentials', () => {
+    beforeEach(() => {
+      configService = {
+        get: jest.fn().mockImplementation((key: string) => {
+          const map: Record<string, string> = {
+            GMAIL_SCRIPT_URL: 'https://script.google.com/test',
+            GMAIL_SCRIPT_TOKEN: 'secret-token',
+            EMAIL_FROM: 'noreply@test.com',
+            GMAIL_APP_PASSWORD: 'app-password-123',
+          };
+          return map[key];
+        }),
+      };
+      service = new GmailSmtpService(configService as ConfigService);
+    });
+
+    it('should initialize both GAS and direct SMTP transport', async () => {
+      await service.onModuleInit();
+      expect(service.hasScriptUrl()).toBe(true);
+      expect(service.getTransporter()).toBeDefined();
+      expect(service.getPreferredProvider()).toBe('gas');
+    });
   });
 });

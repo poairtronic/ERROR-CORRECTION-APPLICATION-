@@ -45,6 +45,14 @@ export class EmailMonitoringController {
     return this.monitoringService.findOne(id);
   }
 
+  @Post('retry-all-failed')
+  retryAllFailed(
+    @Body('reason') reason: string,
+    @Req() req: any,
+  ) {
+    return this.monitoringService.retryAllFailed(req.user, reason || 'Manual Admin Bulk Retry');
+  }
+
   @Post(':id/resend')
   resend(
     @Param('id') id: string,

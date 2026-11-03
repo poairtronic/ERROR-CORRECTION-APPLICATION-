@@ -73,93 +73,154 @@ export class EmailService implements OnModuleInit {
 
     const startTime = Date.now();
 
-    if (this.gmailSmtpService.hasScriptUrl()) {
+    const tryGas = async (): Promise<{ messageId: string; responseCode: number; responseBody: string }> => {
       console.log(
         `[EMAIL] [HTTP Request] [${new Date().toISOString()}] ` +
         `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
         `Recipient: ${emailLog.recipient} | Provider: Google Apps Script`
       );
 
-      try {
-        const result = await this.gmailSmtpService.sendMailViaGas(
-          emailLog.recipient,
-          emailLog.subject,
-          emailLog.content,
-          emailLog.isHtml,
-          emailFromName,
-        );
+      const result = await this.gmailSmtpService.sendMailViaGas(
+        emailLog.recipient,
+        emailLog.subject,
+        emailLog.content,
+        emailLog.isHtml,
+        emailFromName,
+      );
 
-        const duration = Date.now() - startTime;
-        this.recordEmailDuration(duration, emailLog, 'Google Apps Script');
+      const duration = Date.now() - startTime;
+      this.recordEmailDuration(duration, emailLog, 'Google Apps Script');
 
-        console.log(
-          `[EMAIL] [HTTP Response] [${new Date().toISOString()}] ` +
-          `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-          `Recipient: ${emailLog.recipient} | Response Code: ${result.responseCode} | ` +
-          `Response Time: ${duration}ms | Provider: Google Apps Script | Message ID: ${result.messageId}`
-        );
+      console.log(
+        `[EMAIL] [HTTP Response] [${new Date().toISOString()}] ` +
+        `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
+        `Recipient: ${emailLog.recipient} | Response Code: ${result.responseCode} | ` +
+        `Response Time: ${duration}ms | Provider: Google Apps Script | Message ID: ${result.messageId}`
+      );
 
-        return result;
-      } catch (error: any) {
-        const duration = Date.now() - startTime;
-        this.recordEmailDuration(duration, emailLog, 'Google Apps Script');
-        console.error(
-          `[EMAIL] [HTTP Error] [${new Date().toISOString()}] ` +
-          `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
-          `Duration: ${duration}ms | Error: ${error.message}`
-        );
-        const cleanError = new Error(`Google Apps Script error: ${error.message}`);
-        (cleanError as any).status = 500;
-        throw cleanError;
-      }
-    } else {
-      // SMTP Fallback
-      // Reuse the mailOptions from above; add content fields
+      return result;
+    };
+
+    const trySmtp = async (isFallback = false): Promise<{ messageId: string; responseCode: number; responseBody: string }> => {
+      const providerLabel = isFallback ? 'Gmail SMTP Fallback' : 'Gmail SMTP';
       mailOptions.html = emailLog.isHtml ? emailLog.content : undefined;
       mailOptions.text = emailLog.isHtml ? undefined : emailLog.content;
 
       console.log(
         `[EMAIL] [SMTP Request] [${new Date().toISOString()}] ` +
         `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-        `Recipient: ${emailLog.recipient} | Provider: Gmail SMTP Fallback`
+        `Recipient: ${emailLog.recipient} | Provider: ${providerLabel}`
       );
 
+      const transporter = this.gmailSmtpService.getTransporter();
+      if (!transporter) {
+        throw new Error('SMTP transport fallback is not initialized');
+      }
+
+      const info = await transporter.sendMail(mailOptions);
+      const duration = Date.now() - startTime;
+      this.recordEmailDuration(duration, emailLog, providerLabel);
+      const messageId = info.messageId || '';
+
+      console.log(
+        `[EMAIL] [SMTP Response] [${new Date().toISOString()}] ` +
+        `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
+        `Recipient: ${emailLog.recipient} | Response Code: 250 | ` +
+        `Response Time: ${duration}ms | Provider: ${providerLabel} | Message ID: ${messageId}`
+      );
+
+      return {
+        messageId,
+        responseCode: 250,
+        responseBody: JSON.stringify({ accepted: info.accepted, response: info.response }),
+      };
+    };
+
+    const preferredProvider =
+      typeof this.gmailSmtpService.getPreferredProvider === 'function'
+        ? this.gmailSmtpService.getPreferredProvider()
+        : this.gmailSmtpService.hasScriptUrl()
+          ? 'gas'
+          : 'smtp';
+    const hasScriptUrl = this.gmailSmtpService.hasScriptUrl();
+    const isQuotaExceeded =
+      typeof this.gmailSmtpService.isGasQuotaExceeded === 'function'
+        ? this.gmailSmtpService.isGasQuotaExceeded()
+        : false;
+    const canUseGas = hasScriptUrl && !isQuotaExceeded;
+    const canUseSmtp = !!this.gmailSmtpService.getTransporter();
+
+    if (preferredProvider === 'gas' && canUseGas) {
       try {
-        const transporter = this.gmailSmtpService.getTransporter();
-        if (!transporter) {
-          throw new Error('SMTP transport fallback is not initialized');
-        }
-        const info = await transporter.sendMail(mailOptions);
-        
+        return await tryGas();
+      } catch (gasError: any) {
         const duration = Date.now() - startTime;
-        this.recordEmailDuration(duration, emailLog, 'Gmail SMTP Fallback');
-        const messageId = info.messageId || '';
-
-        console.log(
-          `[EMAIL] [SMTP Response] [${new Date().toISOString()}] ` +
-          `Email ID: ${emailLog.id} | Report ID: ${emailLog.relatedReportId || 'N/A'} | ` +
-          `Recipient: ${emailLog.recipient} | Response Code: 250 | ` +
-          `Response Time: ${duration}ms | Provider: Gmail SMTP Fallback | Message ID: ${messageId}`
-        );
-
-        return {
-          messageId,
-          responseCode: 250,
-          responseBody: JSON.stringify({ accepted: info.accepted, response: info.response }),
-        };
-      } catch (error: any) {
-        const duration = Date.now() - startTime;
-        this.recordEmailDuration(duration, emailLog, 'Gmail SMTP Fallback');
+        this.recordEmailDuration(duration, emailLog, 'Google Apps Script');
         console.error(
-          `[EMAIL] [SMTP Error] [${new Date().toISOString()}] ` +
+          `[EMAIL] [HTTP Error] [${new Date().toISOString()}] ` +
           `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
-          `Duration: ${duration}ms | Error: ${error.message}`
+          `Duration: ${duration}ms | Error: ${gasError.message}`
         );
-        
-        const statusCode = error.responseCode || 500;
-        const cleanError = new Error(`Gmail SMTP fallback error: ${error.message}`);
-        (cleanError as any).status = statusCode;
+
+        // If direct SMTP is available, seamlessly fall back to it
+        if (canUseSmtp) {
+          console.warn(
+            `[EMAIL_FALLBACK] Google Apps Script dispatch failed for Email ID: ${emailLog.id} (${gasError.message}). Seamlessly falling back to Direct Gmail SMTP...`
+          );
+          try {
+            return await trySmtp(true);
+          } catch (smtpError: any) {
+            console.error(
+              `[EMAIL_FALLBACK_FAILED] Both Google Apps Script and Direct Gmail SMTP failed for Email ID: ${emailLog.id}. GAS: ${gasError.message} | SMTP: ${smtpError.message}`
+            );
+            const combinedError = new Error(`Google Apps Script error: ${gasError.message} (SMTP Fallback failed: ${smtpError.message})`);
+            (combinedError as any).status = 500;
+            throw combinedError;
+          }
+        }
+
+        const cleanError = new Error(`Google Apps Script error: ${gasError.message}`);
+        (cleanError as any).status = 500;
         throw cleanError;
+      }
+    } else {
+      // Preferred is SMTP, or GAS quota is exceeded, or no GAS URL configured
+      if (canUseSmtp) {
+        try {
+          return await trySmtp(hasScriptUrl);
+        } catch (smtpError: any) {
+          const duration = Date.now() - startTime;
+          this.recordEmailDuration(duration, emailLog, 'Gmail SMTP Fallback');
+          console.error(
+            `[EMAIL] [SMTP Error] [${new Date().toISOString()}] ` +
+            `Email ID: ${emailLog.id} | Recipient: ${emailLog.recipient} | ` +
+            `Duration: ${duration}ms | Error: ${smtpError.message}`
+          );
+
+          // If GAS is available and quota not exceeded, try GAS as fallback
+          if (hasScriptUrl && !this.gmailSmtpService.isGasQuotaExceeded()) {
+            console.warn(
+              `[EMAIL_FALLBACK] Direct Gmail SMTP failed for Email ID: ${emailLog.id} (${smtpError.message}). Attempting Google Apps Script fallback...`
+            );
+            try {
+              return await tryGas();
+            } catch (gasError: any) {
+              const combinedError = new Error(`Gmail SMTP fallback error: ${smtpError.message} (GAS Fallback failed: ${gasError.message})`);
+              (combinedError as any).status = 500;
+              throw combinedError;
+            }
+          }
+
+          const statusCode = smtpError.responseCode || 500;
+          const cleanError = new Error(`Gmail SMTP fallback error: ${smtpError.message}`);
+          (cleanError as any).status = statusCode;
+          throw cleanError;
+        }
+      } else if (hasScriptUrl) {
+        // Fallback to GAS if SMTP not initialized
+        return await tryGas();
+      } else {
+        throw new Error('SMTP transport fallback is not initialized');
       }
     }
   }

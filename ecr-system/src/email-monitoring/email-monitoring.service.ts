@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EmailLog } from '../email/entities/email-log.entity';
 import { EmailStatus } from '../email/enums/email-status.enum';
 import { EmailMonitoringAuditLog } from './entities/email-monitoring-audit-log.entity';
@@ -21,6 +22,7 @@ export class EmailMonitoringService {
     private readonly reportRepo: Repository<DefectReport>,
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
+    private readonly eventEmitter?: EventEmitter2,
   ) {}
 
   async getSummary() {
@@ -324,6 +326,45 @@ export class EmailMonitoringService {
     );
 
     return saved;
+  }
+
+  async retryAllFailed(adminUser: any, reason?: string) {
+    const failedEmails = await this.emailLogRepo.find({
+      where: [
+        { status: EmailStatus.FAILED },
+        { status: EmailStatus.CANCELLED },
+      ],
+    });
+
+    if (failedEmails.length === 0) {
+      return { count: 0, message: 'No failed or cancelled emails found to retry' };
+    }
+
+    for (const email of failedEmails) {
+      email.status = EmailStatus.PENDING;
+      email.retryCount = 0;
+      email.failureReason = null as any;
+    }
+
+    await this.emailLogRepo.save(failedEmails);
+
+    // Save audit log
+    await this.auditLogRepo.save(
+      this.auditLogRepo.create({
+        emailLogId: failedEmails[0].id,
+        adminUserId: adminUser?.id || 'system',
+        adminUsername: adminUser?.username || adminUser?.email || 'Admin',
+        action: 'RETRY_ALL_FAILED',
+        reason: reason || `Bulk retry triggered for ${failedEmails.length} failed/cancelled emails`,
+      }),
+    );
+
+    this.eventEmitter?.emit('email.logs.updated');
+
+    return {
+      count: failedEmails.length,
+      message: `Successfully re-queued ${failedEmails.length} failed emails for delivery`,
+    };
   }
 
   async exportToCsv(query: any): Promise<string> {

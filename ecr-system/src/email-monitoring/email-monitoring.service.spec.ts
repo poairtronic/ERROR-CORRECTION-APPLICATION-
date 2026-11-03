@@ -8,6 +8,7 @@ describe('EmailMonitoringService', () => {
   let userRepo: any;
   let reportRepo: any;
   let notificationRepo: any;
+  let eventEmitter: any;
 
   beforeEach(() => {
     emailLogRepo = {
@@ -50,12 +51,17 @@ describe('EmailMonitoringService', () => {
       findOne: jest.fn().mockResolvedValue(null),
     };
 
+    eventEmitter = {
+      emit: jest.fn(),
+    };
+
     service = new EmailMonitoringService(
       emailLogRepo,
       auditLogRepo,
       userRepo,
       reportRepo,
       notificationRepo,
+      eventEmitter,
     );
   });
 
@@ -172,6 +178,33 @@ describe('EmailMonitoringService', () => {
       expect(csv).toContain('Email ID');
       expect(csv).toContain('Report Number');
       expect(csv).toContain('e1');
+    });
+  });
+
+  describe('retryAllFailed', () => {
+    it('should return 0 when no failed emails exist', async () => {
+      emailLogRepo.find.mockResolvedValue([]);
+      const res = await service.retryAllFailed({ id: 'admin1' });
+      expect(res.count).toBe(0);
+    });
+
+    it('should re-queue all failed and cancelled emails', async () => {
+      const failedEmails = [
+        { id: '1', status: 'FAILED', retryCount: 2, failureReason: 'err1' },
+        { id: '2', status: 'CANCELLED', retryCount: 3, failureReason: 'err2' },
+      ];
+      emailLogRepo.find.mockResolvedValue(failedEmails);
+      auditLogRepo.create.mockReturnValue({});
+      auditLogRepo.save.mockResolvedValue({});
+
+      const res = await service.retryAllFailed({ id: 'admin1', username: 'admin' }, 'Bulk retry');
+      expect(res.count).toBe(2);
+      expect(failedEmails[0].status).toBe('PENDING');
+      expect(failedEmails[0].retryCount).toBe(0);
+      expect(failedEmails[0].failureReason).toBeNull();
+      expect(failedEmails[1].status).toBe('PENDING');
+      expect(emailLogRepo.save).toHaveBeenCalledWith(failedEmails);
+      expect(eventEmitter.emit).toHaveBeenCalledWith('email.logs.updated');
     });
   });
 });

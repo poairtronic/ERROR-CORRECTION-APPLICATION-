@@ -198,6 +198,23 @@ describe('EmailService', () => {
     }
   });
 
+  it('sendEmailViaApi should seamlessly fallback to SMTP if GAS fails with quota error', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(true);
+    mockSmtpService.sendMailViaGas.mockRejectedValue(new Error('Google Apps Script error: Exception: Service invoked too many times for one day: email.'));
+    const mockTransporter = {
+      sendMail: jest.fn().mockResolvedValue({ messageId: 'smtp-fallback-1', accepted: ['test@example.com'], response: '250 OK' }),
+    };
+    mockSmtpService.getTransporter.mockReturnValue(mockTransporter);
+
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: false } as any;
+    const res = await service.sendEmailViaApi(emailLog);
+
+    expect(res.messageId).toBe('smtp-fallback-1');
+    expect(res.responseCode).toBe(250);
+    expect(mockSmtpService.sendMailViaGas).toHaveBeenCalled();
+    expect(mockTransporter.sendMail).toHaveBeenCalled();
+  });
+
   it('findAll should return all email logs', async () => {
     mockEmailLogRepo.find.mockResolvedValue([{ id: '1' }, { id: '2' }]);
     const result = await service.findAll();
