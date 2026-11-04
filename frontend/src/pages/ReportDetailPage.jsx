@@ -259,9 +259,22 @@ export default function ReportDetailPage() {
         respName = operators.find(o => o.id === respId)?.name || '';
       } else if (respParty === 'VENDOR') {
         respName = vendors.find(v => v.id === respId)?.name || '';
-      } else if (respParty === 'CUSTOMER' || respParty === 'MATERIAL') {
+      } else if (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY', 'DESIGN_TEAM'].includes(respParty)) {
         respName = respId;
       }
+      const qty = Number(report.quantity) || 1;
+      const rawCosts = report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {};
+      const costEst = Number(report.inspectionDetail?.costEstimate) || 0;
+      const rawSum = Object.values(rawCosts).reduce((s, v) => s + (Number(v) || 0), 0);
+      const isAlreadyMultiplied = qty > 1 && rawSum > 0 && costEst > 0 && Math.abs(rawSum - costEst) <= 2 && (rawSum >= qty * 2);
+
+      const unitStageCosts = {};
+      for (const [st, val] of Object.entries(rawCosts)) {
+        if (val !== '' && val != null) {
+          unitStageCosts[st] = isAlreadyMultiplied ? Math.round(Number(val) / qty) : Math.round(Number(val));
+        }
+      }
+
       setInspectData({
         errorType: report.inspectionDetail?.errorType || '',
         rootCause: report.inspectionDetail?.rootCause || '',
@@ -276,7 +289,7 @@ export default function ReportDetailPage() {
         reworkDescription: report.inspectionDetail?.reworkDescription || report.reworkDescription || '',
         rejectionProcessTemplate: report.rejectionProcessTemplate || '',
         rejectionFailedStage: report.rejectionFailedStage || '',
-        rejectionStageCosts: report.rejectionStageCosts || {},
+        rejectionStageCosts: unitStageCosts,
         rejectionDescription: report.inspectionDetail?.rejectionDescription || report.rejectionDescription || '',
         dcNumber: report.inspectionDetail?.dcNumber || ''
       });
@@ -301,11 +314,13 @@ export default function ReportDetailPage() {
       const activeStages = getActiveStages(d.rejectionProcessTemplate, stage);
       const newCosts = {};
       activeStages.forEach(st => { newCosts[st] = d.rejectionStageCosts[st] || ''; });
+      const unitSum = sumStageCosts(activeStages, newCosts);
+      const qty = Number(report.quantity) || 1;
       return {
         ...d,
         rejectionFailedStage: stage,
         rejectionStageCosts: newCosts,
-        costEstimate: sumStageCosts(activeStages, newCosts)
+        costEstimate: activeStages.length > 0 && unitSum > 0 ? unitSum * qty : 0
       };
     });
   };
@@ -315,7 +330,9 @@ export default function ReportDetailPage() {
     setInspectData(d => {
       const newCosts = { ...d.rejectionStageCosts, [stage]: numericVal };
       const activeStages = getActiveStages(d.rejectionProcessTemplate, d.rejectionFailedStage);
-      return { ...d, rejectionStageCosts: newCosts, costEstimate: sumStageCosts(activeStages, newCosts) };
+      const unitSum = sumStageCosts(activeStages, newCosts);
+      const qty = Number(report.quantity) || 1;
+      return { ...d, rejectionStageCosts: newCosts, costEstimate: activeStages.length > 0 && unitSum > 0 ? unitSum * qty : 0 };
     });
   };
   const openSmReviewModal = () => {
@@ -338,6 +355,16 @@ export default function ReportDetailPage() {
 
   const handleInspectSubmit = () => {
     const isRework = inspectionMode === 'REWORK';
+    const qty = Number(report.quantity) || 1;
+    const multipliedStageCosts = {};
+    if (!isRework && inspectData.rejectionStageCosts) {
+      for (const [st, val] of Object.entries(inspectData.rejectionStageCosts)) {
+        multipliedStageCosts[st] = (val !== '' && val != null) ? Math.round(Number(val) * qty) : 0;
+      }
+    }
+    const multipliedTotal = Object.values(multipliedStageCosts).reduce((s, v) => s + (Number(v) || 0), 0);
+    const finalCostEstimate = !isRework && multipliedTotal > 0 ? multipliedTotal : (Number(inspectData.costEstimate) || 0);
+
     const body = {
       ...inspectData,
       inspectionType: inspectionMode,
@@ -345,12 +372,12 @@ export default function ReportDetailPage() {
       rootCause: isRework ? 'Rework' : 'Rejection',
       decision: isRework ? 'REWORK' : 'SCRAP',
       timeEstimateHours: inspectData.timeEstimateHours ? Number(inspectData.timeEstimateHours) : undefined,
-      costEstimate: Number(inspectData.costEstimate) || 0,
+      costEstimate: finalCostEstimate,
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
       reworkDescription: isRework ? inspectData.reworkDescription : undefined,
       rejectionProcessTemplate: !isRework ? inspectData.rejectionProcessTemplate : undefined,
       rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
-      rejectionStageCosts: !isRework ? inspectData.rejectionStageCosts : undefined,
+      rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
       dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
     };
@@ -360,6 +387,16 @@ export default function ReportDetailPage() {
 
   const handleInspectSaveDraft = () => {
     const isRework = inspectionMode === 'REWORK';
+    const qty = Number(report.quantity) || 1;
+    const multipliedStageCosts = {};
+    if (!isRework && inspectData.rejectionStageCosts) {
+      for (const [st, val] of Object.entries(inspectData.rejectionStageCosts)) {
+        multipliedStageCosts[st] = (val !== '' && val != null) ? Math.round(Number(val) * qty) : 0;
+      }
+    }
+    const multipliedTotal = Object.values(multipliedStageCosts).reduce((s, v) => s + (Number(v) || 0), 0);
+    const finalCostEstimate = !isRework && multipliedTotal > 0 ? multipliedTotal : (Number(inspectData.costEstimate) || 0);
+
     const body = {
       ...inspectData,
       inspectionType: inspectionMode,
@@ -367,12 +404,12 @@ export default function ReportDetailPage() {
       rootCause: isRework ? 'Rework' : 'Rejection',
       decision: isRework ? 'REWORK' : 'SCRAP',
       timeEstimateHours: inspectData.timeEstimateHours ? Number(inspectData.timeEstimateHours) : undefined,
-      costEstimate: Number(inspectData.costEstimate) || 0,
+      costEstimate: finalCostEstimate,
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
       reworkDescription: isRework ? inspectData.reworkDescription : undefined,
       rejectionProcessTemplate: !isRework ? inspectData.rejectionProcessTemplate : undefined,
       rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
-      rejectionStageCosts: !isRework ? inspectData.rejectionStageCosts : undefined,
+      rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
       dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
       saveAsDraft: true,
@@ -417,6 +454,7 @@ export default function ReportDetailPage() {
 
   const canEdit = (fieldKey) => {
     if (!fieldKey) return false;
+    if (role === 'ADMIN') return true;
     if (role === 'GENERAL_MANAGER' && status === 'PENDING_GM_APPROVAL') {
       const gmAllowed = ['costEstimate', 'stageOfFailure', 'rejectionStageCosts', 'lossAmount', 'componentName', 'errorTypeName'];
       return gmAllowed.includes(fieldKey);
@@ -471,8 +509,10 @@ export default function ReportDetailPage() {
         </div>
         <div className="flex gap-8">
           <button className="btn btn-ghost" onClick={() => window.print()}><FiPrinter /> Print</button>
-          {status === 'DRAFT' && (report.raisedById === user?.id || role === 'INSPECTOR' || role === 'SENIOR_MANAGER') && (
-            <button className="btn btn-primary" onClick={() => navigate(`/reports/edit/${report.id}`)}><FiEdit2 /> Edit Draft</button>
+          {(role === 'ADMIN' || (status === 'DRAFT' && (report.raisedById === user?.id || role === 'INSPECTOR' || role === 'SENIOR_MANAGER'))) && (
+            <button className="btn btn-primary" onClick={() => navigate(`/reports/edit/${report.id}`)}>
+              <FiEdit2 /> {role === 'ADMIN' && status !== 'DRAFT' ? 'Edit Report' : 'Edit Draft'}
+            </button>
           )}
           {role === 'INSPECTOR' && (status === 'PENDING_INSPECTION' || status === 'INSPECTOR_DRAFT') && !inspectionMode && (
             <button className="btn btn-success" onClick={() => setModal('inspect-decision')}><FiCheckCircle /> {status === 'INSPECTOR_DRAFT' ? 'Resume Inspection' : 'Begin Inspection'}</button>
@@ -511,11 +551,17 @@ export default function ReportDetailPage() {
                 ['PO Number', report.poNo || '—', 'poNo'],
                 ['Stage of Failure', report.stageOfFailure || '—', 'stageOfFailure'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
-                ['Responsible Party', report.inspectionDetail?.responsibleParty || '—', 'responsibleParty'],
-                ['Operator / Vendor / Customer / Material Name', report.inspectionDetail?.responsibleId ? (
+                ['Responsible Party', report.inspectionDetail?.responsibleParty ? (
+                  report.inspectionDetail.responsibleParty === 'INLINE_QUALITY' ? 'Inline Quality'
+                  : report.inspectionDetail.responsibleParty === 'VENDOR_QUALITY' ? 'Vendor Quality'
+                  : report.inspectionDetail.responsibleParty === 'DESIGN_TEAM' ? 'Design Team'
+                  : report.inspectionDetail.responsibleParty === 'DESIGN_TEAM' ? 'Design Team'
+                  : report.inspectionDetail.responsibleParty
+                ) : '—', 'responsibleParty'],
+                ['Operator / Vendor / Customer / Material / Quality Details', report.inspectionDetail?.responsibleId ? (
                   report.inspectionDetail.responsibleParty === 'OPERATOR' 
                     ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
-                    : (report.inspectionDetail.responsibleParty === 'CUSTOMER' || report.inspectionDetail.responsibleParty === 'MATERIAL')
+                    : (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY'].includes(report.inspectionDetail.responsibleParty))
                       ? report.inspectionDetail.responsibleId
                       : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
@@ -543,24 +589,58 @@ export default function ReportDetailPage() {
                     <strong>{report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure || '—'}</strong> 
                     {(report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate) && <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>({report.rejectionProcessTemplate || report.inspectionDetail?.rejectionProcessTemplate})</span>}
                     {(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts) && Object.keys(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts).length > 0 && (
-                      <div style={{ marginTop: 8, padding: 8, background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border)', maxWidth: 300 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: 4, marginBottom: 4 }}>Stage-wise Cost Breakdown</div>
-                        {Object.entries(report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts).map(([stage, cost]) => (
-                          <div key={stage} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, margin: '2px 0' }}>
-                            <span>{stage}:</span>
-                            <strong>₹{cost}</strong>
-                          </div>
-                        ))}
+                      <div style={{ marginTop: 8, padding: 10, background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border)', maxWidth: 360 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', paddingBottom: 4, marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Stage-wise Cost Breakdown</span>
+                          <span>({Number(report.quantity) || 1} Qty)</span>
+                        </div>
+                        {(() => {
+                          const qty = Number(report.quantity) || 1;
+                          const stageMap = report.rejectionStageCosts || report.inspectionDetail?.rejectionStageCosts || {};
+                          const entries = Object.entries(stageMap);
+                          const totalSum = entries.reduce((s, [, c]) => s + (Number(c) || 0), 0);
+                          return (
+                            <>
+                              {entries.map(([stage, cost]) => {
+                                const total = Number(cost) || 0;
+                                const unit = qty > 1 ? Math.round(total / qty) : null;
+                                return (
+                                  <div key={stage} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, margin: '4px 0' }}>
+                                    <span>{stage}:</span>
+                                    <div style={{ textAlign: 'right' }}>
+                                      <strong>₹{total.toLocaleString('en-IN')}</strong>
+                                      {unit !== null && (
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>
+                                          (₹{unit.toLocaleString('en-IN')} / unit × {qty})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {entries.length > 1 && (
+                                <div style={{ marginTop: 6, paddingTop: 4, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700 }}>
+                                  <span>Total Stage Cost:</span>
+                                  <span style={{ color: '#10b981' }}>₹{totalSum.toLocaleString('en-IN')}</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
                 ), 'rejectionStageCosts'],
                 ['Quantity Affected', report.quantity || '—', 'quantity'],
-                ['Responsible Party', report.inspectionDetail?.responsibleParty || '—', 'responsibleParty'],
-                ['Operator / Vendor / Customer / Material Name', report.inspectionDetail?.responsibleId ? (
+                ['Responsible Party', report.inspectionDetail?.responsibleParty ? (
+                  report.inspectionDetail.responsibleParty === 'INLINE_QUALITY' ? 'Inline Quality'
+                  : report.inspectionDetail.responsibleParty === 'VENDOR_QUALITY' ? 'Vendor Quality'
+                  : report.inspectionDetail.responsibleParty
+                ) : '—', 'responsibleParty'],
+                ['Operator / Vendor / Customer / Material / Quality Details', report.inspectionDetail?.responsibleId ? (
                   report.inspectionDetail.responsibleParty === 'OPERATOR' 
                     ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
-                    : (report.inspectionDetail.responsibleParty === 'CUSTOMER' || report.inspectionDetail.responsibleParty === 'MATERIAL')
+                    : (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY'].includes(report.inspectionDetail.responsibleParty))
                       ? report.inspectionDetail.responsibleId
                       : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
@@ -646,6 +726,23 @@ export default function ReportDetailPage() {
                               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingField(null)}><FiX /> Cancel</button>
                             </div>
                           </div>
+                        ) : fieldKey === 'responsibleParty' ? (
+                          <select 
+                            className="form-control" 
+                            autoFocus 
+                            value={editValue} 
+                            onChange={e => setEditValue(e.target.value)} 
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Select Party</option>
+                            <option value="OPERATOR">Operator</option>
+                            <option value="VENDOR">Vendor</option>
+                            <option value="CUSTOMER">Customer</option>
+                            <option value="MATERIAL">Material</option>
+                            <option value="INLINE_QUALITY">Inline Quality</option>
+                            <option value="VENDOR_QUALITY">Vendor Quality</option>
+                            <option value="DESIGN_TEAM">Design Team</option>
+                          </select>
                         ) : fieldKey === 'accountsDescription' ? (
                           <textarea className="form-control" autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} style={{ flex: 1, minHeight: 60 }} rows={3} />
                         ) : fieldKey === 'componentName' ? (
@@ -920,6 +1017,10 @@ export default function ReportDetailPage() {
                   <option value="VENDOR">Vendor</option>
                   <option value="CUSTOMER">Customer</option>
                   <option value="MATERIAL">Material</option>
+                  <option value="INLINE_QUALITY">Inline Quality</option>
+                  <option value="VENDOR_QUALITY">Vendor Quality</option>
+                  <option value="DESIGN_TEAM">Design Team</option>
+                  <option value="DESIGN_TEAM">Design Team</option>
                 </select>
               </div>
               {inspectData.responsibleParty === 'OPERATOR' && (
@@ -979,6 +1080,82 @@ export default function ReportDetailPage() {
                       });
                     }}
                     placeholder="Enter type of material..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'INLINE_QUALITY' && (
+                <div className="form-group">
+                  <label>Inline Quality Details *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter inline quality details..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'VENDOR_QUALITY' && (
+                <div className="form-group">
+                  <label>Vendor Quality Details *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter vendor quality details..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'DESIGN_TEAM' && (
+                <div className="form-group">
+                  <label>Design Team Details *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter design team details..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'DESIGN_TEAM' && (
+                <div className="form-group">
+                  <label>Design Team Details *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter design team details..."
                     required
                   />
                 </div>
@@ -1057,6 +1234,8 @@ export default function ReportDetailPage() {
                   <option value="VENDOR">Vendor</option>
                   <option value="CUSTOMER">Customer</option>
                   <option value="MATERIAL">Material</option>
+                  <option value="INLINE_QUALITY">Inline Quality</option>
+                  <option value="VENDOR_QUALITY">Vendor Quality</option>
                 </select>
               </div>
               {inspectData.responsibleParty === 'OPERATOR' && (
@@ -1116,6 +1295,44 @@ export default function ReportDetailPage() {
                       });
                     }}
                     placeholder="Enter type of material..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'INLINE_QUALITY' && (
+                <div className="form-group">
+                  <label>Inline Quality Details *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter inline quality details..."
+                    required
+                  />
+                </div>
+              )}
+              {inspectData.responsibleParty === 'VENDOR_QUALITY' && (
+                <div className="form-group">
+                  <label>Vendor Quality Details *</label>
+                  <input 
+                    type="text" 
+                    value={inspectData.responsibleName || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setInspectData({
+                        ...inspectData,
+                        responsibleName: val,
+                        responsibleId: val
+                      });
+                    }}
+                    placeholder="Enter vendor quality details..."
                     required
                   />
                 </div>
@@ -1189,23 +1406,38 @@ export default function ReportDetailPage() {
               {/* Stage Costs Entry list */}
               {inspectStagesUpToFailure.length > 0 && (
                 <div className="form-group full" style={{ background: 'rgba(0,0,0,0.02)', padding: 16, borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                  <h4 style={{ marginBottom: 12, fontSize: 14, fontWeight: 600 }}>Process Flow Costs up to Failed Stage</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Process Flow Costs up to Failed Stage (Rate for 1 Qty)</h4>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      Total Qty: <strong>{Number(report.quantity) || 1}</strong>
+                    </span>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    {inspectStagesUpToFailure.map(st => (
-                      <div key={st} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
-                        <input 
-                          type="number" 
-                          min="0" 
-                          step="1" 
-                          style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border-color)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
-                          value={inspectData.rejectionStageCosts[st] ?? ''} 
-                          onChange={e => handleInspectStageCostChange(st, e.target.value)} 
-                          required
-                          placeholder="Enter cost (₹)"
-                        />
-                      </div>
-                    ))}
+                    {inspectStagesUpToFailure.map(st => {
+                      const unitCost = inspectData.rejectionStageCosts[st];
+                      const qty = Number(report.quantity) || 1;
+                      const stageTotal = (unitCost !== '' && unitCost != null) ? Math.round(Number(unitCost) * qty) : null;
+                      return (
+                        <div key={st} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st}:</span>
+                            {stageTotal !== null && qty > 1 && (
+                              <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>Total: ₹{stageTotal.toLocaleString('en-IN')}</span>
+                            )}
+                          </div>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            step="1" 
+                            style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border-color)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
+                            value={inspectData.rejectionStageCosts[st] ?? ''} 
+                            onChange={e => handleInspectStageCostChange(st, e.target.value)} 
+                            required
+                            placeholder="Rate for 1 Qty (₹)"
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

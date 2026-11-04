@@ -494,9 +494,10 @@ export class DefectReportsWorkflowService {
         if (
           actor.role !== Role.SENIOR_MANAGER &&
           actor.role !== Role.GENERAL_MANAGER &&
-          actor.role !== Role.ACCOUNTS
+          actor.role !== Role.ACCOUNTS &&
+          actor.role !== Role.ADMIN
         ) {
-          throw new BadRequestException('Only Senior Manager, General Manager, or Accounts can edit report data');
+          throw new BadRequestException('Only Admin, Senior Manager, General Manager, or Accounts can edit report data');
         }
 
         if (actor.role === Role.GENERAL_MANAGER && report.status !== ReportStatus.PENDING_GM_APPROVAL) {
@@ -559,12 +560,27 @@ export class DefectReportsWorkflowService {
                 (report.inspectionDetail as any)[field] = Number(newValue);
               }
               inspectionModified = true;
+            } else if (actor.role === Role.ADMIN) {
+              report.inspectionDetail = inspectionRepo.create({ reportId: report.id });
+              if (field === 'costRemarks') {
+                report.inspectionDetail.costRemarks = newValue;
+              } else {
+                (report.inspectionDetail as any)[field] = Number(newValue);
+              }
+              inspectionModified = true;
             } else {
               throw new BadRequestException('Cannot edit cost because report has not been inspected');
             }
           } else if (inspectFields.includes(field)) {
             if (report.inspectionDetail) {
               oldValue = (report.inspectionDetail as any)[field];
+              (report.inspectionDetail as any)[field] = Number(newValue);
+              if (field === 'costEstimate') {
+                costEstimateExplicitlySet = true;
+              }
+              inspectionModified = true;
+            } else if (actor.role === Role.ADMIN) {
+              report.inspectionDetail = inspectionRepo.create({ reportId: report.id });
               (report.inspectionDetail as any)[field] = Number(newValue);
               if (field === 'costEstimate') {
                 costEstimateExplicitlySet = true;

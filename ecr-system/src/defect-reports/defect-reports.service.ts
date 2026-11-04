@@ -61,6 +61,9 @@ export class DefectReportsService implements OnModuleInit {
       await this.reportsRepo.query(`ALTER TYPE defect_reports_status_enum ADD VALUE IF NOT EXISTS 'ACCOUNTS_DRAFT'`);
       await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'CUSTOMER'`);
       await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'MATERIAL'`);
+      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'INLINE_QUALITY'`);
+      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'VENDOR_QUALITY'`);
+      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'DESIGN_TEAM'`);
     } catch (err: any) {
       // Ignore if enums already contain values or not supported
     }

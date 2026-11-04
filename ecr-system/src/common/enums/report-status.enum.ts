@@ -33,6 +33,9 @@ export enum ResponsibleParty {
   MACHINE = 'MACHINE',
   CUSTOMER = 'CUSTOMER',
   MATERIAL = 'MATERIAL',
+  INLINE_QUALITY = 'INLINE_QUALITY',
+  VENDOR_QUALITY = 'VENDOR_QUALITY',
+  DESIGN_TEAM = 'DESIGN_TEAM',
 }
 
 export enum RecoveryStatus {

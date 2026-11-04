@@ -84,6 +84,9 @@ export class InternalService {
           'MACHINE',
           'CUSTOMER',
           'MATERIAL',
+          'INLINE_QUALITY',
+          'VENDOR_QUALITY',
+          'DESIGN_TEAM',
         ];
 
         const responsibleParty = validResponsibleParties.includes(

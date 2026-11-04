@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
-import { FiPlus, FiSearch, FiDownload, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiDownload, FiTrash2, FiEdit2 } from 'react-icons/fi';
 import { Table } from '../components/ui/Table';
 import Dialog from '../components/ui/Dialog';
 import { useDebounce } from '../hooks/useDebounce';
@@ -64,6 +64,7 @@ export default function ReportsPage() {
         r.raisedBy?.username,
         r.inspectionDetail?.dcNumber,
         r.inspectionDetail?.responsibleParty,
+        r.inspectionDetail?.responsibleParty ? r.inspectionDetail.responsibleParty.replace(/_/g, ' ') : null,
         r.inspectionDetail?.errorType,
         r.inspectionDetail?.reworkDescription,
         r.inspectionDetail?.rejectionDescription,
@@ -275,6 +276,16 @@ export default function ReportsPage() {
             {isAdmin && (
               <button 
                 className="btn btn-ghost btn-sm" 
+                onClick={() => navigate(`/reports/edit/${row.id}`)}
+                title="Edit Report"
+                style={{ color: 'var(--primary-light, #818cf8)', padding: '6px 8px' }}
+              >
+                <FiEdit2 size={15} />
+              </button>
+            )}
+            {isAdmin && (
+              <button 
+                className="btn btn-ghost btn-sm" 
                 onClick={() => setReportToDelete(row)}
                 title="Delete Quality Report"
                 style={{ color: 'var(--danger, #ef4444)', padding: '6px 8px' }}
@@ -288,7 +299,7 @@ export default function ReportsPage() {
     );
 
     return cols;
-  }, [isAdmin, allFilteredSelected, someFilteredSelected, handleToggleSelectAll, selectedIds, handleToggleRow, handleNavigateReport]);
+  }, [isAdmin, allFilteredSelected, someFilteredSelected, handleToggleSelectAll, selectedIds, handleToggleRow, handleNavigateReport, navigate]);
 
   return (
     <>
@@ -297,7 +308,7 @@ export default function ReportsPage() {
           <h1>Defect Reports</h1>
           <p>{filtered.length} reports</p>
         </div>
-        {['OPERATOR', 'INSPECTOR', 'SENIOR_MANAGER'].includes(user?.role?.toUpperCase()) && (
+        {['OPERATOR', 'INSPECTOR', 'SENIOR_MANAGER', 'ADMIN'].includes(user?.role?.toUpperCase()) && (
           <button className="btn btn-primary" onClick={() => navigate('/reports/new')}>
             <FiPlus /> New Report
           </button>

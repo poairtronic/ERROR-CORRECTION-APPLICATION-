@@ -48,7 +48,14 @@ export default function AccountsDashboard() {
     { 
       label: 'Responsible Party', 
       key: 'responsibleParty',
-      render: (r) => r.inspectionDetail?.responsibleParty || '—'
+      render: (r) => {
+        const party = r.inspectionDetail?.responsibleParty;
+        if (!party) return '—';
+        if (party === 'INLINE_QUALITY') return 'Inline Quality';
+        if (party === 'VENDOR_QUALITY') return 'Vendor Quality';
+        if (party === 'DESIGN_TEAM') return 'Design Team';
+        return party;
+      }
     },
     { label: 'Date Raised', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
   ];

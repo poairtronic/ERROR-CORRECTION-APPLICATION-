@@ -63,6 +63,7 @@ export class DefectReportsMutationService {
     if (role === Role.OPERATOR) return RaisedByRole.OPERATOR;
     if (role === Role.INSPECTOR) return RaisedByRole.INSPECTOR;
     if (role === Role.SENIOR_MANAGER) return RaisedByRole.SENIOR_MANAGER;
+    if (role === Role.ADMIN) return RaisedByRole.INSPECTOR;
     throw new BadRequestException('This role cannot raise a defect report');
   }
 
@@ -280,12 +281,14 @@ export class DefectReportsMutationService {
           lock: { mode: 'pessimistic_write' },
         });
         if (!report) throw new NotFoundException('Defect report not found');
-        if (report.status !== ReportStatus.DRAFT && report.status !== ReportStatus.INSPECTOR_DRAFT) {
-          throw new BadRequestException('Only draft reports can be updated');
-        }
-        
-        if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER && actor.role !== Role.INSPECTOR) {
-          throw new ForbiddenException('You do not have permission to edit this draft report');
+        if (actor.role !== Role.ADMIN) {
+          if (report.status !== ReportStatus.DRAFT && report.status !== ReportStatus.INSPECTOR_DRAFT) {
+            throw new BadRequestException('Only draft reports can be updated');
+          }
+          
+          if (report.raisedById !== actor.id && actor.role !== Role.GENERAL_MANAGER && actor.role !== Role.SENIOR_MANAGER && actor.role !== Role.INSPECTOR) {
+            throw new ForbiddenException('You do not have permission to edit this draft report');
+          }
         }
 
         report.scOrPoNo = dto.scNo && dto.poNo ? `${dto.scNo} / ${dto.poNo}` : (dto.scOrPoNo || report.scOrPoNo);
@@ -310,7 +313,14 @@ export class DefectReportsMutationService {
         report.inspectionType = dto.inspectionType ?? report.inspectionType;
 
         oldStatus = report.status;
-        if (dto.isDraft === false) {
+        if (actor.role === Role.ADMIN) {
+          if (report.status === ReportStatus.DRAFT || report.status === ReportStatus.INSPECTOR_DRAFT) {
+            if (dto.isDraft === false) {
+              report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+            }
+          }
+          // Non-draft reports retain their current status during Admin edit
+        } else if (dto.isDraft === false) {
           if (raisedByRole === RaisedByRole.OPERATOR) {
             report.status = ReportStatus.PENDING_INSPECTION;
           } else if (raisedByRole === RaisedByRole.INSPECTOR) {
@@ -361,8 +371,8 @@ export class DefectReportsMutationService {
           await inspectionRepo.save(insp);
         }
 
-        if (dto.isDraft === false) {
-          await this.workflowService.logStatusChange(report.id, actor, oldStatus, report.status, 'Report submitted from draft', manager);
+        if (dto.isDraft === false || actor.role === Role.ADMIN) {
+          await this.workflowService.logStatusChange(report.id, actor, oldStatus, report.status, actor.role === Role.ADMIN ? 'Report updated by Admin' : 'Report submitted from draft', manager);
         }
 
         // Break circular references for json serialization

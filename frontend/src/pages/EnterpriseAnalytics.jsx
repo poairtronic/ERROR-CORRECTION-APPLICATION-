@@ -387,6 +387,14 @@ export default function EnterpriseAnalytics() {
                             respName = operators.find(o => o.id === id)?.name || id || 'Operator';
                           } else if (r.inspectionDetail.responsibleParty === 'CUSTOMER') {
                             respName = id || 'Customer';
+                          } else if (r.inspectionDetail.responsibleParty === 'MATERIAL') {
+                            respName = id || 'Material';
+                          } else if (r.inspectionDetail.responsibleParty === 'INLINE_QUALITY') {
+                            respName = id || 'Inline Quality';
+                          } else if (r.inspectionDetail.responsibleParty === 'VENDOR_QUALITY') {
+                            respName = id || 'Vendor Quality';
+                          } else if (r.inspectionDetail.responsibleParty === 'DESIGN_TEAM') {
+                            respName = id || 'Design Team';
                           } else {
                             respName = vendors.find(v => v.id === id)?.name || id || 'Vendor';
                           }

@@ -37,7 +37,12 @@ function flattenReports(reports) {
     'SC / PO Number': `${r.scNo || '—'} / ${r.poNo || '—'}`,
     'Component': r.componentName || '—',
     'Error Type': r.errorTypeName || r.inspectionDetail?.errorType || '—',
-    'Responsible Party': r.inspectionDetail?.responsibleParty || '—',
+    'Responsible Party': r.inspectionDetail?.responsibleParty ? (
+      r.inspectionDetail.responsibleParty === 'INLINE_QUALITY' ? 'Inline Quality'
+      : r.inspectionDetail.responsibleParty === 'VENDOR_QUALITY' ? 'Vendor Quality'
+      : r.inspectionDetail.responsibleParty === 'DESIGN_TEAM' ? 'Design Team'
+      : r.inspectionDetail.responsibleParty
+    ) : '—',
     'Stage of Failure': r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure || '—',
     'Status': r.status || '—',
     'Total Cost': r.inspectionDetail?.costEstimate || 0,

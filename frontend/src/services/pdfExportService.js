@@ -101,7 +101,12 @@ export function exportToPDF(reports, filters, user) {
     `${r.scNo || '—'} / ${r.poNo || '—'}`,
     r.componentName || '—',
     r.errorTypeName || r.inspectionDetail?.errorType || '—',
-    r.inspectionDetail?.responsibleParty || '—',
+    r.inspectionDetail?.responsibleParty ? (
+      r.inspectionDetail.responsibleParty === 'INLINE_QUALITY' ? 'Inline Quality'
+      : r.inspectionDetail.responsibleParty === 'VENDOR_QUALITY' ? 'Vendor Quality'
+      : r.inspectionDetail.responsibleParty === 'DESIGN_TEAM' ? 'Design Team'
+      : r.inspectionDetail.responsibleParty
+    ) : '—',
     r.rejectionFailedStage || r.inspectionDetail?.rejectionFailedStage || r.stageOfFailure || '—',
     r.status || '—',
     { content: `₹${Number(r.inspectionDetail?.costEstimate || 0).toLocaleString('en-IN')}`, styles: { halign: 'right' } },

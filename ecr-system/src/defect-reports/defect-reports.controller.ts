@@ -32,13 +32,13 @@ export class DefectReportsController {
   constructor(private service: DefectReportsService) {}
 
   @Post()
-  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER)
+  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   create(@Body() dto: CreateDefectReportDto, @CurrentUser() user) {
     return this.service.create(dto, user);
   }
 
   @Patch(':id')
-  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER)
+  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   update(
     @Param('id') id: string,
     @Body() dto: CreateDefectReportDto,
@@ -88,7 +88,7 @@ export class DefectReportsController {
   }
 
   @Patch(':id/field')
-  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
+  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.ADMIN)
   async editField(
     @Param('id') id: string,
     @Body() body: { field: string; value: string },
@@ -98,7 +98,7 @@ export class DefectReportsController {
   }
 
   @Patch(':id/fields')
-  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
+  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.ADMIN)
   async editFields(
     @Param('id') id: string,
     @Body() body: { fields: { field: string; value: any }[] },
@@ -108,7 +108,7 @@ export class DefectReportsController {
   }
 
   @Post(':id/images')
-  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER)
+  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   @UseInterceptors(FilesInterceptor('files', 5)) // max 5 files
   async uploadImages(
     @Param('id') id: string,
@@ -119,7 +119,7 @@ export class DefectReportsController {
   }
 
   @Delete(':id/images')
-  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER)
+  @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   async deleteImage(
     @Param('id') id: string,
     @Body() body: { imageUrl: string },
@@ -129,7 +129,7 @@ export class DefectReportsController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS)
+  @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.ADMIN)
   async transitionStatus(
     @Param('id') id: string,
     @Body() body: { status: string; note: string },
