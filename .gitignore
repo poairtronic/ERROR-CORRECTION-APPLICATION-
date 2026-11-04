@@ -26,3 +26,9 @@ package.zip
 
 # Compiled frontend assets
 ecr-system/public/
+
+# User uploaded attachments
+uploads/
+ecr-system/uploads/*
+!ecr-system/uploads/.gitkeep
+
