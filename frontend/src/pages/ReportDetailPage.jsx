@@ -38,6 +38,7 @@ export default function ReportDetailPage() {
   const [notes, setNotes] = useState('');
   const [messageToSm, setMessageToSm] = useState('');
   const [inspectionMode, setInspectionMode] = useState(null); // 'REWORK' | 'REJECTION' — gates the inspection form
+  const [inspectCustomStages, setInspectCustomStages] = useState([{ name: '', cost: '' }]);
   const [isSavingAccounts, setIsSavingAccounts] = useState(false);
 
   const { data: report, isLoading: loading } = useQuery({
@@ -275,6 +276,16 @@ export default function ReportDetailPage() {
         }
       }
 
+      const isOthers = report.rejectionProcessTemplate === 'OTHERS' || report.inspectionDetail?.rejectionProcessTemplate === 'OTHERS';
+      if (isOthers) {
+        const entries = Object.entries(unitStageCosts);
+        if (entries.length > 0) {
+          setInspectCustomStages(entries.map(([name, cost]) => ({ name, cost })));
+        } else {
+          setInspectCustomStages([{ name: report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || '', cost: unitStageCosts['Others'] || '' }]);
+        }
+      }
+
       setInspectData({
         errorType: report.inspectionDetail?.errorType || '',
         rootCause: report.inspectionDetail?.rootCause || '',
@@ -300,13 +311,72 @@ export default function ReportDetailPage() {
   }, [report, operators, vendors, modal]);
 
   const handleInspectTemplateChange = (template) => {
-    setInspectData(d => ({
-      ...d,
-      rejectionProcessTemplate: template,
-      rejectionFailedStage: '',
-      rejectionStageCosts: {},
-      costEstimate: 0
-    }));
+    if (template === 'OTHERS') {
+      setInspectCustomStages([{ name: '', cost: '' }]);
+      setInspectData(d => ({
+        ...d,
+        rejectionProcessTemplate: template,
+        rejectionFailedStage: '',
+        rejectionStageCosts: {},
+        costEstimate: 0
+      }));
+    } else {
+      setInspectData(d => ({
+        ...d,
+        rejectionProcessTemplate: template,
+        rejectionFailedStage: '',
+        rejectionStageCosts: {},
+        costEstimate: 0
+      }));
+    }
+  };
+
+  const handleInspectCustomStageChange = (index, field, value) => {
+    setInspectCustomStages(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: field === 'cost' ? (value === '' ? '' : Math.round(Number(value))) : value };
+      
+      const costsMap = {};
+      next.forEach(s => {
+        const stageName = s.name.trim() || 'Others';
+        costsMap[stageName] = s.cost !== '' && s.cost != null ? Number(s.cost) : '';
+      });
+      const unitSum = next.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+      const qty = Number(report?.quantity) || 1;
+      
+      setInspectData(d => ({
+        ...d,
+        rejectionFailedStage: next[0]?.name.trim() || d.rejectionFailedStage || 'Others',
+        rejectionStageCosts: costsMap,
+        costEstimate: unitSum * qty
+      }));
+      return next;
+    });
+  };
+
+  const addInspectCustomStage = () => {
+    setInspectCustomStages(prev => [...prev, { name: '', cost: '' }]);
+  };
+
+  const removeInspectCustomStage = (index) => {
+    setInspectCustomStages(prev => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      const costsMap = {};
+      next.forEach(s => {
+        const stageName = s.name.trim() || 'Others';
+        costsMap[stageName] = s.cost !== '' && s.cost != null ? Number(s.cost) : '';
+      });
+      const unitSum = next.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+      const qty = Number(report?.quantity) || 1;
+      setInspectData(d => ({
+        ...d,
+        rejectionFailedStage: next[0]?.name.trim() || 'Others',
+        rejectionStageCosts: costsMap,
+        costEstimate: unitSum * qty
+      }));
+      return next;
+    });
   };
 
   const handleInspectFailedStageChange = (stage) => {
@@ -356,14 +426,29 @@ export default function ReportDetailPage() {
   const handleInspectSubmit = () => {
     const isRework = inspectionMode === 'REWORK';
     const qty = Number(report.quantity) || 1;
+    const isOthers = !isRework && (inspectData.rejectionProcessTemplate === 'OTHERS' || inspectData.rejectionProcessTemplate === 'Others');
     const multipliedStageCosts = {};
-    if (!isRework && inspectData.rejectionStageCosts) {
+    if (isOthers) {
+      for (const s of inspectCustomStages) {
+        const stageName = s.name.trim() || 'Others';
+        if (s.cost !== '' && s.cost != null) {
+          multipliedStageCosts[stageName] = Math.round(Number(s.cost) * qty);
+        }
+      }
+      if (Object.keys(multipliedStageCosts).length === 0 && Number(inspectData.costEstimate) > 0) {
+        multipliedStageCosts['Others'] = Number(inspectData.costEstimate);
+      }
+    } else if (!isRework && inspectData.rejectionStageCosts) {
       for (const [st, val] of Object.entries(inspectData.rejectionStageCosts)) {
         multipliedStageCosts[st] = (val !== '' && val != null) ? Math.round(Number(val) * qty) : 0;
       }
     }
     const multipliedTotal = Object.values(multipliedStageCosts).reduce((s, v) => s + (Number(v) || 0), 0);
     const finalCostEstimate = !isRework && multipliedTotal > 0 ? multipliedTotal : (Number(inspectData.costEstimate) || 0);
+
+    const resolvedFailedStage = isOthers
+      ? (inspectCustomStages[0]?.name.trim() || inspectData.rejectionFailedStage || 'Others')
+      : inspectData.rejectionFailedStage;
 
     const body = {
       ...inspectData,
@@ -376,7 +461,7 @@ export default function ReportDetailPage() {
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
       reworkDescription: isRework ? inspectData.reworkDescription : undefined,
       rejectionProcessTemplate: !isRework ? inspectData.rejectionProcessTemplate : undefined,
-      rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
+      rejectionFailedStage: !isRework ? resolvedFailedStage : undefined,
       rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
       dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
@@ -388,14 +473,29 @@ export default function ReportDetailPage() {
   const handleInspectSaveDraft = () => {
     const isRework = inspectionMode === 'REWORK';
     const qty = Number(report.quantity) || 1;
+    const isOthers = !isRework && (inspectData.rejectionProcessTemplate === 'OTHERS' || inspectData.rejectionProcessTemplate === 'Others');
     const multipliedStageCosts = {};
-    if (!isRework && inspectData.rejectionStageCosts) {
+    if (isOthers) {
+      for (const s of inspectCustomStages) {
+        const stageName = s.name.trim() || 'Others';
+        if (s.cost !== '' && s.cost != null) {
+          multipliedStageCosts[stageName] = Math.round(Number(s.cost) * qty);
+        }
+      }
+      if (Object.keys(multipliedStageCosts).length === 0 && Number(inspectData.costEstimate) > 0) {
+        multipliedStageCosts['Others'] = Number(inspectData.costEstimate);
+      }
+    } else if (!isRework && inspectData.rejectionStageCosts) {
       for (const [st, val] of Object.entries(inspectData.rejectionStageCosts)) {
         multipliedStageCosts[st] = (val !== '' && val != null) ? Math.round(Number(val) * qty) : 0;
       }
     }
     const multipliedTotal = Object.values(multipliedStageCosts).reduce((s, v) => s + (Number(v) || 0), 0);
     const finalCostEstimate = !isRework && multipliedTotal > 0 ? multipliedTotal : (Number(inspectData.costEstimate) || 0);
+
+    const resolvedFailedStage = isOthers
+      ? (inspectCustomStages[0]?.name.trim() || inspectData.rejectionFailedStage || 'Others')
+      : inspectData.rejectionFailedStage;
 
     const body = {
       ...inspectData,
@@ -408,7 +508,7 @@ export default function ReportDetailPage() {
       lossAmount: inspectData.lossAmount ? Number(inspectData.lossAmount) : undefined,
       reworkDescription: isRework ? inspectData.reworkDescription : undefined,
       rejectionProcessTemplate: !isRework ? inspectData.rejectionProcessTemplate : undefined,
-      rejectionFailedStage: !isRework ? inspectData.rejectionFailedStage : undefined,
+      rejectionFailedStage: !isRework ? resolvedFailedStage : undefined,
       rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
       dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
@@ -438,8 +538,12 @@ export default function ReportDetailPage() {
       const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
       const stages = PROCESS_TEMPLATES[template] || [];
       const idx = stages.indexOf(failedStage);
-      const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
-      const total = activeStages.reduce((sum, st) => sum + (Number(parsedCosts[st]) || 0), 0);
+      const activeStages = (template === 'OTHERS' || template === 'Others')
+        ? (Object.keys(parsedCosts).length > 0 ? Object.keys(parsedCosts) : [failedStage || 'Others'])
+        : (idx !== -1 ? stages.slice(0, idx + 1) : []);
+      const total = (template === 'OTHERS' || template === 'Others')
+        ? Object.values(parsedCosts).reduce((sum, val) => sum + (Number(val) || 0), 0)
+        : activeStages.reduce((sum, st) => sum + (Number(parsedCosts[st]) || 0), 0);
 
       await api.patch(`/defect-reports/${id}/field`, { field: 'rejectionStageCosts', value: editValue });
       await api.patch(`/defect-reports/${id}/field`, { field: 'costEstimate', value: String(total) });
@@ -682,7 +786,9 @@ export default function ReportDetailPage() {
                               const failedStage = report.rejectionFailedStage || report.inspectionDetail?.rejectionFailedStage || report.stageOfFailure;
                               const stages = PROCESS_TEMPLATES[template] || [];
                               const idx = stages.indexOf(failedStage);
-                              const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+                              const activeStages = (template === 'OTHERS' || template === 'Others')
+                                ? (Object.keys(currentCosts).length > 0 ? Object.keys(currentCosts) : [failedStage || 'Others'])
+                                : (idx !== -1 ? stages.slice(0, idx + 1) : []);
                               let currentCosts = {};
                               try {
                                 currentCosts = JSON.parse(editValue || '{}');
@@ -1377,14 +1483,25 @@ export default function ReportDetailPage() {
                 <select value={inspectData.rejectionProcessTemplate} onChange={e => handleInspectTemplateChange(e.target.value)} required>
                   <option value="">Select Template...</option>
                   {Object.keys(PROCESS_TEMPLATES).map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="OTHERS">Others</option>
                 </select>
               </div>
               <div className="form-group">
                 <label>Failed Stage *</label>
-                <select value={inspectData.rejectionFailedStage} onChange={e => handleInspectFailedStageChange(e.target.value)} required disabled={!inspectData.rejectionProcessTemplate}>
-                  <option value="">Select Stage...</option>
-                  {inspectSelectedTemplateStages.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                {inspectData.rejectionProcessTemplate === 'OTHERS' ? (
+                  <input 
+                    type="text" 
+                    value={inspectData.rejectionFailedStage || inspectCustomStages[0]?.name || ''} 
+                    onChange={e => handleInspectCustomStageChange(0, 'name', e.target.value)} 
+                    placeholder="Enter failed stage / process name..." 
+                    required 
+                  />
+                ) : (
+                  <select value={inspectData.rejectionFailedStage} onChange={e => handleInspectFailedStageChange(e.target.value)} required disabled={!inspectData.rejectionProcessTemplate}>
+                    <option value="">Select Stage...</option>
+                    {inspectSelectedTemplateStages.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
               </div>
               <div className="form-group full">
                 <label>Rejection Description *</label>
@@ -1403,8 +1520,101 @@ export default function ReportDetailPage() {
                 </datalist>
               </div>
 
+              {/* Custom Process Flow Costs Box for OTHERS */}
+              {inspectData.rejectionProcessTemplate === 'OTHERS' && (
+                <div className="form-group full" style={{ background: 'rgba(0,0,0,0.02)', padding: 16, borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Process Flow Details & Cost (Others)</h4>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      Total Qty: <strong>{Number(report.quantity) || 1}</strong>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {inspectCustomStages.map((stg, index) => {
+                      const qty = Number(report.quantity) || 1;
+                      const stageTotal = (stg.cost !== '' && stg.cost != null) ? Math.round(Number(stg.cost) * qty) : null;
+                      return (
+                        <div key={index} style={{ display: 'grid', gridTemplateColumns: inspectCustomStages.length > 1 ? '1fr 1fr auto' : '1fr 1fr', gap: 12, alignItems: 'flex-start', padding: 12, background: 'var(--bg-card)', borderRadius: 6, border: '1px solid var(--border-color)' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Process Details / Stage Name *</label>
+                            <input 
+                              type="text" 
+                              value={stg.name} 
+                              onChange={e => handleInspectCustomStageChange(index, 'name', e.target.value)} 
+                              placeholder="Enter process details (e.g. Turning, Milling, Boring)..." 
+                              required 
+                              style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border-color)', borderRadius: 4, width: '100%', background: 'var(--bg)', color: 'var(--text)' }} 
+                            />
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Amount (Rate for 1 Qty) (₹) *</label>
+                              {stageTotal !== null && qty > 1 && (
+                                <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>Total: ₹{stageTotal.toLocaleString('en-IN')}</span>
+                              )}
+                            </div>
+                            <input 
+                              type="number" 
+                              min="0" 
+                              step="1" 
+                              value={stg.cost ?? ''} 
+                              onChange={e => handleInspectCustomStageChange(index, 'cost', e.target.value)} 
+                              placeholder="Rate for 1 Qty (₹)" 
+                              required 
+                              style={{ height: 32, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border-color)', borderRadius: 4, width: '100%', background: 'var(--bg)', color: 'var(--text)' }} 
+                            />
+                            {stageTotal !== null && qty > 1 && (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                ₹{stg.cost} × {qty} qty
+                              </span>
+                            )}
+                          </div>
+
+                          {inspectCustomStages.length > 1 && (
+                            <button 
+                              type="button" 
+                              onClick={() => removeInspectCustomStage(index)} 
+                              className="btn btn-ghost btn-sm" 
+                              style={{ marginTop: 22, color: '#ef4444' }} 
+                              title="Remove process"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button 
+                      type="button" 
+                      onClick={addInspectCustomStage} 
+                      className="btn btn-secondary btn-sm" 
+                      style={{ fontSize: 12 }}
+                    >
+                      + Add Another Process Stage
+                    </button>
+
+                    {(() => {
+                      const qty = Number(report.quantity) || 1;
+                      const unitSum = inspectCustomStages.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+                      const totalSum = unitSum * qty;
+                      return unitSum > 0 ? (
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          <span style={{ color: 'var(--text-muted)' }}>Total Cost for {qty} Qty ({unitSum} × {qty}): </span>
+                          <span style={{ color: '#10b981' }}>₹{totalSum.toLocaleString('en-IN')}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                </div>
+              )}
+
               {/* Stage Costs Entry list */}
-              {inspectStagesUpToFailure.length > 0 && (
+              {inspectData.rejectionProcessTemplate !== 'OTHERS' && inspectStagesUpToFailure.length > 0 && (
                 <div className="form-group full" style={{ background: 'rgba(0,0,0,0.02)', padding: 16, borderRadius: 8, border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Process Flow Costs up to Failed Stage (Rate for 1 Qty)</h4>

@@ -59,7 +59,10 @@ export function calculateTotalCost(report: DefectReport): number {
   }
 
   let stageTotal = 0;
-  if (template && failedStage) {
+  if (template === 'OTHERS' || template === 'Others') {
+    const costValues = Object.values(stageCosts) as (number | string | undefined | null)[];
+    stageTotal = costValues.reduce<number>((sum: number, val) => sum + (Number(val) || 0), 0);
+  } else if (template && failedStage) {
     const stages = PROCESS_TEMPLATES[template] || [];
     const idx = stages.indexOf(failedStage);
     // Slice active stages up to and including the failed stage

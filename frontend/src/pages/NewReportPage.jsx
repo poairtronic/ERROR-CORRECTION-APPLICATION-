@@ -35,6 +35,7 @@ export default function NewReportPage() {
     rootCause: '', responsibleParty: '', responsibleId: '', responsibleName: '', decision: '', alternativeNote: '', costEstimate: '', timeEstimateHours: '', lossAmount: '',
     dcNumber: ''
   });
+  const [customStages, setCustomStages] = useState([{ name: '', cost: '' }]);
   const selectedTemplateStages = form.rejectionProcessTemplate ? (PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []) : [];
   const failedStageIndex = selectedTemplateStages.indexOf(form.rejectionFailedStage);
   const stagesUpToFailure = failedStageIndex !== -1 ? selectedTemplateStages.slice(0, failedStageIndex + 1) : [];
@@ -80,12 +81,24 @@ export default function NewReportPage() {
             }
           }
 
+          const isOthers = data.rejectionProcessTemplate === 'OTHERS' || data.inspectionDetail?.rejectionProcessTemplate === 'OTHERS';
+          if (isOthers) {
+            const entries = Object.entries(unitStageCosts);
+            if (entries.length > 0) {
+              setCustomStages(entries.map(([name, cost]) => ({ name, cost })));
+            } else {
+              setCustomStages([{ name: data.rejectionFailedStage || data.inspectionDetail?.rejectionFailedStage || '', cost: unitStageCosts['Others'] || '' }]);
+            }
+          }
+
           const activeStages = getActiveStages(
             data.rejectionProcessTemplate || data.inspectionDetail?.rejectionProcessTemplate,
             data.rejectionFailedStage || data.inspectionDetail?.rejectionFailedStage
           );
-          const unitSum = sumStageCosts(activeStages, unitStageCosts);
-          const computedCostEstimate = (activeStages.length > 0 && unitSum > 0) ? (unitSum * qty) : (costEst || '');
+          const unitSum = isOthers 
+            ? Object.values(unitStageCosts).reduce((s, c) => s + (Number(c) || 0), 0)
+            : sumStageCosts(activeStages, unitStageCosts);
+          const computedCostEstimate = unitSum > 0 ? (unitSum * qty) : (costEst || '');
 
           setForm({
             defectDescription: data.defectDescription || '',
@@ -157,10 +170,16 @@ export default function NewReportPage() {
 
   const handleQuantityChange = (val) => {
     setForm(f => {
-      const activeStages = getActiveStages(f.rejectionProcessTemplate, f.rejectionFailedStage);
-      const unitSum = sumStageCosts(activeStages, f.rejectionStageCosts);
+      const isOthers = f.rejectionProcessTemplate === 'OTHERS' || f.rejectionProcessTemplate === 'Others';
+      let unitSum = 0;
+      if (isOthers) {
+        unitSum = customStages.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+      } else {
+        const activeStages = getActiveStages(f.rejectionProcessTemplate, f.rejectionFailedStage);
+        unitSum = sumStageCosts(activeStages, f.rejectionStageCosts);
+      }
       const qtyNum = Number(val) || 1;
-      const newCostEstimate = activeStages.length > 0 && unitSum > 0 ? unitSum * qtyNum : f.costEstimate;
+      const newCostEstimate = unitSum > 0 ? unitSum * qtyNum : f.costEstimate;
       return {
         ...f,
         quantity: val,
@@ -170,14 +189,72 @@ export default function NewReportPage() {
   };
 
   const handleTemplateChange = (template) => {
-    setForm(f => {
-      return {
+    if (template === 'OTHERS') {
+      const initStages = [{ name: '', cost: '' }];
+      setCustomStages(initStages);
+      setForm(f => ({
         ...f,
         rejectionProcessTemplate: template,
         rejectionFailedStage: '',
         rejectionStageCosts: {},
         costEstimate: 0
-      };
+      }));
+    } else {
+      setForm(f => ({
+        ...f,
+        rejectionProcessTemplate: template,
+        rejectionFailedStage: '',
+        rejectionStageCosts: {},
+        costEstimate: 0
+      }));
+    }
+  };
+
+  const handleCustomStageChange = (index, field, value) => {
+    setCustomStages(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: field === 'cost' ? (value === '' ? '' : Math.round(Number(value))) : value };
+      
+      const costsMap = {};
+      next.forEach(s => {
+        const stageName = s.name.trim() || 'Others';
+        costsMap[stageName] = s.cost !== '' && s.cost != null ? Number(s.cost) : '';
+      });
+      const unitSum = next.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+      const qty = Number(form.quantity) || 1;
+      
+      setForm(f => ({
+        ...f,
+        rejectionFailedStage: next[0]?.name.trim() || f.rejectionFailedStage || 'Others',
+        rejectionStageCosts: costsMap,
+        costEstimate: unitSum * qty
+      }));
+      return next;
+    });
+  };
+
+  const addCustomStage = () => {
+    setCustomStages(prev => [...prev, { name: '', cost: '' }]);
+  };
+
+  const removeCustomStage = (index) => {
+    setCustomStages(prev => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      const costsMap = {};
+      next.forEach(s => {
+        const stageName = s.name.trim() || 'Others';
+        costsMap[stageName] = s.cost !== '' && s.cost != null ? Number(s.cost) : '';
+      });
+      const unitSum = next.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+      const qty = Number(form.quantity) || 1;
+      setForm(f => ({
+        ...f,
+        rejectionFailedStage: next[0]?.name.trim() || 'Others',
+        rejectionStageCosts: costsMap,
+        costEstimate: unitSum * qty
+      }));
+      return next;
     });
   };
 
@@ -219,14 +296,29 @@ export default function NewReportPage() {
     try {
       const isRework = type === 'REWORK';
       const qty = Number(form.quantity) || 1;
+      const isOthers = !isRework && (form.rejectionProcessTemplate === 'OTHERS' || form.rejectionProcessTemplate === 'Others');
       const multipliedStageCosts = {};
-      if (!isRework && form.rejectionStageCosts) {
+      if (isOthers) {
+        for (const s of customStages) {
+          const stageName = s.name.trim() || 'Others';
+          if (s.cost !== '' && s.cost != null) {
+            multipliedStageCosts[stageName] = Math.round(Number(s.cost) * qty);
+          }
+        }
+        if (Object.keys(multipliedStageCosts).length === 0 && Number(form.costEstimate) > 0) {
+          multipliedStageCosts['Others'] = Number(form.costEstimate);
+        }
+      } else if (!isRework && form.rejectionStageCosts) {
         for (const [st, val] of Object.entries(form.rejectionStageCosts)) {
           multipliedStageCosts[st] = (val !== '' && val != null) ? Math.round(Number(val) * qty) : 0;
         }
       }
       const multipliedStageTotal = Object.values(multipliedStageCosts).reduce((s, v) => s + (Number(v) || 0), 0);
       const finalCostEstimate = !isRework && multipliedStageTotal > 0 ? multipliedStageTotal : (Number(form.costEstimate) || 0);
+
+      const resolvedFailedStage = isOthers
+        ? (customStages[0]?.name.trim() || form.rejectionFailedStage || 'Others')
+        : form.rejectionFailedStage;
 
       const body = { 
         ...form, 
@@ -238,10 +330,10 @@ export default function NewReportPage() {
         poNo: form.poNo,
         reworkDescription: isRework ? form.reworkDescription : undefined,
         rejectionProcessTemplate: !isRework ? form.rejectionProcessTemplate : undefined,
-        rejectionFailedStage: !isRework ? form.rejectionFailedStage : undefined,
+        rejectionFailedStage: !isRework ? resolvedFailedStage : undefined,
         rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
         rejectionDescription: !isRework ? form.rejectionDescription : undefined,
-        stageOfFailure: isRework ? form.stageOfFailure : form.rejectionFailedStage,
+        stageOfFailure: isRework ? form.stageOfFailure : resolvedFailedStage,
         isDraft: isDraftMode,
       };
       delete body.responsibleName;
@@ -481,14 +573,28 @@ export default function NewReportPage() {
                   <select value={form.rejectionProcessTemplate} onChange={e => handleTemplateChange(e.target.value)} required>
                     <option value="">Select Template...</option>
                     {Object.keys(PROCESS_TEMPLATES).map(t => <option key={t} value={t}>{t}</option>)}
+                    <option value="OTHERS">Others</option>
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Failed Stage *</label>
-                  <select value={form.rejectionFailedStage} onChange={e => handleFailedStageChange(e.target.value)} required disabled={!form.rejectionProcessTemplate}>
-                    <option value="">Select Stage...</option>
-                    {(PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  {form.rejectionProcessTemplate === 'OTHERS' ? (
+                    <input 
+                      type="text" 
+                      value={form.rejectionFailedStage || customStages[0]?.name || ''} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        handleCustomStageChange(0, 'name', val);
+                      }} 
+                      placeholder="Enter failed stage / process name..." 
+                      required 
+                    />
+                  ) : (
+                    <select value={form.rejectionFailedStage} onChange={e => handleFailedStageChange(e.target.value)} required disabled={!form.rejectionProcessTemplate}>
+                      <option value="">Select Stage...</option>
+                      {(PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Quantity Affected *</label>
@@ -862,8 +968,103 @@ export default function NewReportPage() {
                       <textarea value={form.rejectionDescription} onChange={e => set('rejectionDescription', e.target.value)} placeholder="Describe the rejection in detail…" required={isSimplifiedInspector} rows={4} />
                     </div>
 
+                    {/* Custom Process Flow Costs Box for OTHERS */}
+                    {form.rejectionProcessTemplate === 'OTHERS' && (
+                      <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                            Process Flow Details & Cost (Others)
+                          </h4>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            Total Qty: <strong>{Number(form.quantity) || 1}</strong>
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {customStages.map((stg, index) => {
+                            const qty = Number(form.quantity) || 1;
+                            const stageTotal = (stg.cost !== '' && stg.cost != null) ? Math.round(Number(stg.cost) * qty) : null;
+                            return (
+                              <div key={index} style={{ display: 'grid', gridTemplateColumns: customStages.length > 1 ? '1fr 1fr auto' : '1fr 1fr', gap: 12, alignItems: 'flex-start', padding: 12, background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Process Details / Stage Name *</label>
+                                  <input 
+                                    type="text"
+                                    value={stg.name}
+                                    onChange={e => handleCustomStageChange(index, 'name', e.target.value)}
+                                    placeholder="Enter process details (e.g. Turning, Milling, Boring)..."
+                                    required={isSimplifiedInspector}
+                                    style={{ height: 34, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
+                                  />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Amount (Rate for 1 Qty) (₹) *</label>
+                                    {stageTotal !== null && qty > 1 && (
+                                      <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 600 }}>Total: ₹{stageTotal.toLocaleString('en-IN')}</span>
+                                    )}
+                                  </div>
+                                  <input 
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={stg.cost ?? ''}
+                                    onChange={e => handleCustomStageChange(index, 'cost', e.target.value)}
+                                    placeholder="Rate for 1 Qty (₹)"
+                                    required={isSimplifiedInspector}
+                                    style={{ height: 34, padding: '4px 8px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, width: '100%', background: 'var(--bg-card)', color: 'var(--text)' }}
+                                  />
+                                  {stageTotal !== null && qty > 1 && (
+                                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                      ₹{stg.cost} × {qty} qty
+                                    </span>
+                                  )}
+                                </div>
+
+                                {customStages.length > 1 && (
+                                  <button 
+                                    type="button" 
+                                    onClick={() => removeCustomStage(index)} 
+                                    className="btn btn-ghost btn-sm"
+                                    style={{ marginTop: 22, color: '#ef4444' }}
+                                    title="Remove process"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <button 
+                            type="button" 
+                            onClick={addCustomStage} 
+                            className="btn btn-secondary btn-sm"
+                            style={{ fontSize: 12 }}
+                          >
+                            + Add Another Process Stage
+                          </button>
+
+                          {(() => {
+                            const qty = Number(form.quantity) || 1;
+                            const unitSum = customStages.reduce((sum, s) => sum + (Number(s.cost) || 0), 0);
+                            const totalSum = unitSum * qty;
+                            return unitSum > 0 ? (
+                              <div style={{ fontSize: 13, fontWeight: 600 }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Total Cost for {qty} Qty ({unitSum} × {qty}): </span>
+                                <span style={{ color: '#10b981' }}>₹{totalSum.toLocaleString('en-IN')}</span>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Stage Costs Entry list */}
-                    {stagesUpToFailure.length > 0 && (
+                    {form.rejectionProcessTemplate !== 'OTHERS' && stagesUpToFailure.length > 0 && (
                       <div className="form-group full" style={{ background: 'var(--bg-card)', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                           <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Process Flow Costs up to Failed Stage (Rate for 1 Qty)</h4>

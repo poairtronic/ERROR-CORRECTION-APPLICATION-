@@ -43,6 +43,9 @@ export const ROLES = [
 ];
 
 export function getActiveStages(template, failedStage) {
+  if (template === 'OTHERS' || template === 'Others') {
+    return failedStage ? [failedStage] : ['Others'];
+  }
   const stages = PROCESS_TEMPLATES[template] || [];
   const idx = stages.indexOf(failedStage);
   return idx !== -1 ? stages.slice(0, idx + 1) : [];
@@ -56,6 +59,9 @@ export function sumStageCosts(activeStages, costs) {
     } catch {
       parsed = {};
     }
+  }
+  if (!activeStages || activeStages.length === 0) {
+    return Math.round(Object.values(parsed || {}).reduce((sum, val) => sum + (Number(val) || 0), 0));
   }
   return Math.round(activeStages.reduce((sum, st) => sum + (Number(parsed?.[st]) || 0), 0));
 }
