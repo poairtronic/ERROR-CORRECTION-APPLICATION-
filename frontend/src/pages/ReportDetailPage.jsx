@@ -47,7 +47,7 @@ export default function ReportDetailPage() {
     queryFn: async () => (await api.get(`/defect-reports/${id}`)).data
   });
 
-  const canUpload = ['INSPECTOR', 'OPERATOR', 'SENIOR_MANAGER', 'ADMIN'].includes(role) && report?.status !== 'CLOSED';
+
 
   const { data: notifications = EMPTY_ARRAY } = useQuery({
     queryKey: ['report-notifications', id],
@@ -999,7 +999,7 @@ export default function ReportDetailPage() {
           })()}
 
           {/* File Uploads & Cloudinary Attachments */}
-          <ReportAttachments reportId={report?.id} canUpload={canUpload} />
+          <ReportAttachments reportId={report?.id} />
 
           <div className="card no-print" style={{ marginTop: 20 }}>
             <div className="card-title">Audit Trail</div>

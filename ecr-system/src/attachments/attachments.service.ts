@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync, createReadStream, ReadStream } from 'fs';
+import { join } from 'path';
 import { ReportAttachment } from './report-attachment.entity';
 import { DefectReport } from '../defect-reports/defect-report.entity';
 import { CloudinaryService } from './cloudinary.service';
@@ -59,7 +61,7 @@ export class AttachmentsService {
       throw new BadRequestException('Maximum 10 attachments allowed per report');
     }
 
-    // Upload to Cloudinary
+    // Upload to Cloudinary with secure local storage fallback
     let uploadResult: { url: string; publicId: string; fileType: string };
     try {
       uploadResult = await this.cloudinaryService.uploadFile(
@@ -69,14 +71,26 @@ export class AttachmentsService {
         reportId,
       );
     } catch (uploadErr: any) {
-      this.logger.error(`Cloudinary upload failed for report ${reportId}: ${uploadErr?.message || uploadErr}`);
-      const errorMsg = uploadErr?.message || '';
-      if (errorMsg.includes('403') || errorMsg.includes('permission') || errorMsg.includes('actions=["create"]')) {
-        throw new BadRequestException(
-          'Cloudinary upload rejected: API key lacks "create/upload" permissions. In Cloudinary Console -> Settings -> Access Keys, ensure "Create/Upload" is checked or use the Master Key.',
-        );
+      this.logger.warn(`Cloudinary upload failed for report ${reportId} (${uploadErr?.message || uploadErr}). Falling back to local storage.`);
+      const fileType = file.mimetype.startsWith('image/')
+        ? 'image'
+        : file.mimetype === 'application/pdf'
+        ? 'pdf'
+        : 'document';
+
+      const uploadsDir = join(process.cwd(), 'uploads', 'reports', reportId);
+      if (!existsSync(uploadsDir)) {
+        mkdirSync(uploadsDir, { recursive: true });
       }
-      throw new BadRequestException(`Cloudinary upload failed: ${errorMsg || 'Unable to store file'}`);
+      const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const localFilePath = join(uploadsDir, safeName);
+      writeFileSync(localFilePath, file.buffer);
+
+      uploadResult = {
+        url: `/api/defect-reports/${reportId}/attachments/local-${safeName}/view`,
+        publicId: `local:${safeName}`,
+        fileType,
+      };
     }
 
     // Save record to DB
@@ -104,6 +118,42 @@ export class AttachmentsService {
     });
   }
 
+  async getAttachmentFile(
+    reportId: string,
+    attachmentIdOrPublicId: string,
+  ): Promise<{ stream?: ReadStream; mimeType: string; fileName: string; fileUrl?: string }> {
+    // Look up by id or publicId
+    let attachment: ReportAttachment | null = null;
+    if (attachmentIdOrPublicId.startsWith('local-')) {
+      const publicId = `local:${attachmentIdOrPublicId.replace(/^local-/, '')}`;
+      attachment = await this.attachmentRepo.findOne({
+        where: { publicId, reportId },
+      });
+    } else {
+      attachment = await this.attachmentRepo.findOne({
+        where: { id: attachmentIdOrPublicId, reportId },
+      });
+    }
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    if (attachment.fileUrl?.startsWith('http://') || attachment.fileUrl?.startsWith('https://')) {
+      return { mimeType: attachment.mimeType, fileName: attachment.fileName, fileUrl: attachment.fileUrl };
+    }
+
+    // Local file fallback
+    const safeName = attachment.publicId.replace(/^local:/, '');
+    const localFilePath = join(process.cwd(), 'uploads', 'reports', reportId, safeName);
+    if (!existsSync(localFilePath)) {
+      throw new NotFoundException('Local attachment file not found on disk');
+    }
+
+    const stream = createReadStream(localFilePath);
+    return { stream, mimeType: attachment.mimeType, fileName: attachment.fileName };
+  }
+
   async deleteAttachment(reportId: string, attachmentId: string): Promise<{ success: boolean; message: string }> {
     const attachment = await this.attachmentRepo.findOne({
       where: { id: attachmentId, reportId },
@@ -113,8 +163,20 @@ export class AttachmentsService {
       throw new NotFoundException(`Attachment ${attachmentId} not found for report ${reportId}`);
     }
 
-    // Delete from Cloudinary
-    await this.cloudinaryService.deleteFile(attachment.publicId, attachment.fileType);
+    // Delete from storage
+    if (attachment.publicId?.startsWith('local:')) {
+      const safeName = attachment.publicId.replace(/^local:/, '');
+      const localFilePath = join(process.cwd(), 'uploads', 'reports', reportId, safeName);
+      if (existsSync(localFilePath)) {
+        try {
+          unlinkSync(localFilePath);
+        } catch (e: any) {
+          this.logger.warn(`Failed to delete local file: ${e.message}`);
+        }
+      }
+    } else {
+      await this.cloudinaryService.deleteFile(attachment.publicId, attachment.fileType);
+    }
 
     // Delete from DB
     await this.attachmentRepo.remove(attachment);
