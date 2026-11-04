@@ -1,10 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/apiClient';
 import { toast } from 'react-hot-toast';
-import { FiArrowLeft } from 'react-icons/fi';
+import { 
+  FiArrowLeft, 
+  FiPaperclip, 
+  FiFileText, 
+  FiImage, 
+  FiFile, 
+  FiX, 
+  FiUploadCloud, 
+  FiExternalLink, 
+  FiTrash2 
+} from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { SIMPLIFIED_WORKFLOW, PROCESS_TEMPLATES, getActiveStages, sumStageCosts } from '../utils/constants';
+
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.doc', '.docx'];
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getFileIcon(fileName) {
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') {
+    return <FiFileText style={{ color: '#ef4444', fontSize: 18 }} />;
+  }
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+    return <FiImage style={{ color: '#3b82f6', fontSize: 18 }} />;
+  }
+  return <FiFile style={{ color: '#8b5cf6', fontSize: 18 }} />;
+}
 
 export default function NewReportPage() {
   const { user } = useAuth();
@@ -36,6 +76,11 @@ export default function NewReportPage() {
     dcNumber: ''
   });
   const [customStages, setCustomStages] = useState([{ name: '', cost: '' }]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [existingAttachments, setExistingAttachments] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const fileInputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
   const selectedTemplateStages = form.rejectionProcessTemplate ? (PROCESS_TEMPLATES[form.rejectionProcessTemplate] || []) : [];
   const failedStageIndex = selectedTemplateStages.indexOf(form.rejectionFailedStage);
   const stagesUpToFailure = failedStageIndex !== -1 ? selectedTemplateStages.slice(0, failedStageIndex + 1) : [];
@@ -133,6 +178,10 @@ export default function NewReportPage() {
           toast.error('Failed to load draft report.');
           navigate('/reports');
         });
+
+      api.get(`/defect-reports/${id}/attachments`)
+        .then(({ data }) => setExistingAttachments(data || []))
+        .catch(() => {});
     }
   }, [id, isEditMode, navigate, user?.role]);
 
@@ -289,6 +338,56 @@ export default function NewReportPage() {
     });
   };
 
+  const handleFilesSelected = (filesList) => {
+    if (!filesList || filesList.length === 0) return;
+    const incoming = Array.from(filesList);
+    const valid = [];
+
+    for (const file of incoming) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        toast.error(`"${file.name}" exceeds the 10 MB limit.`);
+        continue;
+      }
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      const isMimeValid = ALLOWED_MIME_TYPES.includes(file.type);
+      const isExtValid = ALLOWED_EXTENSIONS.includes(ext);
+      if (!isMimeValid && !isExtValid) {
+        toast.error(`"${file.name}" format not supported. Allowed: PDF, Images, Word`);
+        continue;
+      }
+      if (selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+        continue;
+      }
+      valid.push(file);
+    }
+
+    if (valid.length > 0) {
+      const currentTotal = existingAttachments.length + selectedFiles.length;
+      if (currentTotal + valid.length > 10) {
+        const allowedSlots = Math.max(0, 10 - currentTotal);
+        toast.error(`Maximum 10 attachments per report. Adding ${allowedSlots} file(s).`);
+        setSelectedFiles(prev => [...prev, ...valid.slice(0, allowedSlots)]);
+      } else {
+        setSelectedFiles(prev => [...prev, ...valid]);
+      }
+    }
+  };
+
+  const removeSelectedFile = (idx) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleDeleteExistingAttachment = async (attachmentId) => {
+    if (!window.confirm('Delete this attachment?')) return;
+    try {
+      await api.delete(`/defect-reports/${id}/attachments/${attachmentId}`);
+      setExistingAttachments(prev => prev.filter(a => a.id !== attachmentId));
+      toast.success('Attachment deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete attachment');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const isDraftMode = e.nativeEvent?.submitter?.name === 'draft';
@@ -391,12 +490,42 @@ export default function NewReportPage() {
       } else {
         res = await api.post('/defect-reports', body);
       }
+      const targetReportId = res.data?.id || id;
+
+      // If user selected any attachment files, upload them now
+      if (selectedFiles.length > 0 && targetReportId) {
+        setUploadingFiles(true);
+        let successCount = 0;
+        const uploadErrors = [];
+
+        for (const file of selectedFiles) {
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            await api.post(`/defect-reports/${targetReportId}/attachments`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            successCount++;
+          } catch (uploadErr) {
+            const msg = uploadErr.response?.data?.message || uploadErr.message || 'Upload failed';
+            uploadErrors.push(`${file.name}: ${Array.isArray(msg) ? msg.join(', ') : msg}`);
+          }
+        }
+
+        if (uploadErrors.length > 0) {
+          toast.error(`Report saved, but attachment upload issue: ${uploadErrors[0]}`, { duration: 6000 });
+        } else if (successCount > 0) {
+          toast.success(`${successCount} attachment(s) uploaded successfully!`);
+        }
+      }
+
       toast.success(isDraftMode ? 'Draft saved successfully!' : (isEditMode ? 'Report updated successfully!' : 'Report raised successfully!'));
-      navigate(`/reports/${res.data.id}`);
+      navigate(`/reports/${targetReportId}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit report');
     } finally {
       setLoading(false);
+      setUploadingFiles(false);
     }
   };
 
@@ -1137,15 +1266,180 @@ export default function NewReportPage() {
               </div>
             )}
 
+            {/* Optional Attachments Section */}
+            <div 
+              style={{ 
+                marginTop: 24, 
+                padding: '18px 20px', 
+                background: 'var(--bg-card, #1a1f2c)', 
+                border: '1px solid var(--border)', 
+                borderRadius: 10 
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FiPaperclip style={{ color: '#3b82f6', fontSize: 18 }} />
+                  <div>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                      Attachments & Supporting Documents
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
+                      (Optional)
+                    </span>
+                  </div>
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  PDF, Images, Word · Max 10 MB per file
+                </span>
+              </div>
+
+              {/* Existing Attachments in Edit Mode */}
+              {existingAttachments.length > 0 && (
+                <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>
+                    Current Attachments ({existingAttachments.length}):
+                  </div>
+                  {existingAttachments.map(att => (
+                    <div 
+                      key={att.id}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '8px 12px', 
+                        background: 'var(--bg)', 
+                        borderRadius: 6, 
+                        border: '1px solid var(--border)' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                        {getFileIcon(att.originalName || att.fileName)}
+                        <span style={{ fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={att.originalName || att.fileName}>
+                          {att.originalName || att.fileName}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                          ({formatBytes(att.fileSizeBytes)})
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <a 
+                          href={att.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="btn btn-ghost btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                        >
+                          <FiExternalLink /> View
+                        </a>
+                        <button 
+                          type="button" 
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: '#ef4444' }}
+                          onClick={() => handleDeleteExistingAttachment(att.id)}
+                          title="Delete attachment"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Newly Selected Files (Pending Upload on Submit) */}
+              {selectedFiles.length > 0 && (
+                <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: '#3b82f6' }}>
+                    Files to upload on submission ({selectedFiles.length}):
+                  </div>
+                  {selectedFiles.map((f, idx) => (
+                    <div 
+                      key={`${f.name}-${idx}`}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '8px 12px', 
+                        background: 'var(--bg)', 
+                        borderRadius: 6, 
+                        border: '1px solid #3b82f644' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                        {getFileIcon(f.name)}
+                        <span style={{ fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.name}>
+                          {f.name}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                          ({formatBytes(f.size)})
+                        </span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => removeSelectedFile(idx)}
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: '#ef4444' }}
+                        title="Remove file"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Dropzone */}
+              <div
+                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  handleFilesSelected(e.dataTransfer.files);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: isDragging ? '2px dashed #3b82f6' : '1px dashed var(--border)',
+                  background: isDragging ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg)',
+                  borderRadius: 6,
+                  padding: '20px 16px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,application/pdf,image/*"
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    handleFilesSelected(e.target.files);
+                    if (e.target) e.target.value = '';
+                  }}
+                />
+                <FiUploadCloud style={{ fontSize: 28, color: '#3b82f6', marginBottom: 6 }} />
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                  Click to browse files or drag and drop here
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Attach inspection sheets, drawing PDFs, or defect photos
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-8" style={{ marginTop: 24, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost" onClick={handleBack}>Cancel</button>
+              <button type="button" className="btn btn-ghost" onClick={handleBack} disabled={loading || uploadingFiles}>Cancel</button>
               {(!isEditMode || formStatus === 'DRAFT') && (
-                <button type="submit" name="draft" formNoValidate className="btn btn-secondary" disabled={loading}>
-                  Save as Draft
+                <button type="submit" name="draft" formNoValidate className="btn btn-secondary" disabled={loading || uploadingFiles}>
+                  {uploadingFiles ? 'Uploading…' : 'Save as Draft'}
                 </button>
               )}
-              <button type="submit" name="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving…' : (isEditMode ? 'Update Report' : 'Submit Report')}
+              <button type="submit" name="submit" className="btn btn-primary" disabled={loading || uploadingFiles}>
+                {loading || uploadingFiles 
+                  ? (uploadingFiles ? 'Uploading Attachments…' : 'Saving…') 
+                  : (isEditMode ? 'Update Report' : 'Submit Report')}
               </button>
             </div>
           </form>

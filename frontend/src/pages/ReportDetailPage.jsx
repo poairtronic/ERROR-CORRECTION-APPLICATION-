@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiImage, FiEdit2, FiSave, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiCheckCircle, FiXCircle, FiPrinter, FiEdit2, FiSave, FiX } from 'react-icons/fi';
 import Dialog from '../components/ui/Dialog';
+import ReportAttachments from '../components/ReportAttachments';
 
 import { STATUS_COLORS, STATUS_LABELS, PROCESS_TEMPLATES, getActiveStages, sumStageCosts } from '../utils/constants';
 
@@ -45,6 +46,8 @@ export default function ReportDetailPage() {
     queryKey: ['report', id],
     queryFn: async () => (await api.get(`/defect-reports/${id}`)).data
   });
+
+  const canUpload = ['INSPECTOR', 'OPERATOR', 'SENIOR_MANAGER', 'ADMIN'].includes(role) && report?.status !== 'CLOSED';
 
   const { data: notifications = EMPTY_ARRAY } = useQuery({
     queryKey: ['report-notifications', id],
@@ -995,18 +998,8 @@ export default function ReportDetailPage() {
             );
           })()}
 
-          {report.attachments?.length > 0 && (
-            <div className="card" style={{ marginTop: 20 }}>
-              <div className="card-title"><FiImage /> Attachments</div>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                {report.attachments.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noreferrer">
-                    <img src={url} alt={`Attachment ${i+1}`} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* File Uploads & Cloudinary Attachments */}
+          <ReportAttachments reportId={report?.id} canUpload={canUpload} />
 
           <div className="card no-print" style={{ marginTop: 20 }}>
             <div className="card-title">Audit Trail</div>

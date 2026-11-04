@@ -20,7 +20,14 @@ import { runWithTraceContext } from '../common/trace-context';
 import { MonitoringService } from '../monitoring/monitoring.service';
 import { PerformanceService } from '../monitoring/performance.service';
 
-@WebSocketGateway({ cors: { origin: process.env.FRONTEND_URL || 'http://localhost:5173' } })
+@WebSocketGateway({
+  cors: {
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
+    credentials: true,
+  },
+})
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect, OnApplicationShutdown, OnGatewayInit {
   @WebSocketServer()
   server: Server;
