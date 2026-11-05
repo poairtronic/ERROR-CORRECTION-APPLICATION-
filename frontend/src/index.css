@@ -174,17 +174,17 @@ html, body {
 .btn-logout:hover { color: var(--danger); background: var(--danger-bg); }
 
 /* Main content */
-.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+.main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .topbar {
   padding: 16px 32px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   background: rgba(13, 15, 18, 0.85);
   backdrop-filter: blur(12px);
-  position: sticky; top: 0; z-index: 50;
+  position: relative;
 }
 .topbar-global {
-  z-index: 150; /* elevated z-index to prevent layout elements (like sidebar/page headers) from overlapping the profile drawer */
+  position: sticky; top: 0; z-index: 150; /* elevated z-index to prevent layout elements (like sidebar/page headers) from overlapping the profile drawer */
 }
 .topbar h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
 .topbar p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
@@ -232,26 +232,12 @@ html, body {
   border-radius: var(--radius-md);
   padding: 24px;
   box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-              box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
   overflow: hidden;
   position: relative;
-  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%; width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
-  transform: skewX(-25deg);
-  transition: left 0.7s ease;
-}
-.card:hover::before {
-  left: 200%;
 }
 .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.6);
   border-color: rgba(255, 255, 255, 0.15);
 }
 .card-title {
@@ -271,26 +257,12 @@ html, body {
   padding: 20px;
   display: flex; flex-direction: column; gap: 8px;
   box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-              box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
   overflow: hidden;
   position: relative;
-  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%; width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
-  transform: skewX(-25deg);
-  transition: left 0.7s ease;
-}
-.stat-card:hover::before {
-  left: 200%;
 }
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.6);
   border-color: rgba(255, 255, 255, 0.15);
 }
 .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -567,28 +539,13 @@ select option { background: var(--bg-card); color: var(--text); }
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-md);
   box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-              box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
   overflow: hidden;
   position: relative;
 }
 
-.glass-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%; width: 50%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-  transform: skewX(-25deg);
-  transition: left 0.7s ease;
-}
-
-.glass-card:hover::before {
-  left: 200%;
-}
-
 .glass-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.6);
   border-color: rgba(255, 255, 255, 0.15);
 }
 

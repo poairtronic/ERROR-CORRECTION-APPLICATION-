@@ -25,9 +25,7 @@ export default function Layout() {
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
       <div className="main">
         <TopNav onMenuToggle={toggleSidebar} />
-        <div className="page-content">
-          <Outlet />
-        </div>
+        <Outlet />
       </div>
     </div>
   );
