@@ -28,7 +28,8 @@ package.zip
 ecr-system/public/
 
 # User uploaded attachments
-uploads/
-ecr-system/uploads/*
-!ecr-system/uploads/.gitkeep
+/uploads/*
+!/uploads/.gitkeep
+/ecr-system/uploads/*
+!/ecr-system/uploads/.gitkeep
 
