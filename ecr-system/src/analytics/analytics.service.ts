@@ -84,9 +84,9 @@ export class AnalyticsService {
           approvedReports += count;
         }
 
-        if (status === ReportStatus.PENDING_INSPECTION) {
+        if (status === ReportStatus.PENDING_INSPECTION || status === ReportStatus.INSPECTOR_DRAFT) {
           pendingInspect += count;
-        } else if (status === ReportStatus.PENDING_ACCOUNTS_REVIEW) {
+        } else if (status === ReportStatus.PENDING_ACCOUNTS_REVIEW || status === ReportStatus.ACCOUNTS_DRAFT) {
           pendingAccounts += count;
         } else if (status === ReportStatus.PENDING_SM_REVIEW) {
           pendingSm += count;
@@ -182,11 +182,12 @@ export class AnalyticsService {
     return this.getCached('vendor_intel', 10000, async () => {
       return this.inspectRepo.createQueryBuilder('i')
         .leftJoin(Vendor, 'v', "v.id = CASE WHEN i.responsibleId ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN CAST(i.responsibleId AS uuid) ELSE NULL END")
-        .select('v.name', 'vendor')
+        .select("COALESCE(NULLIF(TRIM(v.name), ''), NULLIF(TRIM(i.responsibleId), ''), 'Unknown')", 'vendor')
         .addSelect('COUNT(i.id)', 'defects')
         .where('i.responsibleParty = :party', { party: ResponsibleParty.VENDOR })
-        .groupBy('v.name')
+        .groupBy("COALESCE(NULLIF(TRIM(v.name), ''), NULLIF(TRIM(i.responsibleId), ''), 'Unknown')")
         .orderBy('defects', 'DESC')
+        .limit(10)
         .getRawMany();
     });
   }
@@ -195,11 +196,28 @@ export class AnalyticsService {
     return this.getCached('operator_intel', 10000, async () => {
       return this.inspectRepo.createQueryBuilder('i')
         .leftJoin(Operator, 'o', "o.id = CASE WHEN i.responsibleId ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN CAST(i.responsibleId AS uuid) ELSE NULL END")
-        .select('o.name', 'operator')
+        .select("COALESCE(NULLIF(TRIM(o.name), ''), NULLIF(TRIM(i.responsibleId), ''), 'Unknown')", 'operator')
+        .addSelect('COUNT(i.id)', 'defects')
         .addSelect('COUNT(i.id)', 'defectsCaused')
         .where('i.responsibleParty = :party', { party: ResponsibleParty.OPERATOR })
-        .groupBy('o.name')
-        .orderBy('"defectsCaused"', 'DESC')
+        .groupBy("COALESCE(NULLIF(TRIM(o.name), ''), NULLIF(TRIM(i.responsibleId), ''), 'Unknown')")
+        .orderBy('defects', 'DESC')
+        .limit(10)
+        .getRawMany();
+    });
+  }
+
+  async getMaterialIntelligence() {
+    return this.getCached('material_intel', 10000, async () => {
+      return this.inspectRepo.createQueryBuilder('i')
+        .leftJoin(DefectReport, 'r', 'r.id = i.reportId')
+        .select("COALESCE(NULLIF(TRIM(i.responsibleId), ''), NULLIF(TRIM(r.componentName), ''), 'Unknown')", 'material')
+        .addSelect('COUNT(i.id)', 'defects')
+        .addSelect('SUM(COALESCE(i.costEstimate, 0))', 'cost')
+        .addSelect('SUM(COALESCE(i.materialCost, 0))', 'materialCost')
+        .where('i.responsibleParty = :party', { party: ResponsibleParty.MATERIAL })
+        .groupBy("COALESCE(NULLIF(TRIM(i.responsibleId), ''), NULLIF(TRIM(r.componentName), ''), 'Unknown')")
+        .orderBy('defects', 'DESC')
         .limit(10)
         .getRawMany();
     });
@@ -232,6 +250,9 @@ export class AnalyticsService {
           .where('r.status IN (:...statuses)', {
             statuses: [
               ReportStatus.PENDING_INSPECTION,
+              ReportStatus.INSPECTOR_DRAFT,
+              ReportStatus.PENDING_ACCOUNTS_REVIEW,
+              ReportStatus.ACCOUNTS_DRAFT,
               ReportStatus.PENDING_SM_REVIEW,
               ReportStatus.PENDING_GM_APPROVAL,
               ReportStatus.APPROVED
@@ -243,6 +264,7 @@ export class AnalyticsService {
       ]);
 
       let pendingInspect = 0;
+      let pendingAccounts = 0;
       let pendingSm = 0;
       let pendingGm = 0;
       let pendingStore = 0;
@@ -252,20 +274,23 @@ export class AnalyticsService {
         const status = row.status as ReportStatus;
         const componentsIssued = row.componentsIssued === true || row.componentsIssued === 'true' || row.componentsIssued === 1;
 
-        if (status === ReportStatus.PENDING_INSPECTION) {
-          pendingInspect = count;
+        if (status === ReportStatus.PENDING_INSPECTION || status === ReportStatus.INSPECTOR_DRAFT) {
+          pendingInspect += count;
+        } else if (status === ReportStatus.PENDING_ACCOUNTS_REVIEW || status === ReportStatus.ACCOUNTS_DRAFT) {
+          pendingAccounts += count;
         } else if (status === ReportStatus.PENDING_SM_REVIEW) {
-          pendingSm = count;
+          pendingSm += count;
         } else if (status === ReportStatus.PENDING_GM_APPROVAL) {
-          pendingGm = count;
+          pendingGm += count;
         } else if (status === ReportStatus.APPROVED && !componentsIssued) {
-          pendingStore = count;
+          pendingStore += count;
         }
       }
 
       return {
         averageResolutionDays: result?.avgResolutionDays ? parseFloat(result.avgResolutionDays).toFixed(1) : 0,
         inspectionQueue: pendingInspect,
+        accountsQueue: pendingAccounts,
         smQueue: pendingSm,
         gmQueue: pendingGm,
         storeQueue: pendingStore

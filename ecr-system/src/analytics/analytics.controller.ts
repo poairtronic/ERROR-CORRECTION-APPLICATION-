@@ -46,6 +46,12 @@ export class AnalyticsController {
     return this.analyticsService.getOperatorIntelligence();
   }
 
+  @Get('material-intelligence')
+  @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER, Role.INSPECTOR, Role.ACCOUNTS)
+  getMaterialIntelligence() {
+    return this.analyticsService.getMaterialIntelligence();
+  }
+
   @Get('machine-intelligence')
   @Roles(Role.ADMIN, Role.GENERAL_MANAGER, Role.SENIOR_MANAGER, Role.INSPECTOR)
   getMachineIntelligence() {

@@ -115,7 +115,7 @@ export default function AnalyticsReportPDF({ data }) {
   }
 
   const {
-    kpis, slaData, vendorData, operatorData, machineData, insights,
+    kpis, slaData, vendorData, operatorData, materialData, machineData, insights,
   } = data;
 
   return (
@@ -277,13 +277,13 @@ export default function AnalyticsReportPDF({ data }) {
         <div style={pageContentStyle}>
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: GRAY_900, marginBottom: 4 }}>Manufacturing Intelligence</div>
-            <div style={{ fontSize: 9, color: GRAY_400 }}>Vendor, operator, and machine performance analysis</div>
+            <div style={{ fontSize: 9, color: GRAY_400 }}>Vendor, operator, and material defect analysis</div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 24 }}>
-            <IntelligenceCard title="Top Vendors" data={vendorData} dataKey="count" labelKey="name" color="#8b5cf6" />
-            <IntelligenceCard title="Top Operators" data={operatorData} dataKey="count" labelKey="name" color="#3b82f6" />
-            <IntelligenceCard title="Top Machines" data={machineData} dataKey="count" labelKey="name" color="#06b6d4" />
+            <IntelligenceCard title="Top Vendors" data={vendorData} dataKey="defects" labelKey="vendor" color="#8b5cf6" />
+            <IntelligenceCard title="Top Operators" data={operatorData} dataKey="defects" labelKey="operator" color="#3b82f6" />
+            <IntelligenceCard title="Top Materials" data={materialData || machineData} dataKey="defects" labelKey="material" color="#06b6d4" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
@@ -406,21 +406,25 @@ function OverviewItem({ label, value, color }) {
 
 function IntelligenceCard({ title, data, dataKey, labelKey, color }) {
   const items = Array.isArray(data) ? data.slice(0, 5) : [];
-  const maxVal = items.length > 0 ? Math.max(...items.map(d => Number(d[dataKey]) || 0)) : 1;
+  const getVal = (d) => Number(d[dataKey] ?? d.defects ?? d.defectsCaused ?? d.count) || 0;
+  const maxVal = items.length > 0 ? Math.max(...items.map(getVal), 1) : 1;
   return (
     <div style={{ background: '#f8fafc', borderRadius: 8, padding: 16, border: `1px solid ${GRAY_200}` }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: GRAY_600, marginBottom: 12 }}>{title}</div>
-      {items.length > 0 ? items.map((item, i) => (
-        <div key={i} style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: GRAY_500, marginBottom: 3 }}>
-            <span>{item[labelKey] || item.name || '-'}</span>
-            <span style={{ fontWeight: 600, color: GRAY_900 }}>{item[dataKey] || 0}</span>
+      {items.length > 0 ? items.map((item, i) => {
+        const val = getVal(item);
+        return (
+          <div key={i} style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: GRAY_500, marginBottom: 3 }}>
+              <span>{item[labelKey] || item.name || '-'}</span>
+              <span style={{ fontWeight: 600, color: GRAY_900 }}>{val}</span>
+            </div>
+            <div style={{ height: 5, background: GRAY_200, borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(val / maxVal) * 100}%`, background: color, borderRadius: 3 }} />
+            </div>
           </div>
-          <div style={{ height: 5, background: GRAY_200, borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${((Number(item[dataKey]) || 0) / maxVal) * 100}%`, background: color, borderRadius: 3 }} />
-          </div>
-        </div>
-      )) : (
+        );
+      }) : (
         <div style={{ fontSize: 9, color: GRAY_400 }}>No data available</div>
       )}
     </div>

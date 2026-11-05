@@ -23,25 +23,28 @@ const WorkflowAnalyticsWidget = memo(({ kpis, delay = 0 }) => {
     { name: 'Accounts Verification', value: kpis?.pendingAccounts || 0, fill: '#ec4899' },
     { name: 'SM Review', value: kpis?.pendingSm || 0, fill: '#8b5cf6' },
     { name: 'GM Approval', value: kpis?.pendingGm || 0, fill: '#f59e0b' },
+    { name: 'Store Issue', value: kpis?.pendingStore || 0, fill: '#10b981' },
   ];
 
   const totalPending = data.reduce((acc, curr) => acc + curr.value, 0);
 
   return (
     <div className="glass-card animate-slide-up" style={{ animationDelay: `${delay}ms`, padding: '24px', display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#d1d5db', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.05em' }}>
             <FiClock style={{ color: '#a78bfa' }} /> Pending Workflow Distribution
           </h3>
-          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Total pending actions: <strong style={{ color: '#d1d5db' }}>{totalPending}</strong></p>
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+            Total pending actions: <strong style={{ color: '#38bdf8' }}>{totalPending}</strong>
+          </p>
         </div>
       </div>
       
       <div style={{ flex: 1, width: '100%', minHeight: '220px' }}>
         {totalPending > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 35, left: 10, bottom: 0 }}>
               <XAxis type="number" hide />
               <YAxis 
                 dataKey="name" 
@@ -55,7 +58,14 @@ const WorkflowAnalyticsWidget = memo(({ kpis, delay = 0 }) => {
               <Bar 
                 dataKey="value" 
                 radius={[0, 4, 4, 0]} 
-                barSize={24}
+                barSize={20}
+                label={{ 
+                  position: 'right', 
+                  fill: '#d1d5db', 
+                  fontSize: 11, 
+                  fontWeight: 600,
+                  formatter: (val) => (val > 0 ? val : '0')
+                }}
               >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />

@@ -37,7 +37,7 @@ export default function EnterpriseAnalytics() {
   const { data: slaData } = useQuery({ queryKey: ['analytics', 'sla'], queryFn: async () => (await api.get('/analytics/sla')).data, staleTime: 30000 });
   const { data: vendorData } = useQuery({ queryKey: ['analytics', 'vendor'], queryFn: async () => (await api.get('/analytics/vendor-intelligence')).data, staleTime: 30000 });
   const { data: operatorData } = useQuery({ queryKey: ['analytics', 'operator'], queryFn: async () => (await api.get('/analytics/operator-intelligence')).data, staleTime: 30000 });
-  const { data: machineData } = useQuery({ queryKey: ['analytics', 'machine'], queryFn: async () => (await api.get('/analytics/machine-intelligence')).data, staleTime: 30000 });
+  const { data: materialData } = useQuery({ queryKey: ['analytics', 'material'], queryFn: async () => (await api.get('/analytics/material-intelligence')).data, staleTime: 30000 });
 
   const { data: reports = [] } = useQuery({ queryKey: ['analytics', 'reports-list'], queryFn: async () => (await api.get('/defect-reports')).data || [], staleTime: 30000 });
   const { data: components = [] } = useQuery({ queryKey: ['components'], queryFn: async () => (await api.get('/master-data/components')).data || [], staleTime: 60000 });
@@ -80,18 +80,20 @@ export default function EnterpriseAnalytics() {
       if (selectedVendor) {
         const isVendor = report.inspectionDetail?.responsibleParty === 'VENDOR';
         if (!isVendor) return false;
-        const vendorObj = vendors.find(v => v.id === report.inspectionDetail?.responsibleId);
-        const vendorName = vendorObj ? vendorObj.name : report.inspectionDetail?.responsibleId;
-        if (vendorName !== selectedVendor && report.inspectionDetail?.responsibleId !== selectedVendor) {
+        const respId = report.inspectionDetail?.responsibleId || '';
+        const vendorObj = vendors.find(v => v.id === respId || v.name?.trim().toLowerCase() === String(respId).trim().toLowerCase());
+        const vendorName = vendorObj ? vendorObj.name.trim() : respId;
+        if (vendorName.toLowerCase() !== selectedVendor.trim().toLowerCase() && respId.toLowerCase() !== selectedVendor.trim().toLowerCase()) {
           return false;
         }
       }
       if (selectedOperator) {
         const isOperator = report.inspectionDetail?.responsibleParty === 'OPERATOR';
         if (!isOperator) return false;
-        const operatorObj = operators.find(o => o.id === report.inspectionDetail?.responsibleId);
-        const operatorName = operatorObj ? operatorObj.name : report.inspectionDetail?.responsibleId;
-        if (operatorName !== selectedOperator && report.inspectionDetail?.responsibleId !== selectedOperator) {
+        const respId = report.inspectionDetail?.responsibleId || '';
+        const operatorObj = operators.find(o => o.id === respId || o.name?.trim().toLowerCase() === String(respId).trim().toLowerCase());
+        const operatorName = operatorObj ? operatorObj.name.trim() : respId;
+        if (operatorName.toLowerCase() !== selectedOperator.trim().toLowerCase() && respId.toLowerCase() !== selectedOperator.trim().toLowerCase()) {
           return false;
         }
       }
@@ -199,7 +201,7 @@ export default function EnterpriseAnalytics() {
             </div>
 
             <div className="col-span-4" style={{ height: '380px' }}>
-              <IntelligenceGridWidget vendorData={vendorData} operatorData={operatorData} machineData={machineData} delay={600} />
+              <IntelligenceGridWidget vendorData={vendorData} operatorData={operatorData} materialData={materialData} delay={600} />
             </div>
 
             <div className="col-span-4" style={{ height: '380px', display: 'flex', flexDirection: 'column', gap: '24px' }}>

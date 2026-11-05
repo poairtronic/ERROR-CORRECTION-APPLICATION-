@@ -260,9 +260,11 @@ export default function ReportDetailPage() {
       const respId = report.inspectionDetail?.responsibleId || '';
       let respName = '';
       if (respParty === 'OPERATOR') {
-        respName = operators.find(o => o.id === respId)?.name || '';
+        const match = operators.find(o => o.id === respId || o.name?.trim().toLowerCase() === String(respId).trim().toLowerCase());
+        respName = match ? match.name.trim() : respId;
       } else if (respParty === 'VENDOR') {
-        respName = vendors.find(v => v.id === respId)?.name || '';
+        const match = vendors.find(v => v.id === respId || v.name?.trim().toLowerCase() === String(respId).trim().toLowerCase());
+        respName = match ? match.name.trim() : respId;
       } else if (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY', 'DESIGN_TEAM'].includes(respParty)) {
         respName = respId;
       }
@@ -468,6 +470,7 @@ export default function ReportDetailPage() {
       rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
       dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
+      responsibleId: inspectData.responsibleId || inspectData.responsibleName?.trim() || '',
     };
     delete body.responsibleName;
     doAction('inspect', body);
@@ -515,6 +518,7 @@ export default function ReportDetailPage() {
       rejectionStageCosts: !isRework ? multipliedStageCosts : undefined,
       rejectionDescription: !isRework ? inspectData.rejectionDescription : undefined,
       dcNumber: inspectData.responsibleParty === 'VENDOR' ? inspectData.dcNumber : undefined,
+      responsibleId: inspectData.responsibleId || inspectData.responsibleName?.trim() || '',
       saveAsDraft: true,
     };
     delete body.responsibleName;
@@ -662,15 +666,14 @@ export default function ReportDetailPage() {
                   report.inspectionDetail.responsibleParty === 'INLINE_QUALITY' ? 'Inline Quality'
                   : report.inspectionDetail.responsibleParty === 'VENDOR_QUALITY' ? 'Vendor Quality'
                   : report.inspectionDetail.responsibleParty === 'DESIGN_TEAM' ? 'Design Team'
-                  : report.inspectionDetail.responsibleParty === 'DESIGN_TEAM' ? 'Design Team'
                   : report.inspectionDetail.responsibleParty
                 ) : '—', 'responsibleParty'],
                 ['Operator / Vendor / Customer / Material / Quality Details', report.inspectionDetail?.responsibleId ? (
                   report.inspectionDetail.responsibleParty === 'OPERATOR' 
-                    ? (operators.find(o => o.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
-                    : (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY'].includes(report.inspectionDetail.responsibleParty))
+                    ? (operators.find(o => o.id === report.inspectionDetail.responsibleId || o.name?.trim().toLowerCase() === String(report.inspectionDetail.responsibleId).trim().toLowerCase())?.name?.trim() || report.inspectionDetail.responsibleId)
+                    : (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY', 'DESIGN_TEAM'].includes(report.inspectionDetail.responsibleParty))
                       ? report.inspectionDetail.responsibleId
-                      : (vendors.find(v => v.id === report.inspectionDetail.responsibleId)?.name || report.inspectionDetail.responsibleId)
+                      : (vendors.find(v => v.id === report.inspectionDetail.responsibleId || v.name?.trim().toLowerCase() === String(report.inspectionDetail.responsibleId).trim().toLowerCase())?.name?.trim() || report.inspectionDetail.responsibleId)
                 ) : '—', 'responsibleId'],
               ].concat(report.inspectionDetail?.responsibleParty === 'VENDOR' ? [
                 ['DC Number', report.inspectionDetail?.dcNumber || '—', 'dcNumber'],
@@ -1119,7 +1122,6 @@ export default function ReportDetailPage() {
                   <option value="INLINE_QUALITY">Inline Quality</option>
                   <option value="VENDOR_QUALITY">Vendor Quality</option>
                   <option value="DESIGN_TEAM">Design Team</option>
-                  <option value="DESIGN_TEAM">Design Team</option>
                 </select>
               </div>
               {inspectData.responsibleParty === 'OPERATOR' && (
@@ -1130,18 +1132,18 @@ export default function ReportDetailPage() {
                     value={inspectData.responsibleName || ''} 
                     onChange={e => {
                       const val = e.target.value;
-                      const match = operators.find(o => o.name === val);
+                      const match = operators.find(o => o.name?.trim().toLowerCase() === val.trim().toLowerCase());
                       setInspectData({
                         ...inspectData,
                         responsibleName: val,
-                        responsibleId: match ? match.id : ''
+                        responsibleId: match ? match.id : val
                       });
                     }}
                     placeholder="Type or select operator..."
                     required
                   />
                   <datalist id="inspect-operator-names">
-                    {operators.map(o => <option key={o.id} value={o.name} />)}
+                    {operators.map(o => <option key={o.id} value={o.name?.trim()} />)}
                   </datalist>
                 </div>
               )}
@@ -1268,18 +1270,18 @@ export default function ReportDetailPage() {
                     value={inspectData.responsibleName || ''} 
                     onChange={e => {
                       const val = e.target.value;
-                      const match = vendors.find(v => v.name === val);
+                      const match = vendors.find(v => v.name?.trim().toLowerCase() === val.trim().toLowerCase());
                       setInspectData({
                         ...inspectData,
                         responsibleName: val,
-                        responsibleId: match ? match.id : ''
+                        responsibleId: match ? match.id : val
                       });
                     }}
                     placeholder="Type or select vendor..."
                     required
                   />
                   <datalist id="inspect-vendor-names">
-                    {vendors.map(v => <option key={v.id} value={v.name} />)}
+                    {vendors.map(v => <option key={v.id} value={v.name?.trim()} />)}
                   </datalist>
                 </div>
                 <div className="form-group">
@@ -1345,18 +1347,18 @@ export default function ReportDetailPage() {
                     value={inspectData.responsibleName || ''} 
                     onChange={e => {
                       const val = e.target.value;
-                      const match = operators.find(o => o.name === val);
+                      const match = operators.find(o => o.name?.trim().toLowerCase() === val.trim().toLowerCase());
                       setInspectData({
                         ...inspectData,
                         responsibleName: val,
-                        responsibleId: match ? match.id : ''
+                        responsibleId: match ? match.id : val
                       });
                     }}
                     placeholder="Type or select operator..."
                     required
                   />
                   <datalist id="inspect-operator-names">
-                    {operators.map(o => <option key={o.id} value={o.name} />)}
+                    {operators.map(o => <option key={o.id} value={o.name?.trim()} />)}
                   </datalist>
                 </div>
               )}
@@ -1445,18 +1447,18 @@ export default function ReportDetailPage() {
                     value={inspectData.responsibleName || ''} 
                     onChange={e => {
                       const val = e.target.value;
-                      const match = vendors.find(v => v.name === val);
+                      const match = vendors.find(v => v.name?.trim().toLowerCase() === val.trim().toLowerCase());
                       setInspectData({
                         ...inspectData,
                         responsibleName: val,
-                        responsibleId: match ? match.id : ''
+                        responsibleId: match ? match.id : val
                       });
                     }}
                     placeholder="Type or select vendor..."
                     required
                   />
                   <datalist id="inspect-vendor-names">
-                    {vendors.map(v => <option key={v.id} value={v.name} />)}
+                    {vendors.map(v => <option key={v.id} value={v.name?.trim()} />)}
                   </datalist>
                 </div>
                 <div className="form-group">

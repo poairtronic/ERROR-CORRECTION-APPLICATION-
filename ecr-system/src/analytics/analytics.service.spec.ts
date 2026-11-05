@@ -42,6 +42,7 @@ describe('AnalyticsService', () => {
       addGroupBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue([]),
       getRawOne: jest.fn().mockResolvedValue({ totalCost: 5000, totalLoss: 1000 }),
     };
@@ -79,5 +80,11 @@ describe('AnalyticsService', () => {
     mockReportsRepo.count.mockResolvedValue(6); // Trigger bottleneck rule > 5
     const insights = await service.getRuleBasedInsights();
     expect(insights).toContain('Inspection bottleneck detected: 6 reports awaiting inspection.');
+  });
+
+  it('should get material intelligence', async () => {
+    mockInspectRepo.getRawMany.mockResolvedValueOnce([{ material: 'OHNS', defects: '8', cost: '6126' }]);
+    const result = await service.getMaterialIntelligence();
+    expect(result).toEqual([{ material: 'OHNS', defects: '8', cost: '6126' }]);
   });
 });

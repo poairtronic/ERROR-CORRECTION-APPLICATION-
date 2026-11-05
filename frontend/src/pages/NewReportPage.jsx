@@ -201,11 +201,11 @@ export default function NewReportPage() {
         setForm(f => {
           let name = '';
           if (f.responsibleParty === 'OPERATOR') {
-            const match = (o.data || []).find(op => op.id === f.responsibleId);
-            name = match ? match.name : f.responsibleId;
+            const match = (o.data || []).find(op => op.id === f.responsibleId || op.name?.trim().toLowerCase() === String(f.responsibleId).trim().toLowerCase());
+            name = match ? match.name.trim() : f.responsibleId;
           } else if (f.responsibleParty === 'VENDOR') {
-            const match = (v.data || []).find(vn => vn.id === f.responsibleId);
-            name = match ? match.name : f.responsibleId;
+            const match = (v.data || []).find(vn => vn.id === f.responsibleId || vn.name?.trim().toLowerCase() === String(f.responsibleId).trim().toLowerCase());
+            name = match ? match.name.trim() : f.responsibleId;
           } else if (['CUSTOMER', 'MATERIAL', 'INLINE_QUALITY', 'VENDOR_QUALITY', 'DESIGN_TEAM'].includes(f.responsibleParty)) {
             name = f.responsibleId;
           }
@@ -419,8 +419,10 @@ export default function NewReportPage() {
         ? (customStages[0]?.name.trim() || form.rejectionFailedStage || 'Others')
         : form.rejectionFailedStage;
 
+      const resolvedRespId = form.responsibleId || form.responsibleName?.trim() || '';
       const body = { 
         ...form, 
+        responsibleId: resolvedRespId,
         quantity: qty, 
         costEstimate: finalCostEstimate,
         inspectionType: type,
@@ -436,7 +438,11 @@ export default function NewReportPage() {
         isDraft: isDraftMode,
       };
       delete body.responsibleName;
-      if (!body.vendorId) delete body.vendorId;
+      if (!body.vendorId && body.responsibleParty === 'VENDOR') {
+        body.vendorId = resolvedRespId;
+      } else if (!body.vendorId) {
+        delete body.vendorId;
+      }
 
       if (isSimplifiedInspector) {
         if (isRework) {
@@ -444,7 +450,7 @@ export default function NewReportPage() {
             errorType: 'Rework',
             rootCause: 'Rework',
             responsibleParty: body.responsibleParty,
-            responsibleId: body.responsibleId,
+            responsibleId: resolvedRespId,
             decision: 'REWORK',
             alternativeNote: body.alternativeNote,
             costEstimate: Number(body.costEstimate) || 0,
@@ -458,7 +464,7 @@ export default function NewReportPage() {
             errorType: 'Rejection',
             rootCause: 'Rejection',
             responsibleParty: body.responsibleParty,
-            responsibleId: body.responsibleId,
+            responsibleId: resolvedRespId,
             decision: 'SCRAP',
             alternativeNote: body.alternativeNote,
             costEstimate: finalCostEstimate,
@@ -543,7 +549,7 @@ export default function NewReportPage() {
         </div>
 
         <div className="page-content">
-          <div className="card" style={{ maxWidth: 600, margin: '0 auto', padding: '32px 24px' }}>
+          <div className="card" style={{ maxWidth: 760, margin: '20px auto', padding: '36px 32px' }}>
             <h2 style={{ textAlign: 'center', marginBottom: 24, fontSize: 20 }}>Select Report Type</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <button
@@ -600,7 +606,7 @@ export default function NewReportPage() {
       </div>
 
       <div className="page-content">
-        <div className="card" style={{ maxWidth: 700 }}>
+        <div className="card" style={{ width: '100%', maxWidth: '100%', padding: '32px' }}>
           <form onSubmit={handleSubmit}>
             {type === 'REWORK' ? (
               <div className="form-grid">
@@ -752,7 +758,6 @@ export default function NewReportPage() {
                         <option value="INLINE_QUALITY">Inline Quality</option>
                         <option value="VENDOR_QUALITY">Vendor Quality</option>
                         <option value="DESIGN_TEAM">Design Team</option>
-                        <option value="DESIGN_TEAM">Design Team</option>
                       </select>
                     </div>
                     {form.responsibleParty === 'OPERATOR' && (
@@ -763,18 +768,18 @@ export default function NewReportPage() {
                           value={form.responsibleName || ''} 
                           onChange={e => {
                             const val = e.target.value;
-                            const match = operators.find(o => o.name === val);
+                            const match = operators.find(o => o.name?.trim().toLowerCase() === val.trim().toLowerCase());
                             setForm(f => ({
                               ...f,
                               responsibleName: val,
-                              responsibleId: match ? match.id : ''
+                              responsibleId: match ? match.id : val
                             }));
                           }}
                           placeholder="Type or select operator..."
                           required={isSimplifiedInspector}
                         />
                         <datalist id="operator-names">
-                          {operators.map(o => <option key={o.id} value={o.name} />)}
+                          {operators.map(o => <option key={o.id} value={o.name?.trim()} />)}
                         </datalist>
                       </div>
                     )}
@@ -901,18 +906,18 @@ export default function NewReportPage() {
                           value={form.responsibleName || ''} 
                           onChange={e => {
                             const val = e.target.value;
-                            const match = vendors.find(v => v.name === val);
+                            const match = vendors.find(v => v.name?.trim().toLowerCase() === val.trim().toLowerCase());
                             setForm(f => ({
                               ...f,
                               responsibleName: val,
-                              responsibleId: match ? match.id : ''
+                              responsibleId: match ? match.id : val
                             }));
                           }}
                           placeholder="Type or select vendor..."
                           required={isSimplifiedInspector}
                         />
                         <datalist id="vendor-names">
-                          {vendors.map(v => <option key={v.id} value={v.name} />)}
+                          {vendors.map(v => <option key={v.id} value={v.name?.trim()} />)}
                         </datalist>
                       </div>
                       <div className="form-group">
@@ -966,18 +971,18 @@ export default function NewReportPage() {
                           value={form.responsibleName || ''} 
                           onChange={e => {
                             const val = e.target.value;
-                            const match = operators.find(o => o.name === val);
+                            const match = operators.find(o => o.name?.trim().toLowerCase() === val.trim().toLowerCase());
                             setForm(f => ({
                               ...f,
                               responsibleName: val,
-                              responsibleId: match ? match.id : ''
+                              responsibleId: match ? match.id : val
                             }));
                           }}
                           placeholder="Type or select operator..."
                           required={isSimplifiedInspector}
                         />
                         <datalist id="operator-names">
-                          {operators.map(o => <option key={o.id} value={o.name} />)}
+                          {operators.map(o => <option key={o.id} value={o.name?.trim()} />)}
                         </datalist>
                       </div>
                     )}
@@ -1066,18 +1071,18 @@ export default function NewReportPage() {
                           value={form.responsibleName || ''} 
                           onChange={e => {
                             const val = e.target.value;
-                            const match = vendors.find(v => v.name === val);
+                            const match = vendors.find(v => v.name?.trim().toLowerCase() === val.trim().toLowerCase());
                             setForm(f => ({
                               ...f,
                               responsibleName: val,
-                              responsibleId: match ? match.id : ''
+                              responsibleId: match ? match.id : val
                             }));
                           }}
                           placeholder="Type or select vendor..."
                           required={isSimplifiedInspector}
                         />
                         <datalist id="vendor-names">
-                          {vendors.map(v => <option key={v.id} value={v.name} />)}
+                          {vendors.map(v => <option key={v.id} value={v.name?.trim()} />)}
                         </datalist>
                       </div>
                       <div className="form-group">

@@ -13,6 +13,7 @@ describe('AnalyticsController', () => {
       getRuleBasedInsights: jest.fn().mockResolvedValue([{ insight: 'High defect rate on Machine A' }]),
       getVendorIntelligence: jest.fn().mockResolvedValue([{ vendor: 'Vendor A', defects: 3 }]),
       getOperatorIntelligence: jest.fn().mockResolvedValue([{ operator: 'Op1', errors: 2 }]),
+      getMaterialIntelligence: jest.fn().mockResolvedValue([{ material: 'EN31', defects: 5, cost: 3065 }]),
       getMachineIntelligence: jest.fn().mockResolvedValue([{ machine: 'M1', issues: 5 }]),
       getSlaMetrics: jest.fn().mockResolvedValue({ avgResolutionDays: 3.5 }),
     };
@@ -54,6 +55,12 @@ describe('AnalyticsController', () => {
   it('should get operator intelligence', async () => {
     const result = await controller.getOperatorIntelligence();
     expect(service.getOperatorIntelligence).toHaveBeenCalled();
+  });
+
+  it('should get material intelligence', async () => {
+    const result = await controller.getMaterialIntelligence();
+    expect(service.getMaterialIntelligence).toHaveBeenCalled();
+    expect(result).toEqual([{ material: 'EN31', defects: 5, cost: 3065 }]);
   });
 
   it('should get machine intelligence', async () => {
