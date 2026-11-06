@@ -11,6 +11,7 @@ import Layout from './components/layout/Layout';
 import { RoleGuard } from './components/layout/RoleGuard';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const NewReportPage = lazy(() => import('./pages/NewReportPage'));
@@ -45,6 +46,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Suspense fallback={<div className="page-content"><div className="spinner" /></div>}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route element={<Layout />}>
                 <Route index element={<Dashboard />} />

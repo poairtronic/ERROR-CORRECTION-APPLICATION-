@@ -1,13 +1,16 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
 import { LoginHistory } from '../users/login-history.entity';
 import { MonitoringService } from '../monitoring/monitoring.service';
 import { Response } from 'express';
 import { Role } from '../common/enums/role.enum';
+import { EmailService } from '../email/services/email.service';
+import { NotificationEvent } from '../email/enums/notification-event.enum';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +19,9 @@ export class AuthService {
     @InjectRepository(LoginHistory) private loginHistoryRepo: Repository<LoginHistory>,
     private jwtService: JwtService,
     private monitoringService: MonitoringService,
+    private configService: ConfigService,
+    @Inject(forwardRef(() => EmailService))
+    private emailService: EmailService,
   ) {}
 
   async login(username: string, password: string, res: Response, ipAddress?: string, userAgent?: string, portal?: string) {
@@ -92,5 +98,128 @@ export class AuthService {
   logout(res: Response) {
     res.clearCookie('token');
     return { message: 'Logged out' };
+  }
+
+  async forgotPassword(emailOrUsername: string, origin?: string) {
+    if (!emailOrUsername || !emailOrUsername.trim()) {
+      throw new BadRequestException('Please enter your email or username');
+    }
+
+    const trimmed = emailOrUsername.trim();
+    const user = await this.usersRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('LOWER(user.email) = LOWER(:identifier) OR LOWER(user.name) = LOWER(:identifier)', { identifier: trimmed })
+      .andWhere('user.isActive = :active', { active: true })
+      .getOne();
+
+    // If user not found, return generic success message to prevent user enumeration
+    if (!user) {
+      return {
+        message: 'If an account exists with that email, a password reset link has been sent.',
+      };
+    }
+
+    // Generate single-use reset token signed with JWT_SECRET + user.passwordHash
+    const jwtSecret = this.configService.get<string>('JWT_SECRET', 'secret');
+    const secret = jwtSecret + user.passwordHash;
+    const resetToken = this.jwtService.sign(
+      { sub: user.id, email: user.email, type: 'password_reset' },
+      { secret, expiresIn: '1h' },
+    );
+
+    const baseUrl = origin || this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+    const resetUrl = `${baseUrl.replace(/\/+$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+    // Queue password reset email
+    await this.emailService.queueEmail({
+      recipient: user.email,
+      subject: 'Velan Quality Hub — Password Reset Request',
+      event: NotificationEvent.REMINDER,
+      templateName: 'password-reset',
+      templateData: {
+        employeeName: user.name,
+        resetUrl,
+        primaryButton: {
+          text: 'Reset Password',
+          url: resetUrl,
+        },
+      },
+    });
+
+    return {
+      message: 'If an account exists with that email, a password reset link has been sent.',
+    };
+  }
+
+  async verifyResetToken(token: string) {
+    if (!token) {
+      throw new BadRequestException('Reset token is required');
+    }
+
+    let decoded: any;
+    try {
+      decoded = this.jwtService.decode(token);
+    } catch {
+      throw new BadRequestException('Invalid reset token format');
+    }
+
+    if (!decoded || !decoded.sub || decoded.type !== 'password_reset') {
+      throw new BadRequestException('Invalid reset token');
+    }
+
+    const user = await this.usersRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :id', { id: decoded.sub })
+      .andWhere('user.isActive = :active', { active: true })
+      .getOne();
+
+    if (!user) {
+      throw new BadRequestException('User not found or account deactivated');
+    }
+
+    try {
+      const jwtSecret = this.configService.get<string>('JWT_SECRET', 'secret');
+      const secret = jwtSecret + user.passwordHash;
+      this.jwtService.verify(token, { secret });
+    } catch {
+      throw new BadRequestException('Password reset link is invalid or has expired.');
+    }
+
+    return { valid: true, email: user.email, name: user.name };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    if (!token) {
+      throw new BadRequestException('Reset token is required');
+    }
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException('Password must be at least 6 characters long');
+    }
+
+    const { valid } = await this.verifyResetToken(token);
+    if (!valid) {
+      throw new BadRequestException('Password reset link is invalid or has expired.');
+    }
+
+    const decoded: any = this.jwtService.decode(token);
+    const user = await this.usersRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.id = :id', { id: decoded.sub })
+      .getOne();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+    await this.usersRepo.update(user.id, { passwordHash: newHash });
+
+    return {
+      message: 'Password has been successfully reset. You may now sign in with your new password.',
+    };
   }
 }

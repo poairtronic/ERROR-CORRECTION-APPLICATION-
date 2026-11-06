@@ -20,6 +20,7 @@ export interface SendEmailOptions {
   subject: string;
   event: NotificationEvent;
   templateData: TemplateData;
+  templateName?: string;
   relatedReportId?: string;
 }
 
@@ -233,12 +234,15 @@ export class EmailService implements OnModuleInit {
     
     let savedLog: EmailLog;
     try {
-      let templateName = 'system-alert';
+      let templateName = options.templateName || 'system-alert';
       const event = options.event;
 
-      if (options.templateData.summaryTable) {
-        templateName = 'system-alert';
-      } else if (event === NotificationEvent.REPORT_CREATED) {
+      if (!options.templateName) {
+        if (options.templateData.summaryTable) {
+          templateName = 'system-alert';
+        } else if (event === NotificationEvent.PASSWORD_RESET) {
+          templateName = 'password-reset';
+        } else if (event === NotificationEvent.REPORT_CREATED) {
         templateName = 'pending-review';
       } else if (event === NotificationEvent.REPORT_APPROVED) {
         templateName = 'approved';
@@ -261,6 +265,7 @@ export class EmailService implements OnModuleInit {
         templateName = 'system-alert'; // Daily summary template not yet implemented
       } else if (event === NotificationEvent.WEEKLY_SUMMARY) {
         templateName = 'system-alert'; // Weekly summary template not yet implemented
+      }
       }
 
       let subject = options.subject;

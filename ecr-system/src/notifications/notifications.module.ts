@@ -18,7 +18,7 @@ import { AuthModule } from '../auth/auth.module';
   imports: [
     TypeOrmModule.forFeature([Notification, User, DefectReport]),
     forwardRef(() => EmailModule),
-    AuthModule,
+    forwardRef(() => AuthModule),
   ],
   controllers: [NotificationsController],
   providers: [

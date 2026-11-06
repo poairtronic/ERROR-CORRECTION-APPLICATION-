@@ -5,6 +5,7 @@
 }
 
 :root {
+  --photo: url("/images/login-bg.jpg");
   /* Premium Dark Neutral Palette (Linear-inspired) */
   --primary: #5e6ad2;
   --primary-dark: #4d56b3;
@@ -394,44 +395,6 @@ select option { background: var(--bg-card); color: var(--text); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-/* Login */
-.login-page {
-  min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--bg);
-  background-image: 
-    radial-gradient(ellipse at top left, rgba(94,106,210,0.1) 0%, transparent 40%),
-    radial-gradient(ellipse at bottom right, rgba(168,85,247,0.05) 0%, transparent 40%);
-}
-.login-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 48px;
-  width: 100%; max-width: 400px;
-  box-shadow: var(--shadow-lg);
-}
-.login-logo { text-align: center; margin-bottom: 32px; }
-.login-logo .hex {
-  width: 48px; height: 48px;
-  background: var(--primary);
-  border-radius: 12px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 24px; font-weight: 700; color: #fff;
-  margin-bottom: 16px;
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 4px 12px rgba(94,106,210,0.4);
-}
-.login-logo h1 { font-size: 20px; font-weight: 600; color: #fff; letter-spacing: -0.5px; }
-.login-logo p { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
-.login-form { display: flex; flex-direction: column; gap: 20px; }
-.login-error {
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-size: 13px;
-  color: #ff8a8a;
-}
 
 /* Loading spinner */
 .spinner {
@@ -1220,11 +1183,6 @@ select option { background: var(--bg-card); color: var(--text); }
     font-size: 20px;
   }
 
-  /* Login card */
-  .login-card {
-    padding: 32px 24px;
-    margin: 16px;
-  }
 
   /* Inner page topbar (page-level topbars within pages like UsersPage, ReportsPage) */
   .topbar h1 {
@@ -1309,14 +1267,6 @@ select option { background: var(--bg-card); color: var(--text); }
     font-size: 11px;
   }
 
-  /* Login */
-  .login-card {
-    padding: 24px 16px;
-    margin: 12px;
-  }
-  .login-logo h1 {
-    font-size: 18px;
-  }
 
   /* Profile drawer */
   .profile-avatar-large {

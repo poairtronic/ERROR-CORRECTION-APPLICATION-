@@ -10,4 +10,5 @@ export enum NotificationEvent {
   SALARY_DEDUCTION = 'SalaryDeduction',
   DAILY_SUMMARY = 'DailySummary',
   WEEKLY_SUMMARY = 'WeeklySummary',
+  PASSWORD_RESET = 'PasswordReset',
 }

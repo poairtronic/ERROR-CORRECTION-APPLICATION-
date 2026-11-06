@@ -17,6 +17,7 @@ export interface TemplateData {
   comments?: string;
   reviewer?: string;
   applicationUrl?: string;
+  resetUrl?: string;
   
   // existing support
   title?: string;
@@ -134,6 +135,7 @@ export class EmailTemplateService {
       comments: data.comments || summary['Comments'] || summary['Remarks'] || summary['SM Notes'] || '',
       reviewer: data.reviewer || summary['Raised By'] || summary['Inspector'] || summary['Approved By'] || summary['Rejected By'] || 'N/A',
       applicationUrl: data.applicationUrl || primaryButtonUrl || 'http://localhost:5173',
+      resetUrl: data.resetUrl || primaryButtonUrl || '',
       
       // Backward compatibility support for old calls
       title: data.title || '',

@@ -1,0 +1,404 @@
+:root {
+  --photo: url("/images/login-bg.jpg");
+}
+
+.vqh-login-page {
+  --photo: url("/images/login-bg.jpg");
+  --bg: #0b0f13;
+  --panel: #12181e;
+  --line: #26313a;
+  --text: #e6eaee;
+  --muted: #8b97a3;
+  --accent: #5b83ff;
+  --accent-h: #7595ff;
+  --amber: #e0a43a;
+  --ok: #3fbf8a;
+  --head: "Barlow Semi Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.vqh-login-page * {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+/* ---------- Left: factory photo ---------- */
+.vqh-login-page .brand {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  padding: 44px 56px 40px;
+  border-right: 1px solid var(--line);
+  background: radial-gradient(ellipse at 30% 75%, rgba(91, 131, 255, .14), transparent 60%), var(--panel);
+}
+
+/* optional photo, shown as a faint watermark (file is optional) */
+.vqh-login-page .brand::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--photo) center / cover no-repeat;
+  opacity: .30;
+  filter: grayscale(.7) contrast(1.05) brightness(.95);
+  -webkit-mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 55%, transparent 100%);
+}
+
+.vqh-login-page .brand::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(14, 19, 26, .55) 0%, rgba(14, 19, 26, .15) 35%, rgba(14, 19, 26, .55) 75%, rgba(14, 19, 26, .85) 100%),
+              linear-gradient(90deg, rgba(91, 131, 255, .08), transparent 70%);
+}
+
+.vqh-login-page .logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vqh-login-page .logo-mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font: 700 18px/1 var(--head);
+}
+
+.vqh-login-page .logo b {
+  display: block;
+  font: 600 20px/1.1 var(--head);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .6);
+}
+
+.vqh-login-page .logo span {
+  font-size: 13px;
+  color: #c3ccd5;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .6);
+}
+
+.vqh-login-page .hero {
+  margin: auto 0;
+  padding-bottom: 30px;
+}
+
+.vqh-login-page .hero h1 {
+  font: 600 clamp(34px, 3.8vw, 54px)/1.04 var(--head);
+  letter-spacing: -.5px;
+  max-width: 15ch;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, .55);
+}
+
+.vqh-login-page .hero p {
+  margin-top: 14px;
+  color: #cfd6dd;
+  max-width: 46ch;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, .6);
+}
+
+.vqh-login-page .modules {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.vqh-login-page .modules span {
+  font-size: 13px;
+  color: #e6eaee;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 999px;
+  background: rgba(10, 14, 18, .45);
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- Right: sign in ---------- */
+.vqh-login-page .side {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px 24px 22px;
+  min-width: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(91, 131, 255, .10), transparent 60%), var(--bg);
+}
+
+.vqh-login-page .top-note {
+  align-self: flex-end;
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vqh-login-page .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 10px var(--ok);
+}
+
+.vqh-login-page .card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  background: linear-gradient(160deg, #1a222a, #12181e);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 30px 32px 26px;
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .8);
+}
+
+.vqh-login-page .card h2 {
+  font: 600 30px/1.1 var(--head);
+  color: var(--text);
+}
+
+.vqh-login-page .card .sub {
+  color: var(--muted);
+  margin: 6px 0 20px;
+  font-size: 14px;
+}
+
+.vqh-login-page .seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #0e1318;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 18px;
+}
+
+.vqh-login-page .seg button {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  padding: 8px 0;
+  border-radius: 5px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 500;
+  transition: background .15s, color .15s;
+}
+
+.vqh-login-page .seg button[aria-selected="true"] {
+  background: #1f2932;
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.vqh-login-page .seg button:focus-visible,
+.vqh-login-page .link:focus-visible,
+.vqh-login-page .eye:focus-visible,
+.vqh-login-page .go:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.vqh-login-page label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.vqh-login-page .f {
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.vqh-login-page input {
+  width: 100%;
+  height: 44px;
+  background: #0e1318;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  padding: 0 14px;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.vqh-login-page input::placeholder {
+  color: #5f6b77;
+}
+
+.vqh-login-page input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91, 131, 255, .25);
+}
+
+.vqh-login-page .pw input {
+  padding-right: 70px;
+}
+
+.vqh-login-page .eye {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vqh-login-page .eye:hover {
+  color: var(--text);
+}
+
+.vqh-login-page .caps {
+  display: none;
+  color: var(--amber);
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+.vqh-login-page .caps.on {
+  display: block;
+}
+
+.vqh-login-page .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 18px;
+  font-size: 13.5px;
+}
+
+.vqh-login-page .chk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  margin: 0;
+  font-weight: 400;
+}
+
+.vqh-login-page .chk input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.vqh-login-page .link {
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vqh-login-page .link:hover {
+  color: var(--accent-h);
+  text-decoration: underline;
+}
+
+.vqh-login-page .go {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  width: 100%;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background .15s;
+}
+
+.vqh-login-page .go:hover {
+  background: var(--accent-h);
+}
+
+.vqh-login-page .go[disabled],
+.vqh-login-page .go:disabled {
+  opacity: .65;
+  cursor: progress;
+}
+
+.vqh-login-page .err {
+  display: none;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(239, 107, 107, .45);
+  background: rgba(239, 107, 107, .08);
+  color: #f5a3a3;
+  border-radius: 8px;
+  font-size: 13.5px;
+}
+
+.vqh-login-page .err.on {
+  display: block;
+}
+
+.vqh-login-page .help {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.vqh-login-page .foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #66727e;
+  max-width: 420px;
+  width: 100%;
+  margin: 20px auto 0;
+}
+
+@media (max-width: 900px) {
+  .vqh-login-page {
+    grid-template-columns: 1fr;
+  }
+  .vqh-login-page .brand {
+    padding: 22px 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    min-height: 150px;
+  }
+  .vqh-login-page .hero {
+    display: none;
+  }
+}
+
