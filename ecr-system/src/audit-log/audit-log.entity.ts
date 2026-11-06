@@ -68,4 +68,25 @@ export class AuditLog {
 
   @CreateDateColumn()
   timestamp: Date;
+
+  @Column({ nullable: true })
+  action: string;
+
+  @Column({ name: 'user_id', nullable: true })
+  userId: string;
+
+  @Column({ name: 'user_email', nullable: true })
+  userEmail: string;
+
+  @Column({ name: 'entity_type', nullable: true })
+  entityType: string;
+
+  @Column({ name: 'entity_id', nullable: true })
+  entityId: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: any;
+
+  @Column({ name: 'ip_address', nullable: true })
+  ipAddress: string;
 }

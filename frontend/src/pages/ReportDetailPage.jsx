@@ -1017,7 +1017,7 @@ export default function ReportDetailPage() {
                     <div className="timeline-content">
                       <div className="timeline-event">{log.actionType}</div>
                       <div className="timeline-time">{new Date(log.timestamp).toLocaleString('en-IN')} · {log.actor?.name || log.actorRole}</div>
-                      {log.notes && <div className="timeline-note">{log.notes}</div>}
+                      {(log.note || log.notes) && <div className="timeline-note">{log.note || log.notes}</div>}
                     </div>
                   </div>
                 ))}

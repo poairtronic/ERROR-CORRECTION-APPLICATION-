@@ -28,6 +28,7 @@ import { EmailModule } from './email/email.module';
 import { EmailMonitoringModule } from './email-monitoring/email-monitoring.module';
 import { InternalModule } from './internal/internal.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -120,6 +121,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
     MonitoringModule,
     InternalModule,
     AttachmentsModule,
+    AuditLogModule,
   ],
   providers: [
     {
