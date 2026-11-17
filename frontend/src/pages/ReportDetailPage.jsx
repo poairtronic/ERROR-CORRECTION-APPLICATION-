@@ -1242,25 +1242,6 @@ export default function ReportDetailPage() {
                   />
                 </div>
               )}
-              {inspectData.responsibleParty === 'DESIGN_TEAM' && (
-                <div className="form-group">
-                  <label>Design Team Details *</label>
-                  <input 
-                    type="text" 
-                    value={inspectData.responsibleName || ''} 
-                    onChange={e => {
-                      const val = e.target.value;
-                      setInspectData({
-                        ...inspectData,
-                        responsibleName: val,
-                        responsibleId: val
-                      });
-                    }}
-                    placeholder="Enter design team details..."
-                    required
-                  />
-                </div>
-              )}
               {inspectData.responsibleParty === 'VENDOR' && (
                 <>
                 <div className="form-group">

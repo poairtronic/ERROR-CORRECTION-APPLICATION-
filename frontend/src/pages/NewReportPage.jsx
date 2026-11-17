@@ -963,6 +963,7 @@ export default function NewReportPage() {
                         <option value="MATERIAL">Material</option>
                         <option value="INLINE_QUALITY">Inline Quality</option>
                         <option value="VENDOR_QUALITY">Vendor Quality</option>
+                        <option value="DESIGN_TEAM">Design Team</option>
                       </select>
                     </div>
                     {form.responsibleParty === 'OPERATOR' && (
@@ -1060,6 +1061,25 @@ export default function NewReportPage() {
                             }));
                           }}
                           placeholder="Enter vendor quality details..."
+                          required={isSimplifiedInspector}
+                        />
+                      </div>
+                    )}
+                    {form.responsibleParty === 'DESIGN_TEAM' && (
+                      <div className="form-group">
+                        <label>Design Team Details *</label>
+                        <input 
+                          type="text"
+                          value={form.responsibleName || ''} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            setForm(f => ({
+                              ...f,
+                              responsibleName: val,
+                              responsibleId: val
+                            }));
+                          }}
+                          placeholder="Enter design team details..."
                           required={isSimplifiedInspector}
                         />
                       </div>
