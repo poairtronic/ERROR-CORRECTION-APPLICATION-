@@ -483,6 +483,7 @@ export default function NewReportPage() {
       delete body.rootCause;
       delete body.responsibleParty;
       delete body.responsibleId;
+      delete body.vendorId;
       delete body.decision;
       delete body.alternativeNote;
       delete body.costEstimate;
@@ -528,7 +529,8 @@ export default function NewReportPage() {
       toast.success(isDraftMode ? 'Draft saved successfully!' : (isEditMode ? 'Report updated successfully!' : 'Report raised successfully!'));
       navigate(`/reports/${targetReportId}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit report');
+      const msg = err.response?.data?.message;
+      toast.error(Array.isArray(msg) ? msg.join(', ') : (msg || 'Failed to submit report'));
     } finally {
       setLoading(false);
       setUploadingFiles(false);

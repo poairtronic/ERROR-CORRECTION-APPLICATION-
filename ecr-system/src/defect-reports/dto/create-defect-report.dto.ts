@@ -136,6 +136,10 @@ export class CreateDefectReportDto {
 
   @IsOptional()
   @IsString()
+  vendorId?: string;
+
+  @IsOptional()
+  @IsString()
   partNumber?: string;
 
   @IsOptional()
