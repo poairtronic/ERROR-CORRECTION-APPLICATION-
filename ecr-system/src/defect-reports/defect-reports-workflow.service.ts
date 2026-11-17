@@ -393,40 +393,6 @@ export class DefectReportsWorkflowService {
     this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (emitStatusChange)`);
     this.emitStatusChange(result, from, actor, dto.approved ? 'General Manager Approved' : 'General Manager Rejected', dto.remarks, dto.messageToSm);
 
-    // TEMPORARY DEBUG — remove after confirming webhook works
-    if (isApproved) {
-      try {
-        const rmUrl = process.env.RM_API_URL || 'https://v-smart-backend.onrender.com';
-        const rmSecret = process.env.RM_INTERNAL_SECRET || process.env.ECR_INTERNAL_SECRET || 'vsmart_ecr_bridge_2026_secure';
-        if (rmUrl && rmSecret) {
-          const res = await fetch(`${rmUrl}/api/internal/ecr/material-pending`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-internal-secret': rmSecret,
-            },
-            body: JSON.stringify({
-              ecrId: result.id,
-              reportNumber: result.reportNumber,
-              type: result.inspectionType || 'REWORK',
-              scNumber: result.scNo || result.scOrPoNo || 'N/A',
-              poNumber: result.poNo || result.scOrPoNo || 'N/A',
-              component: result.componentName || 'Unknown',
-              quantityAffected: result.quantity || 1,
-              approvedAt: new Date().toISOString(),
-            }),
-          });
-          console.log('[DEBUG-DIRECT-CALL] RM webhook response status:', res.status);
-          const body = await res.text();
-          console.log('[DEBUG-DIRECT-CALL] RM webhook response body:', body);
-        } else {
-          console.warn('[DEBUG-DIRECT-CALL] RM_API_URL or RM_INTERNAL_SECRET missing in env');
-        }
-      } catch (err: any) {
-        console.error('[DEBUG-DIRECT-CALL] Direct RM call failed:', err.message);
-      }
-    }
-
     if (isApproved && result.inspectionDetail) {
       if (result.inspectionDetail.responsibleParty === ResponsibleParty.OPERATOR) {
         this.logger.log(`[FLOW_DIAGNOSTICS] GM Approve - Event emitted (report.approved.operator_fault)`);
