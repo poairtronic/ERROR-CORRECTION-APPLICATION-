@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -146,6 +147,12 @@ export class InternalService {
       report.status === ReportStatus.CLOSED
     ) {
       return { success: true, message: 'Already processed' };
+    }
+
+    if (report.status !== ReportStatus.APPROVED) {
+      throw new BadRequestException(
+        `Cannot issue components. Defect report ${dto.reportNumber} is not in an approved state (current status: ${report.status}).`,
+      );
     }
 
     const issueRepo = this.reportsRepo.manager.getRepository(ComponentIssue);

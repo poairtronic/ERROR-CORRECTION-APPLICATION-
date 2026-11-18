@@ -14,6 +14,7 @@ import { DefectReportsMutationService } from './defect-reports-mutation.service'
 import { StatusNotificationHandler } from '../notifications/handlers/status-notification.handler';
 import { EventNotificationHandler } from '../notifications/handlers/event-notification.handler';
 import { ComponentIssue } from '../component-issue/component-issue.entity';
+import { ComponentIssueService } from '../component-issue/component-issue.service';
 import { AuditLog, AuditActionType } from '../audit-log/audit-log.entity';
 import { User } from '../users/user.entity';
 import { SalaryDeduction } from '../salary-deduction/salary-deduction.entity';
@@ -116,6 +117,7 @@ describe('Defect Report Workflow Integration', () => {
         { provide: getRepositoryToken(InspectionDetail), useValue: mockInspectionRepo },
         { provide: getRepositoryToken(SmReview), useValue: mockSmReviewRepo },
         { provide: getRepositoryToken(GmApproval), useValue: mockGmApprovalRepo },
+        { provide: ComponentIssueService, useValue: { issueComponents: jest.fn().mockResolvedValue({}) } },
         { provide: getRepositoryToken(ComponentIssue), useValue: mockIssueRepo },
         { provide: getRepositoryToken(AuditLog), useValue: mockAuditRepo },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },

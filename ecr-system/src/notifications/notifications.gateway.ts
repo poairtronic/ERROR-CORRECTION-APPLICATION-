@@ -19,6 +19,9 @@ import * as crypto from 'crypto';
 import { runWithTraceContext } from '../common/trace-context';
 import { MonitoringService } from '../monitoring/monitoring.service';
 import { PerformanceService } from '../monitoring/performance.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/user.entity';
 
 @WebSocketGateway({
   cors: {
@@ -40,6 +43,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     @Inject(forwardRef(() => NotificationsService)) private readonly notificationsService: NotificationsService,
     private readonly monitoringService: MonitoringService,
     private readonly performanceService: PerformanceService,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
   afterInit(server: Server) {
@@ -95,6 +99,23 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         }
 
         const payload = this.jwtService.verify(token);
+
+        try {
+          const user = await this.userRepo.findOne({
+            where: { id: payload.sub },
+            select: ['id', 'isActive'],
+          });
+
+          if (!user || !user.isActive) {
+            this.logger.warn(`Connection rejected: User ${payload.sub} is deactivated or not found for socket ${client.id}`);
+            client.disconnect();
+            return;
+          }
+        } catch (dbErr: any) {
+          this.logger.error(`Connection rejected: DB check failed for socket ${client.id} - ${dbErr.message}`);
+          client.disconnect();
+          return;
+        }
 
         client.data.user = payload;
         traceCtx.req.user = { id: payload.sub, role: payload.role };

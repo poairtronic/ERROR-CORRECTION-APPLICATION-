@@ -77,4 +77,44 @@ describe('ComponentIssueService', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('issueComponents', () => {
+    it('should acquire pessimistic write lock when fetching component to prevent race conditions', async () => {
+      const mockQueryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager: {
+          findOne: jest.fn().mockImplementation((_entity: any) => {
+            if (_entity.name === 'DefectReport' || _entity === require('../defect-reports/defect-report.entity').DefectReport) {
+              return Promise.resolve({ ...mockReport });
+            }
+            return Promise.resolve({ ...mockComponent });
+          }),
+          save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+          create: jest.fn().mockImplementation((_cls: any, data: any) => data),
+        },
+      };
+      dataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
+
+      const dto = {
+        reportId: 'rpt-1',
+        issuedToId: 'usr-1',
+        components: [{ componentId: 'comp-1', qty: 2 }],
+        remarks: 'Testing lock',
+      };
+
+      await service.issueComponents('mgr-1', dto as any);
+
+      expect(mockQueryRunner.manager.findOne).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          where: { id: 'comp-1' },
+          lock: { mode: 'pessimistic_write' },
+        }),
+      );
+    });
+  });
 });

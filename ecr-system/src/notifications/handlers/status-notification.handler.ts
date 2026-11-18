@@ -375,6 +375,11 @@ export class StatusNotificationHandler {
     if (report.raisedById) notifyIds.add(report.raisedById);
     if (report.inspectionDetail?.inspectorId) notifyIds.add(report.inspectionDetail.inspectorId);
 
+    if (notifyIds.size === 0) {
+      this.logger.warn(`Skipping rework-in-progress notification for report ${report.reportNumber}: notifyIds is empty`);
+      return;
+    }
+
     const usersToNotify = await this.usersRepo.find({
       where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
     });
@@ -408,6 +413,11 @@ export class StatusNotificationHandler {
     
     if (report.raisedById) notifyIds.add(report.raisedById);
     if (report.inspectionDetail?.inspectorId) notifyIds.add(report.inspectionDetail.inspectorId);
+
+    if (notifyIds.size === 0) {
+      this.logger.warn(`Skipping new-production notification for report ${report.reportNumber}: notifyIds is empty`);
+      return;
+    }
 
     const usersToNotify = await this.usersRepo.find({
       where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),

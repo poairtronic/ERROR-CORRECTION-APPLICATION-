@@ -51,6 +51,7 @@ export class ComponentIssueService {
       for (const item of dto.components) {
         const component = await queryRunner.manager.findOne(Component, {
           where: { id: item.componentId },
+          lock: { mode: 'pessimistic_write' },
         });
 
         if (!component) {

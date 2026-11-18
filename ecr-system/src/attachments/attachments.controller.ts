@@ -67,6 +67,7 @@ export class AttachmentsController {
   }
 
   @Get(':reportId/attachments/:id/view')
+  @UseGuards(JwtAuthGuard)
   async viewAttachment(
     @Param('reportId') reportId: string,
     @Param('id') attachmentId: string,

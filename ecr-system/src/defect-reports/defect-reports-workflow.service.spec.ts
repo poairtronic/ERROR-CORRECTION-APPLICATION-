@@ -9,6 +9,7 @@ describe('DefectReportsWorkflowService', () => {
   let gmApprovalRepo: any;
   let auditRepo: any;
   let events: any;
+  let componentIssueService: any;
 
   const mockReport = {
     id: 'rpt-1',
@@ -50,6 +51,9 @@ describe('DefectReportsWorkflowService', () => {
     gmApprovalRepo = createMockRepo();
     auditRepo = createMockRepo();
     events = { emit: jest.fn() };
+    componentIssueService = {
+      issueComponents: jest.fn().mockResolvedValue({ id: 'issue-1' }),
+    };
 
     service = new DefectReportsWorkflowService(
       reportsRepo,
@@ -58,6 +62,7 @@ describe('DefectReportsWorkflowService', () => {
       gmApprovalRepo,
       auditRepo,
       events,
+      componentIssueService,
     );
   });
 
@@ -112,6 +117,66 @@ describe('DefectReportsWorkflowService', () => {
       const report = { ...mockReport } as any;
       // Should swallow the error
       expect(() => service.emitStatusChange(report, 'DRAFT' as any)).not.toThrow();
+    });
+  });
+
+  describe('issueComponents', () => {
+    it('should call componentIssueService.issueComponents before marking componentsIssued', async () => {
+      const approvedReport = {
+        id: 'rpt-1',
+        reportNumber: 'AGIPL-2026-ERR-00001',
+        status: 'APPROVED',
+        raisedById: 'user-1',
+        componentName: 'comp-1',
+        quantity: 2,
+        componentsIssued: false,
+      };
+
+      const mockMgrRepo = {
+        findOne: jest.fn().mockResolvedValue(approvedReport),
+        save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+        create: jest.fn().mockImplementation((data: any) => data),
+      };
+
+      reportsRepo.manager.transaction = jest.fn((fn: any) => fn({
+        getRepository: jest.fn().mockReturnValue(mockMgrRepo),
+      }));
+
+      const actor = { id: 'sm-1', role: 'STORE_MANAGER' } as any;
+      const result = await service.issueComponents('rpt-1', { remarks: 'Parts issued' }, actor);
+
+      expect(componentIssueService.issueComponents).toHaveBeenCalledWith('sm-1', expect.objectContaining({
+        reportId: 'rpt-1',
+        issuedToId: 'user-1',
+        components: [{
+          componentId: 'comp-1',
+          componentName: 'comp-1',
+          qty: 2,
+        }],
+        remarks: 'Parts issued',
+      }));
+      expect(result.componentsIssued).toBe(true);
+      expect(result.status).toBe('COMPONENTS_ISSUED');
+    });
+
+    it('should throw BadRequestException if report is not in APPROVED status', async () => {
+      const draftReport = {
+        id: 'rpt-1',
+        status: 'DRAFT',
+      };
+      const mockMgrRepo = {
+        findOne: jest.fn().mockResolvedValue(draftReport),
+        save: jest.fn(),
+        create: jest.fn(),
+      };
+      reportsRepo.manager.transaction = jest.fn((fn: any) => fn({
+        getRepository: jest.fn().mockReturnValue(mockMgrRepo),
+      }));
+
+      const actor = { id: 'sm-1', role: 'STORE_MANAGER' } as any;
+      await expect(service.issueComponents('rpt-1', { remarks: 'test' }, actor))
+        .rejects
+        .toThrow(BadRequestException);
     });
   });
 });

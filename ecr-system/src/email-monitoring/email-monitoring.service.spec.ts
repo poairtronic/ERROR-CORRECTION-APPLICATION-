@@ -80,6 +80,24 @@ describe('EmailMonitoringService', () => {
     });
   });
 
+  describe('list', () => {
+    it('should use whitelisted sort field and order', async () => {
+      const qb = emailLogRepo.createQueryBuilder();
+      emailLogRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.list({ sortBy: 'status', sortOrder: 'ASC' });
+      expect(qb.orderBy).toHaveBeenCalledWith('log.status', 'ASC');
+    });
+
+    it('should fallback to log.createdAt and DESC for invalid or malicious sortField', async () => {
+      const qb = emailLogRepo.createQueryBuilder();
+      emailLogRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.list({ sortBy: 'nonExistentColumn; DROP TABLE email_logs;', sortOrder: 'malicious' });
+      expect(qb.orderBy).toHaveBeenCalledWith('log.createdAt', 'DESC');
+    });
+  });
+
   describe('findOne', () => {
     it('should return email detail with user and report data', async () => {
       const mockEmail = {

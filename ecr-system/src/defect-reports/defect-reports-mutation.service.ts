@@ -262,7 +262,6 @@ export class DefectReportsMutationService {
 
   async update(id: string, dto: CreateDefectReportDto, actor: ActingUser) {
     this.logger.log(`[FLOW_DIAGNOSTICS] Update Report endpoint entered. ID: ${id}, isDraft: ${dto.isDraft}`);
-    const raisedByRole = this.mapRoleToRaisedBy(actor.role);
     const isRejection = dto.inspectionType === 'REJECTION';
 
     let result: DefectReport;
@@ -281,6 +280,7 @@ export class DefectReportsMutationService {
           lock: { mode: 'pessimistic_write' },
         });
         if (!report) throw new NotFoundException('Defect report not found');
+        const raisedByRole = report.raisedByRole;
         if (actor.role !== Role.ADMIN) {
           if (report.status !== ReportStatus.DRAFT && report.status !== ReportStatus.INSPECTOR_DRAFT) {
             throw new BadRequestException('Only draft reports can be updated');
@@ -316,7 +316,13 @@ export class DefectReportsMutationService {
         if (actor.role === Role.ADMIN) {
           if (report.status === ReportStatus.DRAFT || report.status === ReportStatus.INSPECTOR_DRAFT) {
             if (dto.isDraft === false) {
-              report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+              if (report.raisedByRole === RaisedByRole.OPERATOR) {
+                report.status = ReportStatus.PENDING_INSPECTION;
+              } else if (report.raisedByRole === RaisedByRole.SENIOR_MANAGER) {
+                report.status = ReportStatus.PENDING_GM_APPROVAL;
+              } else {
+                report.status = ReportStatus.PENDING_ACCOUNTS_REVIEW;
+              }
             }
           }
           // Non-draft reports retain their current status during Admin edit

@@ -14,6 +14,7 @@ import { ReportStatus, RaisedByRole, ResponsibleParty } from '../common/enums/re
 import { Role } from '../common/enums/role.enum';
 import { ActingUser } from './defect-reports.types';
 import { calculateTotalCost } from './utils/cost-calculator';
+import { ComponentIssueService } from '../component-issue/component-issue.service';
 
 @Injectable()
 export class DefectReportsWorkflowService {
@@ -31,6 +32,7 @@ export class DefectReportsWorkflowService {
     @InjectRepository(AuditLog)
     private readonly auditRepo: Repository<AuditLog>,
     private readonly events: EventEmitter2,
+    private readonly componentIssueService: ComponentIssueService,
   ) {}
 
   public async logStatusChange(
@@ -659,7 +661,7 @@ export class DefectReportsWorkflowService {
         
         // Workflow State Machine rules
         const validTransitions: Record<ReportStatus, ReportStatus[]> = {
-          [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW, ReportStatus.PENDING_GM_APPROVAL],
+          [ReportStatus.DRAFT]: [ReportStatus.PENDING_INSPECTION, ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.PENDING_SM_REVIEW],
           [ReportStatus.PENDING_INSPECTION]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
           [ReportStatus.INSPECTOR_DRAFT]: [ReportStatus.PENDING_ACCOUNTS_REVIEW, ReportStatus.INSPECTOR_DRAFT],
           [ReportStatus.PENDING_ACCOUNTS_REVIEW]: [ReportStatus.PENDING_SM_REVIEW, ReportStatus.ACCOUNTS_DRAFT],
@@ -694,6 +696,10 @@ export class DefectReportsWorkflowService {
           }
         }
 
+        if (newStatus === ReportStatus.APPROVED) {
+          throw new ForbiddenException('GM approval must be performed through the designated approval endpoint');
+        }
+
         const allowedNext = validTransitions[report.status];
         if (!allowedNext || !allowedNext.includes(newStatus)) {
           throw new BadRequestException(`Invalid transition from ${report.status} to ${newStatus}`);
@@ -723,7 +729,7 @@ export class DefectReportsWorkflowService {
     return result;
   }
 
-  async issueComponents(reportId: string, dto: { remarks: string }, actor: ActingUser) {
+  async issueComponents(reportId: string, dto: { remarks: string; components?: any[]; issuedToId?: string }, actor: ActingUser) {
     this.logger.log(`[FLOW_DIAGNOSTICS] IssueComponents endpoint entered. ReportId: ${reportId}`);
     let result: DefectReport;
     let from: ReportStatus | undefined = undefined;
@@ -748,6 +754,21 @@ export class DefectReportsWorkflowService {
         
         if (report.componentsIssued) {
           throw new BadRequestException('Components have already been issued for this report.');
+        }
+
+        const componentsToIssue = dto.components || (report.componentName ? [{
+          componentId: report.componentName,
+          componentName: report.componentName,
+          qty: report.quantity || 1,
+        }] : []);
+
+        if (componentsToIssue.length > 0) {
+          await this.componentIssueService.issueComponents(actor.id, {
+            reportId: report.id,
+            issuedToId: dto.issuedToId || report.raisedById || actor.id,
+            components: componentsToIssue,
+            remarks: dto.remarks,
+          });
         }
 
         from = report.status;

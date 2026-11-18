@@ -166,8 +166,30 @@ export class EmailMonitoringService {
     }
 
     // Sorting
-    const sortField = query.sortBy || 'createdAt';
-    const sortOrder = (query.sortOrder || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const allowedSortFields = [
+      'id',
+      'recipient',
+      'cc',
+      'bcc',
+      'subject',
+      'content',
+      'isHtml',
+      'event',
+      'status',
+      'sentTime',
+      'retryCount',
+      'failureReason',
+      'relatedReportId',
+      'notificationId',
+      'providerMessageId',
+      'createdAt',
+      'updatedAt',
+    ];
+    const sortField = allowedSortFields.includes(query.sortBy) ? query.sortBy : 'createdAt';
+    const sortOrder: 'ASC' | 'DESC' =
+      typeof query.sortOrder === 'string' && query.sortOrder.toUpperCase() === 'ASC'
+        ? 'ASC'
+        : 'DESC';
     qb.orderBy(`log.${sortField}`, sortOrder);
 
     // Skip and take

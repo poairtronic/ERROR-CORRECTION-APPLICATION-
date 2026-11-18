@@ -134,10 +134,24 @@ describe('StatusNotificationHandler', () => {
     expect(mockNotificationsService.create).toHaveBeenCalled();
   });
 
+  it('handleReworkInProgress should skip notification if notifyIds is empty', async () => {
+    const report = { id: 'r1', reportNumber: 'REP-001', raisedById: null, inspectionDetail: null } as any;
+    await handler.handleReworkInProgress(report, {} as any, 'url', jest.fn());
+    expect(mockUsersRepo.find).not.toHaveBeenCalled();
+    expect(mockNotificationsService.create).not.toHaveBeenCalled();
+  });
+
   it('handleNewProduction should notify raiser and inspector', async () => {
     mockUsersRepo.find.mockResolvedValue([{ id: 'u1' }]);
     const report = { id: 'r1', raisedById: 'u1', inspectionDetail: { inspectorId: 'u2' } } as any;
     await handler.handleNewProduction(report, {} as any, 'url', jest.fn());
     expect(mockNotificationsService.create).toHaveBeenCalled();
+  });
+
+  it('handleNewProduction should skip notification if notifyIds is empty', async () => {
+    const report = { id: 'r1', reportNumber: 'REP-002', raisedById: null, inspectionDetail: null } as any;
+    await handler.handleNewProduction(report, {} as any, 'url', jest.fn());
+    expect(mockUsersRepo.find).not.toHaveBeenCalled();
+    expect(mockNotificationsService.create).not.toHaveBeenCalled();
   });
 });

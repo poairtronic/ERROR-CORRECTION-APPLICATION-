@@ -1,15 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotificationsGateway } from './notifications.gateway';
 import { SocketRegistryService } from './socket-registry.service';
 import { NotificationsService } from './notifications.service';
 import { MonitoringService } from '../monitoring/monitoring.service';
 import { PerformanceService } from '../monitoring/performance.service';
+import { User } from '../users/user.entity';
 
 describe('NotificationsGateway', () => {
   let gateway: NotificationsGateway;
   
   const mockJwtService = { verify: jest.fn() };
+  const mockUserRepo = { findOne: jest.fn() };
   const mockRegistry = {
     addConnection: jest.fn(),
     removeConnection: jest.fn(),
@@ -27,6 +30,8 @@ describe('NotificationsGateway', () => {
   };
 
   beforeEach(async () => {
+    mockUserRepo.findOne.mockResolvedValue({ id: 'u1', isActive: true });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotificationsGateway,
@@ -35,6 +40,7 @@ describe('NotificationsGateway', () => {
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: MonitoringService, useValue: mockMonitoringService },
         { provide: PerformanceService, useValue: mockPerformanceService },
+        { provide: getRepositoryToken(User), useValue: mockUserRepo },
       ],
     }).compile();
 
@@ -73,6 +79,65 @@ describe('NotificationsGateway', () => {
 
     await gateway.handleConnection(client);
     expect(client.disconnect).toHaveBeenCalled();
+  });
+
+  it('handleConnection should disconnect if user is deactivated', async () => {
+    const client = {
+      id: 'c1',
+      handshake: { auth: { token: 't1' }, headers: {} },
+      data: {},
+      join: jest.fn(),
+      disconnect: jest.fn(),
+    } as any;
+
+    mockJwtService.verify.mockReturnValue({ sub: 'u1', role: 'USER' });
+    mockUserRepo.findOne.mockResolvedValue({ id: 'u1', isActive: false });
+
+    await gateway.handleConnection(client);
+
+    expect(mockUserRepo.findOne).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      select: ['id', 'isActive'],
+    });
+    expect(client.disconnect).toHaveBeenCalled();
+    expect(client.join).not.toHaveBeenCalled();
+    expect(mockRegistry.addConnection).not.toHaveBeenCalled();
+  });
+
+  it('handleConnection should disconnect if user not found in database', async () => {
+    const client = {
+      id: 'c1',
+      handshake: { auth: { token: 't1' }, headers: {} },
+      data: {},
+      join: jest.fn(),
+      disconnect: jest.fn(),
+    } as any;
+
+    mockJwtService.verify.mockReturnValue({ sub: 'u1', role: 'USER' });
+    mockUserRepo.findOne.mockResolvedValue(null);
+
+    await gateway.handleConnection(client);
+
+    expect(client.disconnect).toHaveBeenCalled();
+    expect(client.join).not.toHaveBeenCalled();
+  });
+
+  it('handleConnection should disconnect if database check throws error', async () => {
+    const client = {
+      id: 'c1',
+      handshake: { auth: { token: 't1' }, headers: {} },
+      data: {},
+      join: jest.fn(),
+      disconnect: jest.fn(),
+    } as any;
+
+    mockJwtService.verify.mockReturnValue({ sub: 'u1', role: 'USER' });
+    mockUserRepo.findOne.mockRejectedValue(new Error('DB Connection Timeout'));
+
+    await gateway.handleConnection(client);
+
+    expect(client.disconnect).toHaveBeenCalled();
+    expect(client.join).not.toHaveBeenCalled();
   });
 
   it('handleDisconnect should remove connection if user authenticated', () => {

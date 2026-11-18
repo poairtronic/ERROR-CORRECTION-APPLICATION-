@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   Delete,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { DefectReportsService } from './defect-reports.service';
@@ -24,6 +25,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '../common/enums/role.enum';
+import { ReportStatus } from '../common/enums/report-status.enum';
 
 @Controller(['defect-reports', 'reports'])
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -135,7 +137,9 @@ export class DefectReportsController {
     @Body() body: { status: string; note: string },
     @CurrentUser() user,
   ) {
-    // import ReportStatus internally or assume string is valid since service validates
+    if (body.status === ReportStatus.APPROVED) {
+      throw new ForbiddenException('GM approval must be performed through the designated approval endpoint');
+    }
     return this.service.transitionStatus(id, body.status as any, body.note, user);
   }
 

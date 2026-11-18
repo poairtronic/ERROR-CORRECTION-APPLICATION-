@@ -77,4 +77,63 @@ describe('DefectReportsMutationService', () => {
       await expect(service.create(dto, actor)).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('update', () => {
+    it('should determine transition path by report.raisedByRole rather than actor.role when an Inspector edits an Operator draft', async () => {
+      const mockReport = {
+        id: 'r1',
+        status: 'DRAFT',
+        raisedById: 'op-1',
+        raisedByRole: 'OPERATOR',
+      };
+
+      const mockReportsRepo = {
+        findOne: jest.fn().mockResolvedValue(mockReport),
+        save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+      };
+      const mockInspectionRepo = {
+        create: jest.fn().mockImplementation((data: any) => data),
+        save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+      };
+
+      reportsRepo.manager.transaction = jest.fn((fn: any) => fn({
+        getRepository: jest.fn().mockImplementation((entity) => {
+          if (entity.name === 'DefectReport' || entity.name === undefined) return mockReportsRepo;
+          return mockInspectionRepo;
+        }),
+      }));
+
+      const actor = { id: 'insp-1', role: 'INSPECTOR' } as any;
+      const dto = { isDraft: false } as any;
+
+      await service.update('r1', dto, actor);
+
+      expect(mockReport.status).toBe('PENDING_INSPECTION');
+    });
+
+    it('should route to PENDING_INSPECTION when Admin submits an Operator draft', async () => {
+      const mockReport = {
+        id: 'r1',
+        status: 'DRAFT',
+        raisedById: 'op-1',
+        raisedByRole: 'OPERATOR',
+      };
+
+      const mockReportsRepo = {
+        findOne: jest.fn().mockResolvedValue(mockReport),
+        save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+      };
+
+      reportsRepo.manager.transaction = jest.fn((fn: any) => fn({
+        getRepository: jest.fn().mockImplementation(() => mockReportsRepo),
+      }));
+
+      const actor = { id: 'admin-1', role: 'ADMIN' } as any;
+      const dto = { isDraft: false } as any;
+
+      await service.update('r1', dto, actor);
+
+      expect(mockReport.status).toBe('PENDING_INSPECTION');
+    });
+  });
 });

@@ -127,6 +127,12 @@ export class VendorFaultService {
       return;
     }
 
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!uuidRegex.test(vendorId)) {
+      console.warn(`[VENDOR_FAULT_WARN] Cannot create vendor fault for report ${report.id}: responsibleId "${vendorId}" is not a valid UUID`);
+      return;
+    }
+
     const existing = await this.faultRepo.findOne({ where: { reportId: report.id } });
     if (existing) {
       console.warn(`[VENDOR_FAULT_WARN] Vendor fault already exists for report ${report.id}, skipping auto-creation.`);

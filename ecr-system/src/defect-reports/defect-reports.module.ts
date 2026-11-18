@@ -13,10 +13,12 @@ import { DefectReportsMutationService } from './defect-reports-mutation.service'
 import { DefectReportsController } from './defect-reports.controller';
 
 import { ImageUploadModule } from '../image-upload/image-upload.module';
+import { ComponentIssueModule } from '../component-issue/component-issue.module';
 
 @Module({
   imports: [
     ImageUploadModule,
+    ComponentIssueModule,
     TypeOrmModule.forFeature([
       DefectReport,
       InspectionDetail,

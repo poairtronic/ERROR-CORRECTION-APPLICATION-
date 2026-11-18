@@ -103,12 +103,13 @@ describe('VendorFaultService', () => {
   });
 
   it('handleVendorFault should create fault log automatically', async () => {
+    const validVendorUuid = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
     const payload = {
-      report: { id: 'r1', reportNumber: '123', inspectionDetail: { responsibleId: 'v1' } },
+      report: { id: 'r1', reportNumber: '123', inspectionDetail: { responsibleId: validVendorUuid } },
       gmId: 'g1'
     };
-    mockFaultRepo.create.mockReturnValue({ id: 'f1', vendorId: 'v1', reportId: 'r1' });
-    mockFaultRepo.save.mockResolvedValue({ id: 'f1', vendorId: 'v1', reportId: 'r1' });
+    mockFaultRepo.create.mockReturnValue({ id: 'f1', vendorId: validVendorUuid, reportId: 'r1' });
+    mockFaultRepo.save.mockResolvedValue({ id: 'f1', vendorId: validVendorUuid, reportId: 'r1' });
 
     await service.handleVendorFault(payload);
     
@@ -124,5 +125,19 @@ describe('VendorFaultService', () => {
     };
     await service.handleVendorFault(payload);
     expect(mockFaultRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('handleVendorFault should not create and should log warning if vendorId is not a valid UUID', async () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const payload = {
+      report: { id: 'r1', reportNumber: '123', inspectionDetail: { responsibleId: 'invalid-vendor-code' } },
+      gmId: 'g1',
+    };
+    await service.handleVendorFault(payload);
+    expect(mockFaultRepo.save).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('is not a valid UUID'),
+    );
+    warnSpy.mockRestore();
   });
 });
