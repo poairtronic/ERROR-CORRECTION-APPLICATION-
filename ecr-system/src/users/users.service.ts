@@ -61,18 +61,9 @@ export class UsersService {
     return this.repo.save(user);
   }
 
-  // Attempt hard delete first. Fall back to soft delete (isActive = false) if foreign keys (e.g. raised reports) exist
   async deactivate(id: string) {
     const user = await this.findOne(id);
-    try {
-      return await this.repo.remove(user);
-    } catch (err) {
-      user.isActive = false;
-      // Free the email address by renaming it
-      if (!user.email.includes('_deleted_')) {
-        user.email = `${user.email}_deleted_${Date.now()}`;
-      }
-      return this.repo.save(user);
-    }
+    user.isActive = false;
+    return this.repo.save(user);
   }
 }

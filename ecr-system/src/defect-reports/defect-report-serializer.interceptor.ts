@@ -11,7 +11,7 @@ export class DefectReportSerializerInterceptor implements NestInterceptor {
     const user = request.user;
 
     const groups: string[] = [];
-    if (user && (user.role === Role.SENIOR_MANAGER || user.role === Role.ADMIN)) {
+    if (user && (user.role === Role.SENIOR_MANAGER || user.role === Role.ADMIN || user.role === Role.GENERAL_MANAGER)) {
       groups.push('gmToSm');
     }
 

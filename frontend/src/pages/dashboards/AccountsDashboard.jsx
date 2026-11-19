@@ -78,7 +78,7 @@ export default function AccountsDashboard() {
       key: 'status',
       render: (r) => <span className={`badge badge-${r.status.toLowerCase()}`}>{r.status}</span>
     },
-    { label: 'Date Closed', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.createdAt) }
+    { label: 'Date Closed', key: 'createdAt', style: { color: 'var(--text-muted)' }, render: (r) => formatDate(r.closedAt || r.updatedAt) }
   ];
 
   return (

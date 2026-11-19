@@ -64,11 +64,17 @@ export function calculateTotalCost(report: DefectReport): number {
     stageTotal = costValues.reduce<number>((sum: number, val) => sum + (Number(val) || 0), 0);
   } else if (template && failedStage) {
     const stages = PROCESS_TEMPLATES[template] || [];
-    const idx = stages.indexOf(failedStage);
+    const normalizedStages = stages.map(s => (typeof s === 'string' ? s.trim().toLowerCase() : String(s).trim().toLowerCase()));
+    const normalizedFailedStage = typeof failedStage === 'string' ? failedStage.trim().toLowerCase() : String(failedStage).trim().toLowerCase();
+    const idx = normalizedStages.indexOf(normalizedFailedStage);
+    if (idx === -1) {
+      console.warn(`[COST_CALCULATOR_WARN] Failed stage "${failedStage}" not found in process template "${template}". Available stages: ${stages.join(', ')}`);
+      return 0;
+    }
     // Slice active stages up to and including the failed stage
-    const activeStages = idx !== -1 ? stages.slice(0, idx + 1) : [];
+    const activeStages = stages.slice(0, idx + 1);
     stageTotal = activeStages.reduce((sum, st) => sum + (Number(stageCosts[st]) || 0), 0);
   }
 
-  return parseFloat((mat + lab + oth + Math.round(stageTotal)).toFixed(2));
+  return parseFloat((mat + lab + oth + stageTotal).toFixed(2));
 }

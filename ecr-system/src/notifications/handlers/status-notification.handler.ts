@@ -224,8 +224,9 @@ export class StatusNotificationHandler {
     const inspectorId = report.inspectionDetail?.inspectorId || (report.raisedByRole === RaisedByRole.INSPECTOR ? report.raisedById : null);
     if (inspectorId) notifyIds.add(inspectorId);
 
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(id => Boolean(id) && uuidRegex.test(id)).map(id => ({ id })),
     });
 
     const summaryTable = await buildEmailSummary(report, event);
@@ -269,8 +270,9 @@ export class StatusNotificationHandler {
     if (inspectorId) notifyIds.add(inspectorId);
     accountsUsers.forEach(accounts => notifyIds.add(accounts.id));
 
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(id => Boolean(id) && uuidRegex.test(id)).map(id => ({ id })),
     });
 
     const summaryTable = await buildEmailSummary(report, event);
@@ -380,8 +382,9 @@ export class StatusNotificationHandler {
       return;
     }
 
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(id => Boolean(id) && uuidRegex.test(id)).map(id => ({ id })),
     });
 
     await Promise.all(usersToNotify.map(user =>
@@ -419,8 +422,9 @@ export class StatusNotificationHandler {
       return;
     }
 
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     const usersToNotify = await this.usersRepo.find({
-      where: Array.from(notifyIds).filter(Boolean).map(id => ({ id })),
+      where: Array.from(notifyIds).filter(id => Boolean(id) && uuidRegex.test(id)).map(id => ({ id })),
     });
 
     await Promise.all(usersToNotify.map(user =>

@@ -22,7 +22,7 @@ export class SalaryDeductionService {
   ) {}
 
   async create(dto: CreateSalaryDeductionDto, actorId: string, actorRole: string): Promise<SalaryDeduction> {
-    return this.deductionRepo.manager.transaction(async (manager) => {
+    const saved = await this.deductionRepo.manager.transaction(async (manager) => {
       const deductionRepo = manager.getRepository(SalaryDeduction);
       const auditRepo = manager.getRepository(AuditLog);
 
@@ -49,15 +49,17 @@ export class SalaryDeductionService {
         }),
       );
 
-      this.events.emit('salary.deduction.created', {
-        deductionId: saved.id,
-        operatorId: saved.operatorId,
-        amount: saved.amount,
-        reportId: saved.reportId,
-      });
-
       return saved;
     });
+
+    this.events.emit('salary.deduction.created', {
+      deductionId: saved.id,
+      operatorId: saved.operatorId,
+      amount: saved.amount,
+      reportId: saved.reportId,
+    });
+
+    return saved;
   }
 
   async updateStatus(id: string, dto: UpdateSalaryDeductionStatusDto, actorId: string, actorRole: string): Promise<SalaryDeduction> {

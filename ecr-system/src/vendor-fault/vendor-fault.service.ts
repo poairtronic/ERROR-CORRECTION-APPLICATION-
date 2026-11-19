@@ -19,7 +19,7 @@ export class VendorFaultService {
   ) {}
 
   async create(dto: CreateVendorFaultDto, actorId: string, actorRole: string): Promise<VendorFaultLog> {
-    return this.faultRepo.manager.transaction(async (manager) => {
+    const saved = await this.faultRepo.manager.transaction(async (manager) => {
       const faultRepo = manager.getRepository(VendorFaultLog);
       const auditRepo = manager.getRepository(AuditLog);
 
@@ -45,14 +45,16 @@ export class VendorFaultService {
         }),
       );
 
-      this.events.emit('vendor.fault.created', {
-        faultId: saved.id,
-        vendorId: saved.vendorId,
-        reportId: saved.reportId,
-      });
-
       return saved;
     });
+
+    this.events.emit('vendor.fault.created', {
+      faultId: saved.id,
+      vendorId: saved.vendorId,
+      reportId: saved.reportId,
+    });
+
+    return saved;
   }
 
   async update(id: string, dto: UpdateVendorFaultDto, actorId: string, actorRole: string): Promise<VendorFaultLog> {

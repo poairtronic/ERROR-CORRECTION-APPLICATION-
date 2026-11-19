@@ -27,7 +27,11 @@ export class DefectReportsImageService {
       
       const urls = await this.imageUploadService.uploadMultipleImages(files);
       
-      const oldImages = [...report.images];
+      if (!report.images) {
+        report.images = [];
+      }
+      const images = [...(report.images || [])];
+      const oldImages = images;
       report.images.push(...urls);
       
       await reportsRepo.save(report);
@@ -60,7 +64,7 @@ export class DefectReportsImageService {
       });
       if (!report) throw new NotFoundException('Defect report not found');
       
-      if (!report.images.includes(imageUrl)) {
+      if (!report.images || !report.images.includes(imageUrl)) {
         throw new BadRequestException('Image not found in report');
       }
       

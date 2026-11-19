@@ -16,9 +16,15 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('ecr_user');
-    setUser(null);
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Proceed with client-side logout even if network call fails
+    } finally {
+      localStorage.removeItem('ecr_user');
+      setUser(null);
+    }
   }, []);
 
   useEffect(() => {
