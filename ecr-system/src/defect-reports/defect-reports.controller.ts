@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   Delete,
   ForbiddenException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { DefectReportsService } from './defect-reports.service';
@@ -42,7 +43,7 @@ export class DefectReportsController {
   @Patch(':id')
   @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateDefectReportDto,
     @CurrentUser() user,
   ) {
@@ -67,32 +68,32 @@ export class DefectReportsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user) {
     return this.service.findOne(id, user);
   }
 
   @Patch(':id/inspect')
   @Roles(Role.INSPECTOR)
-  inspect(@Param('id') id: string, @Body() dto: InspectReportDto, @CurrentUser() user) {
+  inspect(@Param('id', ParseUUIDPipe) id: string, @Body() dto: InspectReportDto, @CurrentUser() user) {
     return this.service.inspect(id, dto, user);
   }
 
   @Patch(':id/sm-review')
   @Roles(Role.SENIOR_MANAGER)
-  smReview(@Param('id') id: string, @Body() dto: SmReviewDto, @CurrentUser() user) {
+  smReview(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SmReviewDto, @CurrentUser() user) {
     return this.service.smReview(id, dto, user);
   }
 
   @Patch(':id/gm-approve')
   @Roles(Role.GENERAL_MANAGER)
-  gmApprove(@Param('id') id: string, @Body() dto: GmApproveDto, @CurrentUser() user) {
+  gmApprove(@Param('id', ParseUUIDPipe) id: string, @Body() dto: GmApproveDto, @CurrentUser() user) {
     return this.service.gmApprove(id, dto, user);
   }
 
   @Patch(':id/field')
   @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.ADMIN)
   async editField(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { field: string; value: string },
     @CurrentUser() user,
   ) {
@@ -102,7 +103,7 @@ export class DefectReportsController {
   @Patch(':id/fields')
   @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.ADMIN)
   async editFields(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { fields: { field: string; value: any }[] },
     @CurrentUser() user,
   ) {
@@ -113,7 +114,7 @@ export class DefectReportsController {
   @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   @UseInterceptors(FilesInterceptor('files', 5)) // max 5 files
   async uploadImages(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user,
   ) {
@@ -123,17 +124,17 @@ export class DefectReportsController {
   @Delete(':id/images')
   @Roles(Role.OPERATOR, Role.INSPECTOR, Role.SENIOR_MANAGER, Role.ADMIN)
   async deleteImage(
-    @Param('id') id: string,
-    @Body() body: { imageUrl: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('imageUrl') imageUrl: string,
     @CurrentUser() user,
   ) {
-    return this.service.deleteImage(id, body.imageUrl, user);
+    return this.service.deleteImage(id, imageUrl, user);
   }
 
   @Patch(':id/status')
   @Roles(Role.SENIOR_MANAGER, Role.GENERAL_MANAGER, Role.ACCOUNTS, Role.ADMIN)
   async transitionStatus(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { status: string; note: string },
     @CurrentUser() user,
   ) {
@@ -146,7 +147,7 @@ export class DefectReportsController {
   @Patch(':id/issue-components')
   @Roles(Role.STORE_MANAGER)
   async issueComponents(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { remarks: string },
     @CurrentUser() user,
   ) {
@@ -174,7 +175,7 @@ export class DefectReportsController {
   @Delete(':id')
   @Roles(Role.ADMIN)
   async hardDelete(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user,
   ) {
     return this.service.hardDelete(id, user);

@@ -127,7 +127,7 @@ describe('DefectReportsController', () => {
 
   describe('deleteImage', () => {
     it('should call service.deleteImage', async () => {
-      await controller.deleteImage('rpt-1', { imageUrl: 'https://cloudinary.com/test.jpg' }, mockUser);
+      await controller.deleteImage('rpt-1', 'https://cloudinary.com/test.jpg', mockUser);
       expect(service.deleteImage).toHaveBeenCalledWith('rpt-1', 'https://cloudinary.com/test.jpg', mockUser);
     });
   });

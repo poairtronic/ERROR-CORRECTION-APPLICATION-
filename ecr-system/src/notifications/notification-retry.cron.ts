@@ -31,8 +31,9 @@ export class NotificationRetryCron implements BeforeApplicationShutdown {
     this.logger.log('Notification retry cron drained successfully.');
   }
 
-  // Runs every minute. Retries FAILED notifications up to 3 attempts.
-  @Cron('0 * * * * *')
+  // Disabled: retryFailed() is a stub that performs no actions.
+  // Scheduled to run once per year on Jan 1st (0 0 1 1 *) to avoid unnecessary per-minute execution overhead.
+  @Cron('0 0 1 1 *')
   async handleRetry() {
     const traceCtx = {
       correlationId: `cron-notif-retry-${crypto.randomUUID()}`,

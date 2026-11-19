@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsEnum, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsEnum, IsOptional, Min } from 'class-validator';
 import { RecoveryStatus } from '../../common/enums/report-status.enum';
 
 export class CreateVendorFaultDto {
@@ -21,6 +21,7 @@ export class UpdateVendorFaultDto {
   recoveryStatus?: RecoveryStatus;
 
   @IsNumber()
+  @Min(0.01)
   @IsOptional()
   recoveryAmount?: number;
 

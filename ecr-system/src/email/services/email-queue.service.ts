@@ -266,8 +266,6 @@ export class EmailQueueService implements BeforeApplicationShutdown, OnModuleIni
           })
         );
 
-        this.eventEmitter.emit('email.logs.updated');
-
         const duration = Date.now() - startTime;
         this.monitoringService.recordQueueProcessingTime(duration);
 

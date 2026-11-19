@@ -164,6 +164,7 @@ export default function ReportDetailPage() {
 
   const handleAccountsSave = async () => {
     setIsSavingAccounts(true);
+    let costsSaved = false;
     try {
       const mat = accountsData.materialCost === '' ? 0 : Math.round(Number(accountsData.materialCost)) || 0;
       const lab = accountsData.labourCost === '' ? 0 : Math.round(Number(accountsData.labourCost)) || 0;
@@ -182,6 +183,7 @@ export default function ReportDetailPage() {
           { field: 'costRemarks', value: accountsData.costRemarks || 'Verified' }
         ]
       });
+      costsSaved = true;
 
       // 2. Submit to SM directly with NO alert popup
       await api.patch(`/defect-reports/${id}/status`, { 
@@ -193,7 +195,16 @@ export default function ReportDetailPage() {
       setModal(null);
       queryClient.invalidateQueries({ queryKey: ['report', id] });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to verify and submit report');
+      if (costsSaved) {
+        queryClient.invalidateQueries({ queryKey: ['report', id] });
+        toast.error(
+          err.response?.data?.message 
+            ? `Costs saved, but status update failed: ${err.response.data.message}. Please retry.` 
+            : 'Costs saved, but failed to submit report to Senior Manager. Please retry.'
+        );
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to verify and submit report');
+      }
     } finally {
       setIsSavingAccounts(false);
     }
