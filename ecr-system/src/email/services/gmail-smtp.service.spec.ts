@@ -175,6 +175,7 @@ describe('GmailSmtpService', () => {
       const nodemailer = require('nodemailer');
       expect(nodemailer.createTransport).toHaveBeenCalledWith(
         expect.objectContaining({
+          family: 4,
           connectionTimeout: 10000,
           greetingTimeout: 10000,
           socketTimeout: 15000,

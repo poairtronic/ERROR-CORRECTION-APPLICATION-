@@ -49,6 +49,7 @@ export class GmailSmtpService implements OnModuleInit {
         host: 'smtp.gmail.com',
         port: 587,
         secure: false, // STARTTLS
+        family: 4,
         auth: {
           user: emailFrom,
           pass: gmailAppPassword,
@@ -74,8 +75,8 @@ export class GmailSmtpService implements OnModuleInit {
           let settled = false;
 
           const socket: net.Socket = options.secure
-            ? tls.connect({ host, port, ...(options.tls || {}) })
-            : net.connect({ host, port });
+            ? tls.connect({ host, port, family: 4, ...(options.tls || {}) })
+            : net.connect({ host, port, family: 4 });
 
           const onAbort = () => {
             const abortErr = new Error('SMTP request aborted during shutdown') as any;
