@@ -19,6 +19,13 @@ async function bootstrap() {
   if (expressInstance && typeof expressInstance.set === 'function') {
     expressInstance.set('trust proxy', 1);
   }
+  // Normalize accidental double /api/api/ prefix from external integrators
+  expressInstance.use((req: any, _res: any, next: any) => {
+    if (typeof req.url === 'string' && req.url.startsWith('/api/api/')) {
+      req.url = req.url.replace(/^\/api\/api\//, '/api/');
+    }
+    next();
+  });
   const bootGate = attachEarlyBootMiddleware(expressInstance);
   const port = Number(process.env.PORT) || 3000;
   const earlyServer = http.createServer(expressInstance);

@@ -167,12 +167,13 @@ describe('GmailSmtpService', () => {
     });
 
     it('should initialize both GAS and direct SMTP transport', async () => {
+      const nodemailer = require('nodemailer');
+      (nodemailer.createTransport().verify as jest.Mock).mockClear();
       await service.onModuleInit();
       expect(service.hasScriptUrl()).toBe(true);
       expect(service.getTransporter()).toBeDefined();
       expect(service.getPreferredProvider()).toBe('gas');
 
-      const nodemailer = require('nodemailer');
       expect(nodemailer.createTransport).toHaveBeenCalledWith(
         expect.objectContaining({
           family: 4,
@@ -181,6 +182,7 @@ describe('GmailSmtpService', () => {
           socketTimeout: 15000,
         }),
       );
+      expect(service.getTransporter()?.verify).not.toHaveBeenCalled();
     });
 
     it('should abort hanging GAS fetch on timeout and cancel immediately on external shutdown AbortSignal (D-09)', async () => {

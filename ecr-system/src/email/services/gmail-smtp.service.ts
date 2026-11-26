@@ -112,11 +112,15 @@ export class GmailSmtpService implements OnModuleInit {
         },
       } as SMTPTransport.Options & { getSocket?: any };
       this.transporter = nodemailer.createTransport(smtpOptions);
-      try {
-        await this.transporter.verify();
-        this.logger.log('SMTP transport verified and ready (IPv4).');
-      } catch (error: any) {
-        this.logger.warn(`SMTP transport verification warning: ${error.message}`);
+      if (this.getPreferredProvider() === 'gas') {
+        this.logger.log('SMTP fallback transport configured (skipping blocking startup verify because GAS HTTPS is primary).');
+      } else {
+        try {
+          await this.transporter.verify();
+          this.logger.log('SMTP transport verified and ready (IPv4).');
+        } catch (error: any) {
+          this.logger.warn(`SMTP transport verification warning: ${error.message}`);
+        }
       }
     } else {
       this.logger.warn('SMTP transport not configured: GMAIL_APP_PASSWORD or EMAIL_FROM is missing.');
