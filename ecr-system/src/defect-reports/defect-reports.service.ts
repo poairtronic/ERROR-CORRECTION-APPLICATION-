@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnApplicationShutdown,
   OnModuleInit,
   ForbiddenException,
   Inject,
@@ -34,7 +36,12 @@ import { DefectReportsMutationService } from './defect-reports-mutation.service'
 import { ActingUser } from './defect-reports.types';
 
 @Injectable()
-export class DefectReportsService implements OnModuleInit {
+export class DefectReportsService implements OnModuleInit, OnApplicationShutdown {
+  private readonly logger = new Logger(DefectReportsService.name);
+  private isShuttingDown = false;
+  private backfillTimer: NodeJS.Immediate | null = null;
+  private backfillPromise: Promise<void> | null = null;
+
   constructor(
     @InjectRepository(DefectReport)
     private readonly reportsRepo: Repository<DefectReport>,
@@ -55,27 +62,44 @@ export class DefectReportsService implements OnModuleInit {
     private readonly mutationService: DefectReportsMutationService,
   ) {}
 
-  async onModuleInit() {
-    try {
-      await this.reportsRepo.query(`ALTER TYPE defect_reports_status_enum ADD VALUE IF NOT EXISTS 'INSPECTOR_DRAFT'`);
-      await this.reportsRepo.query(`ALTER TYPE defect_reports_status_enum ADD VALUE IF NOT EXISTS 'ACCOUNTS_DRAFT'`);
-      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'CUSTOMER'`);
-      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'MATERIAL'`);
-      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'INLINE_QUALITY'`);
-      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'VENDOR_QUALITY'`);
-      await this.reportsRepo.query(`ALTER TYPE inspection_details_responsibleparty_enum ADD VALUE IF NOT EXISTS 'DESIGN_TEAM'`);
-    } catch (err: any) {
-      // Ignore if enums already contain values or not supported
+  onModuleInit() {
+    // Enum schema changes are managed via TypeORM migrations (1783510000000-1783540000000).
+    // Schedule legacy reportNumber backfill non-blockingly so HTTP liveness startup is never delayed.
+    this.backfillTimer = setImmediate(() => {
+      this.backfillTimer = null;
+      if (!this.isShuttingDown) {
+        this.backfillPromise = this.backfillMissingReportNumbers().finally(() => {
+          this.backfillPromise = null;
+        });
+      }
+    });
+  }
+
+  async onApplicationShutdown() {
+    this.isShuttingDown = true;
+    if (this.backfillTimer) {
+      clearImmediate(this.backfillTimer);
+      this.backfillTimer = null;
     }
+    if (this.backfillPromise) {
+      await this.backfillPromise.catch(() => undefined);
+    }
+  }
 
-    const reports = await this.reportsRepo.createQueryBuilder('r')
-      .where('r.reportNumber IS NULL OR r.reportNumber NOT LIKE :prefix', { prefix: 'AGIPL%' })
-      .orderBy('r.createdAt', 'ASC')
-      .getMany();
+  private async backfillMissingReportNumbers(): Promise<void> {
+    try {
+      const reports = await this.reportsRepo.createQueryBuilder('r')
+        .where('r.reportNumber IS NULL OR r.reportNumber NOT LIKE :prefix', { prefix: 'AGIPL%' })
+        .orderBy('r.createdAt', 'ASC')
+        .getMany();
 
-    for (const report of reports) {
-      report.reportNumber = await this.generateReportNumber();
-      await this.reportsRepo.save(report);
+      for (const report of reports) {
+        if (this.isShuttingDown) break;
+        report.reportNumber = await this.generateReportNumber();
+        await this.reportsRepo.save(report);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Legacy reportNumber backfill skipped or failed: ${err?.message || err}`);
     }
   }
 

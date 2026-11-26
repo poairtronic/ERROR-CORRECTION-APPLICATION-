@@ -8,7 +8,7 @@ import { EmailLog } from '../entities/email-log.entity';
 import { EmailStatus } from '../enums/email-status.enum';
 import { NotificationEvent } from '../enums/notification-event.enum';
 import { EmailTemplateService, TemplateData } from './email-template.service';
-import { GmailSmtpService } from './gmail-smtp.service';
+import { GmailSmtpService, smtpAbortStorage } from './gmail-smtp.service';
 import { MonitoringService } from '../../monitoring/monitoring.service';
 import { getCorrelationId } from '../../common/trace-context';
 
@@ -41,23 +41,55 @@ export class EmailService implements OnModuleInit {
     this.logger.log("Gmail SMTP client verified on EmailService init");
   }
 
-  async sendEmailViaApi(emailLog: EmailLog): Promise<{ messageId: string; responseCode: number; responseBody: string }> {
+  private isTransientProviderError(error: any): boolean {
+    if (error?.name === 'AbortError' || error?.isPermanent) {
+      return false;
+    }
+    const status = error?.status || error?.responseCode;
+    if (typeof status === 'number') {
+      return status === 429 || status >= 500;
+    }
+    const code = error?.code;
+    if (code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'EPIPE' || code === 'TIMEOUT' || code === 'ECONNECTION') {
+      return true;
+    }
+    const msg = String(error?.message || '').toLowerCase();
+    return (
+      msg.includes('timeout') ||
+      msg.includes('timed out') ||
+      msg.includes('fetch failed') ||
+      msg.includes('network') ||
+      msg.includes('econnreset')
+    );
+  }
+
+  async sendEmailViaApi(
+    emailLog: EmailLog,
+    signal?: AbortSignal,
+  ): Promise<{ messageId: string; responseCode: number; responseBody: string }> {
     const emailFrom = this.configService.get<string>('EMAIL_FROM');
     const emailFromName = this.configService.get<string>('EMAIL_FROM_NAME', 'Velan Metrology');
 
-    // Validation
+    // Validation (permanent errors)
+    const createPermanentError = (msg: string, status = 400) => {
+      const err = new Error(msg) as any;
+      err.status = status;
+      err.isPermanent = true;
+      return err;
+    };
+
     if (!emailLog.recipient) {
-      throw new Error('Recipient email is missing');
+      throw createPermanentError('Recipient email is missing');
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailLog.recipient)) {
-      throw new Error(`Recipient email address is invalid: [${emailLog.recipient}]`);
+      throw createPermanentError(`Recipient email address is invalid: [${emailLog.recipient}]`);
     }
     if (!emailLog.subject || emailLog.subject.trim() === '') {
-      throw new Error('Email subject is empty');
+      throw createPermanentError('Email subject is empty');
     }
     if (!emailLog.content || emailLog.content.trim() === '') {
-      throw new Error('Email body is empty');
+      throw createPermanentError('Email body is empty');
     }
 
     const mailOptions: any = {
@@ -87,6 +119,7 @@ export class EmailService implements OnModuleInit {
         emailLog.content,
         emailLog.isHtml,
         emailFromName,
+        signal,
       );
 
       const duration = Date.now() - startTime;
@@ -115,10 +148,39 @@ export class EmailService implements OnModuleInit {
 
       const transporter = this.gmailSmtpService.getTransporter();
       if (!transporter) {
-        throw new Error('SMTP transport fallback is not initialized');
+        throw createPermanentError('SMTP transport fallback is not initialized', 500);
       }
 
-      const info = await transporter.sendMail(mailOptions);
+      if (signal?.aborted) {
+        const abortErr = new Error('SMTP request aborted due to shutdown') as any;
+        abortErr.name = 'AbortError';
+        abortErr.isShutdownAbort = true;
+        abortErr.deliveryUncertain = false;
+        throw abortErr;
+      }
+
+      let onAbort: (() => void) | undefined;
+      const sendPromise = smtpAbortStorage.run(signal, () => transporter.sendMail(mailOptions));
+      sendPromise.catch(() => {});
+
+      const info = await new Promise<any>((resolve, reject) => {
+        if (signal) {
+          onAbort = () => {
+            const abortErr = new Error('SMTP request aborted during shutdown') as any;
+            abortErr.name = 'AbortError';
+            abortErr.isShutdownAbort = true;
+            abortErr.deliveryUncertain = true;
+            reject(abortErr);
+          };
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
+        sendPromise.then(resolve, reject);
+      }).finally(() => {
+        if (signal && onAbort) {
+          signal.removeEventListener('abort', onAbort);
+        }
+      });
+
       const duration = Date.now() - startTime;
       this.recordEmailDuration(duration, emailLog, providerLabel);
       const messageId = info.messageId || '';
@@ -163,8 +225,8 @@ export class EmailService implements OnModuleInit {
           `Duration: ${duration}ms | Error: ${gasError.message}`
         );
 
-        // If direct SMTP is available, seamlessly fall back to it
-        if (canUseSmtp) {
+        // If direct SMTP is available and not shutting down, seamlessly fall back to it
+        if (canUseSmtp && !signal?.aborted) {
           console.warn(
             `[EMAIL_FALLBACK] Google Apps Script dispatch failed for Email ID: ${emailLog.id} (${gasError.message}). Seamlessly falling back to Direct Gmail SMTP...`
           );
@@ -174,14 +236,35 @@ export class EmailService implements OnModuleInit {
             console.error(
               `[EMAIL_FALLBACK_FAILED] Both Google Apps Script and Direct Gmail SMTP failed for Email ID: ${emailLog.id}. GAS: ${gasError.message} | SMTP: ${smtpError.message}`
             );
-            const combinedError = new Error(`Google Apps Script error: ${gasError.message} (SMTP Fallback failed: ${smtpError.message})`);
-            (combinedError as any).status = 500;
+            const combinedError = new Error(`Google Apps Script error: ${gasError.message} (SMTP Fallback failed: ${smtpError.message})`) as any;
+            const anyTransient = this.isTransientProviderError(gasError) || this.isTransientProviderError(smtpError);
+            combinedError.status = anyTransient
+              ? (smtpError.responseCode || gasError.status || 500)
+              : (smtpError.responseCode || gasError.status || 400);
+            if (!anyTransient) {
+              combinedError.isPermanent = true;
+            }
             throw combinedError;
           }
         }
 
-        const cleanError = new Error(`Google Apps Script error: ${gasError.message}`);
-        (cleanError as any).status = 500;
+        if (gasError?.isShutdownAbort || gasError?.name === 'AbortError' || signal?.aborted) {
+          const abortErr = new Error(gasError?.message || 'Google Apps Script request aborted during shutdown') as any;
+          abortErr.name = 'AbortError';
+          abortErr.isShutdownAbort = true;
+          abortErr.deliveryUncertain = Boolean(gasError?.deliveryUncertain);
+          throw abortErr;
+        }
+
+        const cleanError = new Error(
+          gasError.message?.startsWith('Google Apps Script error:')
+            ? gasError.message
+            : `Google Apps Script error: ${gasError.message}`,
+        ) as any;
+        cleanError.status = gasError.status ?? (this.isTransientProviderError(gasError) ? 500 : 400);
+        if (gasError.isPermanent || !this.isTransientProviderError(gasError)) {
+          cleanError.isPermanent = true;
+        }
         throw cleanError;
       }
     } else {
@@ -198,30 +281,48 @@ export class EmailService implements OnModuleInit {
             `Duration: ${duration}ms | Error: ${smtpError.message}`
           );
 
-          // If GAS is available and quota not exceeded, try GAS as fallback
-          if (hasScriptUrl && !this.gmailSmtpService.isGasQuotaExceeded()) {
+          // If GAS is available, quota not exceeded, and not shutting down, try GAS as fallback
+          if (hasScriptUrl && !this.gmailSmtpService.isGasQuotaExceeded() && !signal?.aborted) {
             console.warn(
               `[EMAIL_FALLBACK] Direct Gmail SMTP failed for Email ID: ${emailLog.id} (${smtpError.message}). Attempting Google Apps Script fallback...`
             );
             try {
               return await tryGas();
             } catch (gasError: any) {
-              const combinedError = new Error(`Gmail SMTP fallback error: ${smtpError.message} (GAS Fallback failed: ${gasError.message})`);
-              (combinedError as any).status = 500;
+              const combinedError = new Error(`Gmail SMTP fallback error: ${smtpError.message} (GAS Fallback failed: ${gasError.message})`) as any;
+              const anyTransient = this.isTransientProviderError(smtpError) || this.isTransientProviderError(gasError);
+              combinedError.status = anyTransient
+                ? (gasError.status || smtpError.responseCode || 500)
+                : (smtpError.responseCode || gasError.status || 400);
+              if (!anyTransient) {
+                combinedError.isPermanent = true;
+              }
               throw combinedError;
             }
           }
 
-          const statusCode = smtpError.responseCode || 500;
-          const cleanError = new Error(`Gmail SMTP fallback error: ${smtpError.message}`);
-          (cleanError as any).status = statusCode;
+          if (smtpError?.isShutdownAbort || smtpError?.name === 'AbortError' || signal?.aborted) {
+            const abortErr = new Error(smtpError?.message || 'SMTP request aborted during shutdown') as any;
+            abortErr.name = 'AbortError';
+            abortErr.isShutdownAbort = true;
+            abortErr.deliveryUncertain = Boolean(smtpError?.deliveryUncertain);
+            throw abortErr;
+          }
+
+          const statusCode = smtpError.responseCode || smtpError.status || (this.isTransientProviderError(smtpError) ? 500 : 400);
+          const cleanError = new Error(`Gmail SMTP fallback error: ${smtpError.message}`) as any;
+          cleanError.status = statusCode;
+          cleanError.code = smtpError.code;
+          if (!this.isTransientProviderError(smtpError)) {
+            cleanError.isPermanent = true;
+          }
           throw cleanError;
         }
       } else if (hasScriptUrl) {
         // Fallback to GAS if SMTP not initialized
         return await tryGas();
       } else {
-        throw new Error('SMTP transport fallback is not initialized');
+        throw createPermanentError('SMTP transport fallback is not initialized', 500);
       }
     }
   }

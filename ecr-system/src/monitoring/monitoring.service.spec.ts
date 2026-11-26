@@ -77,19 +77,79 @@ describe('MonitoringService', () => {
   });
 
   it('checkDatabaseHealth should return healthy if query succeeds', async () => {
+    service.clearHealthCache();
     mockDataSource.query.mockResolvedValue([{ '?column?': 1 }]);
     const health = await service.checkDatabaseHealth();
     expect(health.status).toBe('healthy');
   });
 
+  it('checkDatabaseHealth should cache healthy results within TTL to prevent database hammering', async () => {
+    service.clearHealthCache();
+    mockDataSource.query.mockResolvedValue([{ '?column?': 1 }]);
+
+    const health1 = await service.checkDatabaseHealth();
+    expect(health1.status).toBe('healthy');
+    expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+
+    // Second call within 15s should return cached healthy status without querying DB
+    const health2 = await service.checkDatabaseHealth();
+    expect(health2.status).toBe('healthy');
+    expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+
+    // Call with forceFresh = true should bypass cache and execute query
+    const health3 = await service.checkDatabaseHealth(true);
+    expect(health3.status).toBe('healthy');
+    expect(mockDataSource.query).toHaveBeenCalledTimes(2);
+  });
+
+  it('checkDatabaseHealth should not cache errors and immediately re-test database upon failure', async () => {
+    service.clearHealthCache();
+    mockDataSource.query.mockRejectedValueOnce(new Error('Connection dropped'));
+
+    const health1 = await service.checkDatabaseHealth();
+    expect(health1.status).toBe('unhealthy');
+    expect(health1.error).toBe('Database connectivity check failed');
+    expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+
+    // Subsequent call should immediately test DB without using a stale error cache
+    mockDataSource.query.mockResolvedValueOnce([{ '?column?': 1 }]);
+    const health2 = await service.checkDatabaseHealth();
+    expect(health2.status).toBe('healthy');
+    expect(mockDataSource.query).toHaveBeenCalledTimes(2);
+  });
+
   it('checkDatabaseHealth should return unhealthy if query fails', async () => {
+    service.clearHealthCache();
     mockDataSource.query.mockRejectedValue(new Error('Connection failed'));
     const health = await service.checkDatabaseHealth();
     expect(health.status).toBe('unhealthy');
-    expect(health.error).toBe('Connection failed');
+    expect(health.error).toBe('Database connectivity check failed');
+  });
+
+  it('checkDatabaseHealth should share a single SELECT 1 query across concurrent cold requests', async () => {
+    service.clearHealthCache();
+    let resolveQuery!: (val: any) => void;
+    mockDataSource.query.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        resolveQuery = resolve;
+      }),
+    );
+
+    const p1 = service.checkDatabaseHealth();
+    const p2 = service.checkDatabaseHealth();
+    const p3 = service.checkDatabaseHealth();
+
+    resolveQuery([{ '?column?': 1 }]);
+    const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+
+    expect(r1.status).toBe('healthy');
+    expect(r2.status).toBe('healthy');
+    expect(r3.status).toBe('healthy');
+    expect(mockDataSource.query).toHaveBeenCalledTimes(1);
   });
 
   it('checkDatabaseHealth should return unhealthy if uninitialized', async () => {
+    service.clearHealthCache();
     mockDataSource.isInitialized = false;
     const health = await service.checkDatabaseHealth();
     expect(health.status).toBe('unhealthy');
@@ -98,6 +158,7 @@ describe('MonitoringService', () => {
   });
 
   it('getHealthMetrics should retrieve data and queue sizes', async () => {
+    service.clearHealthCache();
     mockDataSource.query.mockResolvedValue([]);
     mockEmailRepo.count.mockResolvedValueOnce(5).mockResolvedValueOnce(2);
     mockNotificationRepo.count.mockResolvedValueOnce(10).mockResolvedValueOnce(1);
@@ -105,10 +166,26 @@ describe('MonitoringService', () => {
     const health = await service.getHealthMetrics();
     
     expect(health.status).toBe('healthy');
-    expect(health.queues.emails.pending).toBe(5);
-    expect(health.queues.emails.failed).toBe(2);
-    expect(health.queues.notifications.pending).toBe(10);
-    expect(health.queues.notifications.failed).toBe(1);
+    expect(health.queues.emails?.pending).toBe(5);
+    expect(health.queues.emails?.failed).toBe(2);
+    expect(health.queues.notifications?.pending).toBe(10);
+    expect(health.queues.notifications?.failed).toBe(1);
+  });
+
+  it('getHealthMetrics should cache queue metrics across rapid requests', async () => {
+    service.clearHealthCache();
+    mockDataSource.query.mockResolvedValue([]);
+    mockEmailRepo.count.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
+    mockNotificationRepo.count.mockResolvedValueOnce(7).mockResolvedValueOnce(0);
+
+    const health1 = await service.getHealthMetrics();
+    expect(health1.queues.emails?.pending).toBe(3);
+    expect(mockEmailRepo.count).toHaveBeenCalledTimes(2);
+
+    // Second call within 15s should reuse cached queue metrics without calling repos again
+    const health2 = await service.getHealthMetrics();
+    expect(health2.queues.emails?.pending).toBe(3);
+    expect(mockEmailRepo.count).toHaveBeenCalledTimes(2);
   });
 
   it('getMetrics should generate alerts for high latency or errors', () => {
@@ -156,13 +233,60 @@ describe('MonitoringService', () => {
     expect(metrics.performance.latencies.database.averageMs).toBe(10);
   });
 
-  it('getHealthMetrics should handle queue count error gracefully', async () => {
+  it('getHealthMetrics should handle queue count error gracefully without caching fallback zeroes', async () => {
+    service.clearHealthCache();
     mockDataSource.query.mockResolvedValue([]);
-    mockEmailRepo.count.mockRejectedValue(new Error('db error'));
-    
+    mockEmailRepo.count.mockRejectedValueOnce(new Error('db error'));
+
+    const health1 = await service.getHealthMetrics();
+
+    expect(health1.queues).toEqual({
+      status: 'unavailable',
+      emails: null,
+      notifications: null,
+    });
+
+    // Next call must NOT read stale unavailable/zero cache
+    mockEmailRepo.count.mockResolvedValueOnce(4).mockResolvedValueOnce(1);
+    mockNotificationRepo.count.mockResolvedValueOnce(2).mockResolvedValueOnce(0);
+    const health2 = await service.getHealthMetrics();
+    expect(health2.queues).toEqual({
+      status: 'available',
+      emails: { pending: 4, failed: 1 },
+      notifications: { pending: 2, failed: 0 },
+    });
+  });
+
+  it('getHealthMetrics should skip queue count queries when DB health check fails', async () => {
+    service.clearHealthCache();
+    mockDataSource.query.mockRejectedValueOnce(new Error('Neon suspended or down'));
+
     const health = await service.getHealthMetrics();
-    
-    expect(health.queues.emails.pending).toBe(0);
+
+    expect(health.status).toBe('unhealthy');
+    expect(health.queues).toEqual({
+      status: 'unavailable',
+      emails: null,
+      notifications: null,
+    });
+    expect(mockEmailRepo.count).not.toHaveBeenCalled();
+    expect(mockNotificationRepo.count).not.toHaveBeenCalled();
+  });
+
+  it('getHealthMetrics should refresh DB cache after TTL expiry', async () => {
+    service.clearHealthCache();
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(100000);
+    mockDataSource.query.mockResolvedValue([]);
+    mockEmailRepo.count.mockResolvedValue(0);
+    mockNotificationRepo.count.mockResolvedValue(0);
+
+    await service.getHealthMetrics();
+    expect(mockDataSource.query).toHaveBeenCalledTimes(1);
+
+    nowSpy.mockReturnValue(120000); // > 15s TTL
+    await service.getHealthMetrics();
+    expect(mockDataSource.query).toHaveBeenCalledTimes(2);
+    nowSpy.mockRestore();
   });
 
   it('getMetrics should generate warning alerts', () => {

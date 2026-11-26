@@ -3,10 +3,11 @@ services:
     name: ecr-system-web
     env: node
     buildCommand: |
-      npm ci
+      npm ci --include=dev
       rm -rf ecr-system/dist
       npm run build
     startCommand: npm run start
+    healthCheckPath: /api/health/live
     envVars:
       - key: NODE_ENV
         value: production
@@ -15,6 +16,14 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: GMAIL_SCRIPT_URL
+        sync: false
+      - key: GMAIL_SCRIPT_TOKEN
         sync: false
       - key: RM_API_URL
         value: https://v-smart-backend.onrender.com

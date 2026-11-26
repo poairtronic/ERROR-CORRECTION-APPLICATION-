@@ -215,6 +215,74 @@ describe('EmailService', () => {
     expect(mockTransporter.sendMail).toHaveBeenCalled();
   });
 
+  it('sendEmailViaApi should mark validation errors as permanent (isPermanent=true, status=400)', async () => {
+    const emailLog = { id: '1', recipient: 'not-an-email', subject: 'subj', content: 'body', isHtml: false } as any;
+    try {
+      await service.sendEmailViaApi(emailLog);
+      fail('Should have thrown');
+    } catch (err: any) {
+      expect(err.status).toBe(400);
+      expect(err.isPermanent).toBe(true);
+    }
+  });
+
+  it('sendEmailViaApi should forward AbortSignal to GAS transport', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(true);
+    mockSmtpService.sendMailViaGas.mockResolvedValue({ messageId: 'gas-1', responseCode: 200, responseBody: 'ok' });
+    const controller = new AbortController();
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: true } as any;
+
+    await service.sendEmailViaApi(emailLog, controller.signal);
+    expect(mockSmtpService.sendMailViaGas).toHaveBeenCalledWith(
+      'test@example.com',
+      'subj',
+      'body',
+      true,
+      'Test Sender',
+      controller.signal,
+    );
+  });
+
+  it('sendEmailViaApi should propagate shutdown abort without marking permanent and cancel active SMTP transport', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(false);
+    const closeMock = jest.fn();
+    const mockTransporter = {
+      sendMail: jest.fn(() => new Promise(() => {})),
+      close: closeMock,
+    };
+    mockSmtpService.getTransporter.mockReturnValue(mockTransporter);
+
+    const controller = new AbortController();
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: false } as any;
+
+    const pending = service.sendEmailViaApi(emailLog, controller.signal);
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({
+      name: 'AbortError',
+      isShutdownAbort: true,
+      deliveryUncertain: true,
+    });
+    expect(closeMock).not.toHaveBeenCalled();
+  });
+
+  it('sendEmailViaApi should reject pre-aborted SMTP send with deliveryUncertain=false without calling sendMail', async () => {
+    mockSmtpService.hasScriptUrl.mockReturnValue(false);
+    const sendMailMock = jest.fn();
+    mockSmtpService.getTransporter.mockReturnValue({ sendMail: sendMailMock, close: jest.fn() });
+
+    const controller = new AbortController();
+    controller.abort();
+    const emailLog = { id: '1', recipient: 'test@example.com', subject: 'subj', content: 'body', isHtml: false } as any;
+
+    await expect(service.sendEmailViaApi(emailLog, controller.signal)).rejects.toMatchObject({
+      name: 'AbortError',
+      isShutdownAbort: true,
+      deliveryUncertain: false,
+    });
+    expect(sendMailMock).not.toHaveBeenCalled();
+  });
+
   it('findAll should return all email logs', async () => {
     mockEmailLogRepo.find.mockResolvedValue([{ id: '1' }, { id: '2' }]);
     const result = await service.findAll();

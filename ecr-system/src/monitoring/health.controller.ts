@@ -1,20 +1,28 @@
 import { Controller, Get, Res, HttpStatus } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { MonitoringService } from './monitoring.service';
 
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(private readonly monitoringService: MonitoringService) {}
 
   @Get()
-  async getHealth() {
-    return this.monitoringService.getHealthMetrics();
+  async getHealth(@Res() res: Response) {
+    const metrics = await this.monitoringService.getHealthMetrics();
+    const httpStatus = metrics.status === 'healthy' ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
+    return res.status(httpStatus).json(metrics);
   }
 
   @Get('live')
   getLive(@Res() res: Response) {
-    // Liveness check: simple heartbeat returning 200 OK
-    return res.status(HttpStatus.OK).json({ status: 'live', uptime: process.uptime() });
+    // Liveness check: simple heartbeat returning 200 OK without any database query
+    return res.status(HttpStatus.OK).json({
+      status: 'live',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
   }
 
   @Get('ready')

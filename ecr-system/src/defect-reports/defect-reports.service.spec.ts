@@ -12,6 +12,7 @@ describe('DefectReportsService', () => {
   let workflowService: any;
   let imageService: any;
   let mutationService: any;
+  let dataSource: any;
 
   const mockReport = {
     id: 'rpt-1',
@@ -53,7 +54,7 @@ describe('DefectReportsService', () => {
     smReviewRepo = {};
     gmApprovalRepo = {};
     auditRepo = {};
-    const dataSource = {} as any;
+    dataSource = { query: jest.fn().mockResolvedValue([]) };
     events = { emit: jest.fn() };
     workflowService = {
       inspect: jest.fn().mockResolvedValue(mockReport),
@@ -124,6 +125,13 @@ describe('DefectReportsService', () => {
     it('should throw ForbiddenException if DRAFT report accessed by non-raiser', async () => {
       reportsRepo.findOne.mockResolvedValue({ ...mockReport, status: 'DRAFT', raisedById: 'user-1' });
       await expect(service.findOne('rpt-1', { id: 'user-other' })).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('onModuleInit', () => {
+    it('should not execute runtime ALTER TYPE DDL statements during startup (T2-F03)', async () => {
+      await service.onModuleInit();
+      expect(dataSource.query).not.toHaveBeenCalled();
     });
   });
 });

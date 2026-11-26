@@ -23,7 +23,7 @@ export class EmailMonitoringService {
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
     private readonly eventEmitter?: EventEmitter2,
-  ) {}
+  ) { }
 
   async getSummary() {
     // Single grouped query for status counts
@@ -48,20 +48,27 @@ export class EmailMonitoringService {
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Single query for date-range counts
+    // Single query for date-range & uncertain-delivery counts
     const dateCounts = await this.emailLogRepo
       .createQueryBuilder('log')
       .select('COUNT(CASE WHEN log.createdAt >= :todayStart THEN 1 END)', 'todayCount')
       .addSelect('COUNT(CASE WHEN log.createdAt >= :weekStart THEN 1 END)', 'weekCount')
       .addSelect('COUNT(CASE WHEN log.createdAt >= :monthStart THEN 1 END)', 'monthCount')
+      .addSelect(
+        'COUNT(CASE WHEN log.status = :cancelledStatus AND log.failureReason LIKE :uncertainPattern THEN 1 END)',
+        'uncertainDeliveryCount',
+      )
       .setParameter('todayStart', todayStart)
       .setParameter('weekStart', weekStart)
       .setParameter('monthStart', monthStart)
+      .setParameter('cancelledStatus', EmailStatus.CANCELLED)
+      .setParameter('uncertainPattern', '%"deliveryUncertain":true%')
       .getRawOne();
 
     const todayCount = Number(dateCounts?.todayCount || 0);
     const weekCount = Number(dateCounts?.weekCount || 0);
     const monthCount = Number(dateCounts?.monthCount || 0);
+    const uncertainDelivery = Number(dateCounts?.uncertainDeliveryCount || 0);
 
     // Average Delivery Time
     const avgRes = await this.emailLogRepo
@@ -82,6 +89,7 @@ export class EmailMonitoringService {
       sent,
       failed,
       cancelled,
+      uncertainDelivery,
       todayCount,
       weekCount,
       monthCount,
@@ -124,7 +132,7 @@ export class EmailMonitoringService {
     if (query.search) {
       const searchStr = `%${query.search}%`;
       const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(query.search);
-      
+
       qb.andWhere(qbSub => {
         const subQuery = qbSub.subQuery()
           .select('r.id')
@@ -155,6 +163,14 @@ export class EmailMonitoringService {
     // Provider
     if (query.provider) {
       qb.andWhere('log.failureReason LIKE :provider', { provider: `%${query.provider}%` });
+    }
+
+    // Uncertain delivery filter (for manual reconciliation worklist)
+    if (query.deliveryUncertain === true || query.deliveryUncertain === 'true') {
+      qb.andWhere('log.status = :uncertainStatus', { uncertainStatus: EmailStatus.CANCELLED });
+      qb.andWhere('log.failureReason LIKE :uncertainPattern', {
+        uncertainPattern: '%"deliveryUncertain":true%',
+      });
     }
 
     // Date range
@@ -201,37 +217,39 @@ export class EmailMonitoringService {
     const recipientEmails = items.map(i => i.recipient);
     const reportIds = items.map(i => i.relatedReportId).filter(Boolean) as string[];
 
-    const users = recipientEmails.length > 0 
+    const users = recipientEmails.length > 0
       ? await this.userRepo.find({
-          where: { email: In(recipientEmails) },
-          select: ['email', 'role', 'name'] as any,
-        }) 
+        where: { email: In(recipientEmails) },
+        select: ['email', 'role', 'name'] as any,
+      })
       : [];
     const reports = reportIds.length > 0
       ? await this.reportRepo.find({
-          where: { id: In(reportIds) },
-          select: ['id', 'reportNumber'] as any,
-        })
+        where: { id: In(reportIds) },
+        select: ['id', 'reportNumber'] as any,
+      })
       : [];
 
     const mappedItems = items.map(item => {
       const user = users.find(u => u.email === item.recipient);
       const report = reports.find(r => r.id === item.relatedReportId);
-      
+
       let parsedProviderRes: any = null;
       try {
         if (item.failureReason && item.failureReason.startsWith('{')) {
           parsedProviderRes = JSON.parse(item.failureReason);
         }
-      } catch (e) {}
+      } catch (e) { }
 
       return {
         ...item,
         recipientRole: user ? user.role : 'N/A',
         reportNumber: report ? report.reportNumber : 'N/A',
         providerName: parsedProviderRes ? parsedProviderRes.providerName : 'Gmail SMTP',
-        deliveryTimeSeconds: item.sentTime 
-          ? Math.round((item.sentTime.getTime() - item.createdAt.getTime()) / 1000) 
+        deliveryUncertain: Boolean(parsedProviderRes?.deliveryUncertain),
+        shutdownInterrupted: Boolean(parsedProviderRes?.shutdownInterrupted),
+        deliveryTimeSeconds: item.sentTime
+          ? Math.round((item.sentTime.getTime() - item.createdAt.getTime()) / 1000)
           : null,
       };
     });
@@ -251,10 +269,10 @@ export class EmailMonitoringService {
     }
 
     const user = await this.userRepo.findOne({ where: { email: email.recipient } });
-    const report = email.relatedReportId 
-      ? await this.reportRepo.findOne({ where: { id: email.relatedReportId } }) 
+    const report = email.relatedReportId
+      ? await this.reportRepo.findOne({ where: { id: email.relatedReportId } })
       : null;
-    const notification = email.notificationId 
+    const notification = email.notificationId
       ? await this.notificationRepo.findOne({ where: { id: email.notificationId } })
       : null;
 
@@ -268,7 +286,7 @@ export class EmailMonitoringService {
       if (email.failureReason && email.failureReason.startsWith('{')) {
         parsedProviderRes = JSON.parse(email.failureReason);
       }
-    } catch (e) {}
+    } catch (e) { }
 
     return {
       email,
@@ -301,6 +319,8 @@ export class EmailMonitoringService {
       })
     );
 
+    this.eventEmitter?.emit('email.logs.updated');
+
     return saved;
   }
 
@@ -324,6 +344,8 @@ export class EmailMonitoringService {
         reason,
       })
     );
+
+    this.eventEmitter?.emit('email.logs.updated');
 
     return saved;
   }
@@ -358,34 +380,47 @@ export class EmailMonitoringService {
       ],
     });
 
-    if (failedEmails.length === 0) {
+    // Never bulk-retry uncertain-delivery emails; they require manual reconciliation
+    const retryableEmails = failedEmails.filter((email) => {
+      if (!email.failureReason || !email.failureReason.startsWith('{')) {
+        return true;
+      }
+      try {
+        const parsed = JSON.parse(email.failureReason);
+        return !parsed?.deliveryUncertain;
+      } catch {
+        return true;
+      }
+    });
+
+    if (retryableEmails.length === 0) {
       return { count: 0, message: 'No failed or cancelled emails found to retry' };
     }
 
-    for (const email of failedEmails) {
+    for (const email of retryableEmails) {
       email.status = EmailStatus.PENDING;
       email.retryCount = 0;
       email.failureReason = null as any;
     }
 
-    await this.emailLogRepo.save(failedEmails);
+    await this.emailLogRepo.save(retryableEmails);
 
     // Save audit log
     await this.auditLogRepo.save(
       this.auditLogRepo.create({
-        emailLogId: failedEmails[0].id,
+        emailLogId: retryableEmails[0].id,
         adminUserId: adminUser?.id || 'system',
         adminUsername: adminUser?.username || adminUser?.email || 'Admin',
         action: 'RETRY_ALL_FAILED',
-        reason: reason || `Bulk retry triggered for ${failedEmails.length} failed/cancelled emails`,
+        reason: reason || `Bulk retry triggered for ${retryableEmails.length} failed/cancelled emails`,
       }),
     );
 
     this.eventEmitter?.emit('email.logs.updated');
 
     return {
-      count: failedEmails.length,
-      message: `Successfully re-queued ${failedEmails.length} failed emails for delivery`,
+      count: retryableEmails.length,
+      message: `Successfully re-queued ${retryableEmails.length} failed emails for delivery`,
     };
   }
 

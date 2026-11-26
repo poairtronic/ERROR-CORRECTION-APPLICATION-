@@ -17,6 +17,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { MonitoringService } from './monitoring/monitoring.service';
 import { PerformanceService } from './monitoring/performance.service';
 import { TypeOrmStructuredLogger } from './common/typeorm-logger';
+import { buildPostgresSslConfig } from './common/utils/postgres-ssl';
 
 import { ComponentIssueModule } from './component-issue/component-issue.module';
 import { VendorFaultModule } from './vendor-fault/vendor-fault.module';
@@ -85,23 +86,29 @@ import { AuditLogModule } from './audit-log/audit-log.module';
       imports: [ConfigModule, MonitoringModule],
       inject: [ConfigService, MonitoringService, PerformanceService],
       useFactory: (config: ConfigService, monitoringService: MonitoringService, performanceService: PerformanceService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL') || process.env.DATABASE_URL;
+        const explicitRejectUnauthorized =
+          config.get<string>('DB_SSL_REJECT_UNAUTHORIZED') ?? process.env.DB_SSL_REJECT_UNAUTHORIZED;
+        const nodeEnv = config.get<string>('NODE_ENV') || process.env.NODE_ENV;
+        const isProduction = nodeEnv === 'production';
+
         return {
           type: 'postgres',
-          url: process.env.DATABASE_URL,
-          ssl: { rejectUnauthorized: false },
+          url: databaseUrl,
+          ssl: buildPostgresSslConfig(databaseUrl, explicitRejectUnauthorized, nodeEnv),
           autoLoadEntities: true,
-          synchronize: process.env.NODE_ENV !== 'production',
+          synchronize: !isProduction,
           migrationsRun: true,
           migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
           logger: new TypeOrmStructuredLogger(monitoringService, performanceService),
-          logging: ['query', 'error', 'schema', 'migration'],
+          logging: isProduction ? ['error', 'schema', 'migration'] : ['query', 'error', 'schema', 'migration'],
           maxQueryExecutionTime: 500, // trigger logQuerySlow for queries > 500ms to capture slow database queries
           retryAttempts: 10,
           retryDelay: 3000,
           extra: {
-            max: 20,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 5000,
+            max: Number(config.get<string>('DB_POOL_MAX') || process.env.DB_POOL_MAX || 20),
+            idleTimeoutMillis: Number(config.get<string>('DB_POOL_IDLE_TIMEOUT_MS') || process.env.DB_POOL_IDLE_TIMEOUT_MS || 30000),
+            connectionTimeoutMillis: Number(config.get<string>('DB_POOL_CONN_TIMEOUT_MS') || process.env.DB_POOL_CONN_TIMEOUT_MS || 5000),
           },
         };
       },

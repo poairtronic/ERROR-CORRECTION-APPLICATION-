@@ -30,9 +30,47 @@ export class MonitoringService {
   private loginAttempts = 0;
   private loginFailures = 0;
 
+  // Health & Database Check Cache (dampens repeated queries on readiness/health checks)
+  private lastDbHealthResult: { status: string; latencyMs: number; error?: string } | null = null;
+  private lastDbHealthCheckTime = 0;
+  private readonly DB_HEALTH_CACHE_TTL_MS = 15000; // 15 seconds cache when healthy
+  private inFlightDbCheck: Promise<{ status: string; latencyMs: number; error?: string }> | null = null;
+
+  private lastQueueMetrics: {
+    status: 'available' | 'unavailable';
+    emails: { pending: number; failed: number } | null;
+    notifications: { pending: number; failed: number } | null;
+  } | null = null;
+  private lastQueueMetricsTime = 0;
+  private inFlightQueueMetrics: Promise<{
+    status: 'available' | 'unavailable';
+    emails: { pending: number; failed: number } | null;
+    notifications: { pending: number; failed: number } | null;
+  }> | null = null;
+
+  private lastDiskUsage: {
+    totalGb: number;
+    freeGb: number;
+    usedGb: number;
+    usagePercentage: number;
+  } | undefined = undefined;
+  private lastDiskCheckTime = 0;
+  private readonly DISK_CACHE_TTL_MS = 60000;
+
   constructor(
     @Inject(forwardRef(() => DataSource)) private readonly dataSource: DataSource,
   ) {}
+
+  clearHealthCache() {
+    this.lastDbHealthResult = null;
+    this.lastDbHealthCheckTime = 0;
+    this.inFlightDbCheck = null;
+    this.lastQueueMetrics = null;
+    this.lastQueueMetricsTime = 0;
+    this.inFlightQueueMetrics = null;
+    this.lastDiskUsage = undefined;
+    this.lastDiskCheckTime = 0;
+  }
 
   recordRequest(statusCode: number, latencyMs: number) {
     this.totalRequests++;
@@ -103,65 +141,163 @@ export class MonitoringService {
     return Math.max(...arr);
   }
 
-  async checkDatabaseHealth(): Promise<{ status: string; latencyMs: number; error?: string }> {
-    const start = Date.now();
-    try {
-      if (!this.dataSource || !this.dataSource.isInitialized) {
-        throw new Error('Database connection is not initialized');
+  async checkDatabaseHealth(forceFresh = false): Promise<{ status: string; latencyMs: number; error?: string }> {
+    const now = Date.now();
+    if (!forceFresh && this.lastDbHealthResult && this.lastDbHealthResult.status === 'healthy') {
+      if (now - this.lastDbHealthCheckTime < this.DB_HEALTH_CACHE_TTL_MS) {
+        return this.lastDbHealthResult;
       }
-      await this.dataSource.query('SELECT 1');
-      const latencyMs = Date.now() - start;
-      return { status: 'healthy', latencyMs };
-    } catch (err: any) {
-      return { status: 'unhealthy', latencyMs: Date.now() - start, error: err.message };
+    }
+
+    if (!forceFresh && this.inFlightDbCheck) {
+      return this.inFlightDbCheck;
+    }
+
+    const probe = (async () => {
+      const start = Date.now();
+      try {
+        if (!this.dataSource || !this.dataSource.isInitialized) {
+          throw new Error('Database connection is not initialized');
+        }
+        await this.dataSource.query('SELECT 1');
+        const latencyMs = Date.now() - start;
+        const result = { status: 'healthy', latencyMs };
+        this.lastDbHealthResult = result;
+        this.lastDbHealthCheckTime = Date.now();
+        return result;
+      } catch (err: any) {
+        const latencyMs = Date.now() - start;
+        const isNotInitialized = err?.message === 'Database connection is not initialized';
+        if (!isNotInitialized) {
+          this.logger.warn(`Database readiness check failed: ${err?.message || 'Unknown error'}`);
+        }
+        const result = {
+          status: 'unhealthy',
+          latencyMs,
+          error: isNotInitialized
+            ? 'Database connection is not initialized'
+            : 'Database connectivity check failed',
+        };
+        // When unhealthy, invalidate cache so subsequent check tests DB immediately
+        this.lastDbHealthResult = null;
+        this.lastDbHealthCheckTime = 0;
+        return result;
+      }
+    })();
+
+    if (!forceFresh) {
+      this.inFlightDbCheck = probe;
+    }
+
+    try {
+      return await probe;
+    } finally {
+      if (this.inFlightDbCheck === probe) {
+        this.inFlightDbCheck = null;
+      }
     }
   }
 
-  async getHealthMetrics() {
-    const dbHealth = await this.checkDatabaseHealth();
-    const memory = process.memoryUsage();
-    
-    let diskUsage: any = undefined;
-    if (typeof fs.statfsSync === 'function') {
+  private async getDiskUsageCached() {
+    const now = Date.now();
+    if (this.lastDiskUsage && now - this.lastDiskCheckTime < this.DISK_CACHE_TTL_MS) {
+      return this.lastDiskUsage;
+    }
+    if (typeof fs.promises?.statfs === 'function') {
       try {
-        const stats = fs.statfsSync(process.cwd());
-        const totalBytes = stats.bsize * stats.blocks;
-        const freeBytes = stats.bsize * stats.bfree;
+        const stats = await fs.promises.statfs(process.cwd());
+        const totalBytes = Number(stats.bsize) * Number(stats.blocks);
+        const freeBytes = Number(stats.bsize) * Number(stats.bfree);
         const usedBytes = totalBytes - freeBytes;
-        diskUsage = {
+        this.lastDiskUsage = {
           totalGb: Number((totalBytes / (1024 ** 3)).toFixed(2)),
           freeGb: Number((freeBytes / (1024 ** 3)).toFixed(2)),
           usedGb: Number((usedBytes / (1024 ** 3)).toFixed(2)),
-          usagePercentage: Number((((totalBytes - freeBytes) / totalBytes) * 100).toFixed(2)),
+          usagePercentage: totalBytes > 0 ? Number((((totalBytes - freeBytes) / totalBytes) * 100).toFixed(2)) : 0,
         };
-      } catch (err) {
-        // Fallback for systems where statfsSync fails
+        this.lastDiskCheckTime = now;
+        return this.lastDiskUsage;
+      } catch {
+        return this.lastDiskUsage;
       }
     }
+    return undefined;
+  }
 
-    // Fetch queue sizes directly from TypeORM repositories to prevent circular module dependencies
-    let pendingEmails = 0;
-    let failedEmails = 0;
-    let pendingNotifications = 0;
-    let failedNotifications = 0;
+  async getHealthMetrics(forceFresh = false) {
+    const dbHealth = await this.checkDatabaseHealth(forceFresh);
+    const memory = process.memoryUsage();
+    const diskUsage = await this.getDiskUsageCached();
 
-    try {
-      if (this.dataSource && this.dataSource.isInitialized) {
-        pendingEmails = await this.dataSource.getRepository(EmailLog).count({
-          where: { status: EmailStatus.PENDING },
-        });
-        failedEmails = await this.dataSource.getRepository(EmailLog).count({
-          where: { status: EmailStatus.FAILED },
-        });
-        pendingNotifications = await this.dataSource.getRepository(Notification).count({
-          where: { status: NotificationStatus.QUEUED },
-        });
-        failedNotifications = await this.dataSource.getRepository(Notification).count({
-          where: { status: NotificationStatus.FAILED },
-        });
+    let queueMetrics: {
+      status: 'available' | 'unavailable';
+      emails: { pending: number; failed: number } | null;
+      notifications: { pending: number; failed: number } | null;
+    };
+
+    if (dbHealth.status !== 'healthy') {
+      queueMetrics = {
+        status: 'unavailable',
+        emails: null,
+        notifications: null,
+      };
+    } else if (
+      !forceFresh &&
+      this.lastQueueMetrics &&
+      Date.now() - this.lastQueueMetricsTime < this.DB_HEALTH_CACHE_TTL_MS
+    ) {
+      queueMetrics = this.lastQueueMetrics;
+    } else if (!forceFresh && this.inFlightQueueMetrics) {
+      queueMetrics = await this.inFlightQueueMetrics;
+    } else {
+      const fetchQueueMetrics = (async () => {
+        try {
+          if (!this.dataSource || !this.dataSource.isInitialized) {
+            return {
+              status: 'unavailable' as const,
+              emails: null,
+              notifications: null,
+            };
+          }
+
+          const emailRepo = this.dataSource.getRepository(EmailLog);
+          const notificationRepo = this.dataSource.getRepository(Notification);
+          const [pendingEmails, failedEmails, pendingNotifications, failedNotifications] = await Promise.all([
+            emailRepo.count({ where: { status: EmailStatus.PENDING } }),
+            emailRepo.count({ where: { status: EmailStatus.FAILED } }),
+            notificationRepo.count({ where: { status: NotificationStatus.QUEUED } }),
+            notificationRepo.count({ where: { status: NotificationStatus.FAILED } }),
+          ]);
+
+          const freshMetrics = {
+            status: 'available' as const,
+            emails: { pending: pendingEmails, failed: failedEmails },
+            notifications: { pending: pendingNotifications, failed: failedNotifications },
+          };
+          this.lastQueueMetrics = freshMetrics;
+          this.lastQueueMetricsTime = Date.now();
+          return freshMetrics;
+        } catch (err: any) {
+          this.logger.error('Failed to query queue counts in health endpoint', err?.stack || err?.message);
+          return {
+            status: 'unavailable' as const,
+            emails: null,
+            notifications: null,
+          };
+        }
+      })();
+
+      if (!forceFresh) {
+        this.inFlightQueueMetrics = fetchQueueMetrics;
       }
-    } catch (err: any) {
-      this.logger.error('Failed to query queue counts in health endpoint', err.stack);
+
+      try {
+        queueMetrics = await fetchQueueMetrics;
+      } finally {
+        if (this.inFlightQueueMetrics === fetchQueueMetrics) {
+          this.inFlightQueueMetrics = null;
+        }
+      }
     }
 
     const uptime = Math.floor((Date.now() - this.startTime) / 1000);
@@ -171,10 +307,7 @@ export class MonitoringService {
       uptimeSeconds: uptime,
       timestamp: new Date().toISOString(),
       database: dbHealth,
-      queues: {
-        emails: { pending: pendingEmails, failed: failedEmails },
-        notifications: { pending: pendingNotifications, failed: failedNotifications },
-      },
+      queues: queueMetrics,
       websocket: {
         activeConnections: this.socketCount,
       },

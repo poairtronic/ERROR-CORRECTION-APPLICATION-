@@ -129,6 +129,7 @@ describe('EmailMonitoringService', () => {
       const result = await service.resend('e1', { id: 'admin-1', username: 'admin' }, 'Manual resend');
       expect(result.status).toBe('PENDING');
       expect(result.retryCount).toBe(0);
+      expect(eventEmitter.emit).toHaveBeenCalledWith('email.logs.updated');
       expect(auditLogRepo.save).toHaveBeenCalled();
       expect(auditLogRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'RESEND', reason: 'Manual resend' }),
@@ -148,6 +149,7 @@ describe('EmailMonitoringService', () => {
 
       const result = await service.retry('e1', { id: 'admin-1', email: 'admin@test.com' }, 'Retry test');
       expect(result.status).toBe('PENDING');
+      expect(eventEmitter.emit).toHaveBeenCalledWith('email.logs.updated');
       expect(auditLogRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'RETRY' }),
       );
@@ -223,6 +225,64 @@ describe('EmailMonitoringService', () => {
       expect(failedEmails[1].status).toBe('PENDING');
       expect(emailLogRepo.save).toHaveBeenCalledWith(failedEmails);
       expect(eventEmitter.emit).toHaveBeenCalledWith('email.logs.updated');
+    });
+
+    it('should exclude CANCELLED + deliveryUncertain emails from bulk retryAllFailed', async () => {
+      const mixed = [
+        { id: '1', status: 'FAILED', retryCount: 2, failureReason: 'err1' },
+        {
+          id: '2',
+          status: 'CANCELLED',
+          retryCount: 0,
+          failureReason: JSON.stringify({ shutdownInterrupted: true, deliveryUncertain: true }),
+        },
+      ];
+      emailLogRepo.find.mockResolvedValue(mixed);
+      auditLogRepo.create.mockReturnValue({});
+      auditLogRepo.save.mockResolvedValue({});
+
+      const res = await service.retryAllFailed({ id: 'admin1', username: 'admin' }, 'Bulk retry');
+      expect(res.count).toBe(1);
+      expect(emailLogRepo.save).toHaveBeenCalledWith([mixed[0]]);
+      expect(mixed[1].status).toBe('CANCELLED');
+    });
+  });
+
+  describe('uncertain delivery worklist visibility (Task 5.2)', () => {
+    it('should filter by deliveryUncertain=true and expose deliveryUncertain & shutdownInterrupted fields', async () => {
+      const qb = emailLogRepo.createQueryBuilder();
+      qb.getManyAndCount.mockResolvedValue([
+        [
+          {
+            id: 'u-1',
+            recipient: 'u@test.com',
+            status: 'CANCELLED',
+            failureReason: JSON.stringify({
+              providerName: 'Gmail SMTP',
+              shutdownInterrupted: true,
+              deliveryUncertain: true,
+            }),
+            createdAt: new Date(),
+            sentTime: null,
+          },
+        ],
+        1,
+      ]);
+      emailLogRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.list({ deliveryUncertain: 'true' });
+      expect(qb.andWhere).toHaveBeenCalledWith('log.status = :uncertainStatus', {
+        uncertainStatus: 'CANCELLED',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('log.failureReason LIKE :uncertainPattern', {
+        uncertainPattern: '%"deliveryUncertain":true%',
+      });
+      expect(result.items[0]).toMatchObject({
+        id: 'u-1',
+        status: 'CANCELLED',
+        deliveryUncertain: true,
+        shutdownInterrupted: true,
+      });
     });
   });
 });
