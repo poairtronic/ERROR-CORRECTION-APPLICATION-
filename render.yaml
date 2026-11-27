@@ -29,3 +29,5 @@ services:
         value: https://v-smart-backend.onrender.com
       - key: RM_INTERNAL_SECRET
         value: vsmart_ecr_bridge_2026_secure
+      - key: EMAIL_QUEUE_CRON
+        value: "0 */4 * * *"
