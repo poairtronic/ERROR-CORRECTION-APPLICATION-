@@ -1,7 +1,7 @@
-import { Controller, Get, INestApplication, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, HttpCode, INestApplication, Injectable, OnModuleInit, Post, UnauthorizedException } from '@nestjs/common';
 import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import * as http from 'http';
 import { DataSource } from 'typeorm';
@@ -20,32 +20,56 @@ import { PerformanceService } from './performance.service';
 @Controller('throttled-test')
 class ThrottledDummyController {
   @Get()
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   getOk() {
+    return { ok: true };
+  }
+
+  @Post('auth-limited')
+  @Throttle({ auth: { limit: 10, ttl: 60000 } })
+  @HttpCode(200)
+  postAuthLimited() {
     return { ok: true };
   }
 }
 
-function httpGet(
+function httpRequest(
+  method: 'GET' | 'POST',
   url: string,
   headers: Record<string, string> = {},
-): Promise<{ status: number; body: any }> {
+): Promise<{ status: number; body: any; headers: http.IncomingHttpHeaders }> {
   return new Promise((resolve, reject) => {
-    http
-      .get(url, { headers }, (res) => {
+    const req = http.request(
+      url,
+      { method, headers },
+      (res) => {
         let data = '';
         res.on('data', (chunk) => {
           data += chunk;
         });
         res.on('end', () => {
           try {
-            resolve({ status: res.statusCode || 0, body: data ? JSON.parse(data) : null });
+            resolve({
+              status: res.statusCode || 0,
+              body: data ? JSON.parse(data) : null,
+              headers: res.headers,
+            });
           } catch {
-            resolve({ status: res.statusCode || 0, body: data });
+            resolve({ status: res.statusCode || 0, body: data, headers: res.headers });
           }
         });
-      })
-      .on('error', reject);
+      },
+    );
+    req.on('error', reject);
+    req.end();
   });
+}
+
+function httpGet(
+  url: string,
+  headers: Record<string, string> = {},
+): Promise<{ status: number; body: any; headers: http.IncomingHttpHeaders }> {
+  return httpRequest('GET', url, headers);
 }
 
 describe('Health & Performance Endpoints Lifecycle (HTTP + Guards + Early Boot)', () => {
@@ -70,7 +94,12 @@ describe('Health & Performance Endpoints Lifecycle (HTTP + Guards + Early Boot)'
     };
 
     const moduleRef = await Test.createTestingModule({
-      imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 3 }])],
+      imports: [
+        ThrottlerModule.forRoot([
+          { name: 'default', ttl: 60000, limit: 60 },
+          { name: 'auth', ttl: 60000, limit: 10 },
+        ]),
+      ],
       controllers: [HealthController, PerformanceController, ThrottledDummyController],
       providers: [
         MonitoringService,
@@ -135,6 +164,28 @@ describe('Health & Performance Endpoints Lifecycle (HTTP + Guards + Early Boot)'
       Array.from({ length: 6 }, () => httpGet(`${baseUrl}/performance/health`, { 'x-test-role': 'ADMIN' })),
     );
     expect(adminResponses.every((r) => r.status === 200)).toBe(true);
+  });
+
+  it('should bypass both default and auth throttlers on /api/health/live, /ready, and /health across 30 requests while auth-limited routes return 429 after 10', async () => {
+    const liveResponses = await Promise.all(Array.from({ length: 30 }, () => httpGet(`${baseUrl}/health/live`)));
+    expect(liveResponses.every((r) => r.status === 200)).toBe(true);
+    expect(liveResponses[0].headers['x-ratelimit-limit-auth']).toBeUndefined();
+    expect(mockDataSource.query).not.toHaveBeenCalled();
+    expect(mockEmailRepo.count).not.toHaveBeenCalled();
+    expect(mockNotificationRepo.count).not.toHaveBeenCalled();
+
+    const readyResponses = await Promise.all(Array.from({ length: 30 }, () => httpGet(`${baseUrl}/health/ready`)));
+    expect(readyResponses.every((r) => r.status === 200)).toBe(true);
+
+    const healthResponses = await Promise.all(Array.from({ length: 30 }, () => httpGet(`${baseUrl}/health`)));
+    expect(healthResponses.every((r) => r.status === 200)).toBe(true);
+
+    for (let i = 0; i < 10; i++) {
+      const okRes = await httpRequest('POST', `${baseUrl}/throttled-test/auth-limited`);
+      expect(okRes.status).toBe(200);
+    }
+    const throttledAuthRes = await httpRequest('POST', `${baseUrl}/throttled-test/auth-limited`);
+    expect(throttledAuthRes.status).toBe(429);
   });
 
   it('should bypass ThrottlerGuard on /api/health/live across 15 rapid requests while normal routes throttle at limit=3', async () => {

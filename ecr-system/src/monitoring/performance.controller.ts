@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { PerformanceService } from './performance.service';
 
-@SkipThrottle()
+@SkipThrottle({ default: true, auth: true })
 @Controller('performance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

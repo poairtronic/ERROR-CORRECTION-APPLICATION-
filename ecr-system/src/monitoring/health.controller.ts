@@ -3,7 +3,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { MonitoringService } from './monitoring.service';
 
-@SkipThrottle()
+@SkipThrottle({ default: true, auth: true })
 @Controller('health')
 export class HealthController {
   constructor(private readonly monitoringService: MonitoringService) {}
